@@ -13,6 +13,19 @@ complexity of gameplay, the UI chrome, and even the "hardware" framing the scree
 
 ---
 
+## Design Philosophy: "Modern Mechanics, Vintage Aesthetics"
+
+The goal of **RetroGameGame** is to *feel* the way we remember these games, rather than precisely how they were. We preserve the original aesthetics (EGA palettes, scanlines, limited resolutions) while utilizing modern engine capabilities to improve the playing experience.
+
+- **VFX & Juice**: Use modern particle systems and lighting, but restrict them to era-appropriate colors.
+- **Input & UX**: Implement modern conveniences like input buffering, smooth transitions, and intuitive menus.
+- **AI & Complexity**: Game logic/AI can be as sophisticated as modern standards, provided it doesn't break the visual illusion.
+
+> [!NOTE]
+> Each mini-game is treated as its own project with a dedicated guidance document in the `specs/` folder. This helps maintain focus and prevents context bloat when working on specific game logic.
+
+---
+
 ## Core Loop
 
 ```
@@ -53,50 +66,19 @@ complexity of gameplay, the UI chrome, and even the "hardware" framing the scree
 
 ## Era Breakdown
 
-### �️ Era 1: The 1980s — "The DOS Age"
+### 🕹️ Era 1: The 1980s — "The DOS Age"
 
 **Visual Style:** EGA palette (16-color), CRT scanline effect, chunky pixels
 **Frame:** DOS command prompt / early PC monitor border
 **Audio Style:** PC speaker beeps, simple square wave melodies
 
-> **Design Note:** We originally considered supporting both CGA and EGA palettes,
-> but the cyan-heavy CGA aesthetic was only representative of non-EGA graphics
-> adapters. Since the games we're inspired by (Digger, Captain Comic, Star Goose)
-> all supported EGA, we're going with the richer EGA 16-color palette exclusively.
-> This gives us a broader, more vibrant color range while still looking authentically 80s.
+| Mini-Game | Spec | Inspiration |
+|-----------|------|-------------|
+| **Tunnel Miner** | [Spec](file:///c:/Users/jlaut/git/RetroGameGame/specs/tunnel_miner.md) | Digger (1983) |
+| **Cosmic Captain** | [Spec](file:///c:/Users/jlaut/git/RetroGameGame/specs/cosmic_captain.md) | Captain Comic (1988) |
+| **Star Goose** | [Spec](file:///c:/Users/jlaut/git/RetroGameGame/specs/star_goose.md) | Star Goose (1988) |
 
-| Mini-Game | Inspired By | Core Mechanic |
-|-----------|-------------|---------------|
-| **Tunnel Miner** | Digger (1983, Windmill Software) | Dig tunnels, collect emeralds, crush enemies with gold bags, avoid Nobbins & Hobbins |
-| **Cosmic Captain** | Captain Comic (1988, Michael Denio) | Side-scrolling platformer, collect items to gain abilities, explore alien world |
-| **Star Goose** | Star Goose (1988, Logotron) | Vertical-scrolling shooter, collect crystals, manage shields/ammo/fuel, terrain affects bullets |
-
-#### Tunnel Miner (Digger)
-- **Grid-based movement** through underground maze
-- **Dig** through earth in any cardinal direction
-- **Collect emeralds** (bonus for 8 in a row)
-- **Gold bags** can be pushed and dropped to crush enemies
-- **Enemies**: Nobbins (slow, follow tunnels) → transform into Hobbins (fast, can dig)
-- **Weapon**: Single-shot with recharge delay (longer on higher levels)
-- **Cherry bonus mode**: eat enemies for limited time (Pac-Man style)
-- **Progression**: levels get harder — more enemies, slower recharge
-
-#### Cosmic Captain (Captain Comic)
-- **Side-scrolling exploration** across multiple themed zones
-- **Start unarmed** — find Blastola Cola to gain shooting ability
-- **Collectible power-ups**: keys, high-jump boots, lantern (dark areas), wave beam
-- **Shield-based health** (12 points, 2 per hit)
-- **Non-linear world**: 8 areas × 3 zones each
-- **Zone transitions** act as checkpoints
-- **Goal**: recover three stolen artifacts
-
-#### Star Goose
-- **Vertical-scrolling shooter** over alien terrain
-- **Collect 48 crystals** across 8 levels (6 per level)
-- **Resource management**: shields, ammunition, fuel
-- **Terrain contours** affect bullet trajectory
-- **Tunnel sequences**: switch to 3D perspective to resupply
-- **Difficulty ramp**: increasingly dense enemy patterns
+---
 
 ### 🎮 Era 2: The 1990s — "The Golden Age"
 
@@ -104,37 +86,11 @@ complexity of gameplay, the UI chrome, and even the "hardware" framing the scree
 **Frame:** TV with console underneath / Windows 95-style desktop
 **Audio Style:** Chiptune melodies, MIDI music
 
-| Mini-Game | Inspired By | Core Mechanic |
-|-----------|-------------|---------------|
-| **Worm Wars** | Worms (1995, Team17) | Turn-based artillery, destructible terrain, weapon arsenal |
-| **Ice Blitz** | NHL 98 (1997, EA Sports) | Top-down ice hockey, fast-paced arcade sports |
-| **Depths of Doom** | ADOM (1994, Thomas Biskup) | Turn-based roguelike, deep dungeon crawling, permadeath |
-
-#### Worm Wars (Worms)
-- **Turn-based artillery** strategy
-- **Destructible 2D terrain**
-- **Team of worms** with individual health
-- **Weapon selection**: bazooka, grenades, shotgun, air strikes, banana bombs, etc.
-- **Wind** affects projectile trajectories
-- **Movement phase**: walk, jump, backflip, use rope/jetpack
-- **Water = death** at the bottom of the map
-
-#### Ice Blitz (NHL 98)
-- **Top-down ice hockey** (classic EA-style overhead view)
-- **Arcade-paced**: fast skating, one-timers, body checks
-- **Team control**: switch between players
-- **Periods & scoring**: full game structure
-- **Special moves**: spin-o-rama, slap shots, goalie control
-- **Simple AI opponents**
-
-#### Depths of Doom (ADOM)
-- **Turn-based roguelike** RPG
-- **Procedurally generated dungeons**
-- **Character stats & classes**
-- **Deep inventory management**: weapons, armor, potions, scrolls
-- **Permadeath**: one life, consequences matter
-- **ASCII-inspired** tile visuals (fitting the era)
-- **Multiple dungeon branches** with increasing difficulty
+| Mini-Game | Spec | Inspiration |
+|-----------|------|-------------|
+| **Worm Wars** | [Spec](file:///c:/Users/jlaut/git/RetroGameGame/specs/worm_wars.md) | Worms (1995) |
+| **Ice Blitz** | [Spec](file:///c:/Users/jlaut/git/RetroGameGame/specs/ice_blitz.md) | NHL 98 (1997) |
+| **Depths of Doom** | [Spec](file:///c:/Users/jlaut/git/RetroGameGame/specs/depths_of_doom.md) | ADOM (1994) |
 
 ### 💿 Era 3: The 2000s — *TBD*
 
