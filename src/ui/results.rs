@@ -326,6 +326,7 @@ fn results_button_action(
 
 fn cleanup_results(mut commands: Commands, query: Query<Entity, With<ResultsRoot>>) {
     for entity in &query {
+        commands.entity(entity).despawn_children();
         commands.entity(entity).despawn();
     }
 }

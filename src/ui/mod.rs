@@ -1,6 +1,7 @@
 pub mod carousel;
 pub mod era_select;
 pub mod menu;
+pub mod music;
 pub mod particles;
 pub mod results;
 pub mod timeline;
@@ -13,6 +14,7 @@ pub struct UiPlugin;
 impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((
+            music::MusicPlugin,
             menu::MenuPlugin,
             carousel::CarouselPlugin,
             particles::ParticlesPlugin,

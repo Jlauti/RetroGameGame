@@ -52,8 +52,13 @@ fn setup_timeline(
     asset_server: Res<AssetServer>,
     progress: Res<PlayerProgress>,
     mut selected: ResMut<SelectedEra>,
+    camera_query: Query<Entity, With<Camera2d>>,
 ) {
     selected.index = selected.index.min(ERA_COUNT - 1);
+
+    if camera_query.is_empty() {
+        commands.spawn(Camera2d);
+    }
 
     commands
         .spawn((
@@ -67,7 +72,7 @@ fn setup_timeline(
         ))
         .with_children(|root| {
             root.spawn((
-                ImageNode::new(asset_server.load("ui/main_menu_bg_v2.png")),
+                ImageNode::new(asset_server.load("ui/NewBackround.png")),
                 Node {
                     position_type: PositionType::Absolute,
                     width: Val::Percent(100.0),
@@ -177,7 +182,6 @@ fn setup_timeline(
 
             for (index, (era, title, subtitle, image_path)) in era_entries().iter().enumerate() {
                 root.spawn((
-                    TimelineRoot,
                     EraCarouselCard {
                         era: *era,
                         index,
@@ -226,17 +230,16 @@ fn setup_timeline(
                 });
             }
         });
+
 }
 
 fn timeline_input(
     keyboard: Res<ButtonInput<KeyCode>>,
-    progress: Res<PlayerProgress>,
     mut selected: ResMut<SelectedEra>,
     mut current_era: ResMut<CurrentEra>,
     mut next_state: ResMut<NextState<GameState>>,
 ) {
     if keyboard.just_pressed(KeyCode::Escape) {
-        next_state.set(GameState::Menu);
         return;
     }
 
@@ -249,10 +252,8 @@ fn timeline_input(
 
     if keyboard.just_pressed(KeyCode::Enter) {
         let (era, _, _, _) = era_entries()[selected.index];
-        if progress.is_era_unlocked(era) {
-            current_era.era = era;
-            next_state.set(GameState::EraSelect);
-        }
+        current_era.era = era;
+        next_state.set(GameState::EraSelect);
     }
 }
 
@@ -268,7 +269,7 @@ fn layout_timeline_carousel(
             &mut BackgroundColor,
             &mut BorderColor,
         ),
-        With<TimelineRoot>,
+        With<EraCarouselCard>,
     >,
 ) {
     let Ok(window) = window_q.single() else {
@@ -353,6 +354,7 @@ fn update_timeline_labels(
 
 fn cleanup_timeline(mut commands: Commands, query: Query<Entity, With<TimelineRoot>>) {
     for entity in &query {
+        commands.entity(entity).despawn_children();
         commands.entity(entity).despawn();
     }
 }

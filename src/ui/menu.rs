@@ -116,6 +116,7 @@ fn boot_timer(
         if timer.0.just_finished() {
             // Clean up boot screen
             for entity in &boot_screen {
+                commands.entity(entity).despawn_children();
                 commands.entity(entity).despawn();
             }
             next_state.set(GameState::Menu);
@@ -130,7 +131,7 @@ fn setup_menu(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn((
         MenuWorldElement,
         Sprite {
-            image: asset_server.load("ui/main_menu_bg_v2.png"),
+            image: asset_server.load("ui/NewBackround.png"),
             custom_size: Some(Vec2::new(1920.0, 1080.0)),
             ..default()
         },
@@ -289,9 +290,11 @@ fn cleanup_menu(
     query_world: Query<Entity, With<MenuWorldElement>>,
 ) {
     for entity in &query_root {
+        commands.entity(entity).despawn_children();
         commands.entity(entity).despawn();
     }
     for entity in &query_world {
+        commands.entity(entity).despawn_children();
         commands.entity(entity).despawn();
     }
 }

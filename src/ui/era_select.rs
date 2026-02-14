@@ -61,12 +61,17 @@ fn setup_era_select(
     asset_server: Res<AssetServer>,
     current_era: Res<CurrentEra>,
     mut selected_game: ResMut<SelectedGame>,
+    camera_query: Query<Entity, With<Camera2d>>,
 ) {
     let games = get_era_games(current_era.era);
     if games.is_empty() {
         selected_game.index = 0;
     } else {
         selected_game.index = selected_game.index.min(games.len() - 1);
+    }
+
+    if camera_query.is_empty() {
+        commands.spawn(Camera2d);
     }
 
     commands
@@ -81,7 +86,7 @@ fn setup_era_select(
         ))
         .with_children(|root| {
             root.spawn((
-                ImageNode::new(asset_server.load("ui/main_menu_bg_v2.png")),
+                ImageNode::new(asset_server.load("ui/NewBackround.png")),
                 Node {
                     position_type: PositionType::Absolute,
                     width: Val::Percent(100.0),
@@ -175,7 +180,6 @@ fn setup_era_select(
 
             for (index, game) in games.iter().enumerate() {
                 root.spawn((
-                    EraSelectRoot,
                     GameCarouselCard {
                         game: *game,
                         index,
@@ -265,7 +269,7 @@ fn layout_game_carousel(
             &mut BackgroundColor,
             &mut BorderColor,
         ),
-        With<EraSelectRoot>,
+        With<GameCarouselCard>,
     >,
 ) {
     let games = get_era_games(current_era.era);
@@ -409,6 +413,7 @@ fn get_era_games(era: Era) -> Vec<MiniGameId> {
 
 fn cleanup_era_select(mut commands: Commands, query: Query<Entity, With<EraSelectRoot>>) {
     for entity in &query {
+        commands.entity(entity).despawn_children();
         commands.entity(entity).despawn();
     }
 }
