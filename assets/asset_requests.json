@@ -1,0 +1,41 @@
+{
+    "defaults": {
+        "size": "1024x1024"
+    },
+    "eras": {
+        "80s": {
+            "prompt_prefix": "Retro 80s arcade game sprite sheet, pixel art, EGA 16-color palette, solid black background.",
+            "prompt_suffix": "Clean outlines, distinct colors, specialized for grid-based movement. No text, no scanlines, no blurring, high contrast."
+        },
+        "90s": {
+            "prompt_prefix": "16-bit SNES style sprite sheet, vibrant colors, detailed pixel art, transparency ready (solid black background).",
+            "prompt_suffix": "Golden age 90s console aesthetic. No text, no dithering."
+        }
+    },
+    "requests": [
+        {
+            "name": "tunnel_miner_player",
+            "era": "80s",
+            "description": "Small robotic digging vehicle or miner with helmet. Idle, moving left/right/up/down animation frames.",
+            "count": 1
+        },
+        {
+            "name": "tunnel_miner_enemy_nobbins",
+            "era": "80s",
+            "description": "Cute but dangerous blob monster (like Pacman ghost or Digger Nobbin). Red/Orange colors. Angry eyes.",
+            "count": 1
+        },
+        {
+            "name": "tunnel_miner_gems",
+            "era": "80s",
+            "description": "Collection of emeralds, gold piles, and cherry bonus items. Shiny pixel art. Isolated sprites.",
+            "count": 1
+        },
+        {
+            "name": "tunnel_miner_environment",
+            "era": "80s",
+            "description": "Tileset for digging game. Dark brown dirt/earth texture tile (repeatable), bedrock/wall tile, and a simple black/starry background. Pixel art. Solid colors.",
+            "count": 1
+        }
+    ]
+}

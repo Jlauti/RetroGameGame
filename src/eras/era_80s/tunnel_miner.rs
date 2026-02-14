@@ -132,12 +132,20 @@ fn setup_tunnel_miner(mut commands: Commands, asset_server: Res<AssetServer>) {
     let origin_y = -(GRID_HEIGHT as f32 * TILE_SIZE) / 2.0;
 
     // Load textures
-    let background_handle: Handle<Image> = asset_server.load("sprites/era_80s/tunnel_miner/background.png");
-    let earth_handle: Handle<Image> = asset_server.load("sprites/era_80s/tunnel_miner/earth.png");
-    let emerald_handle: Handle<Image> = asset_server.load("sprites/era_80s/tunnel_miner/emerald.png");
-    let gold_handle: Handle<Image> = asset_server.load("sprites/era_80s/tunnel_miner/gold_bag.png");
-    let player_handle: Handle<Image> = asset_server.load("sprites/era_80s/tunnel_miner/player.png");
-    let nobbin_handle: Handle<Image> = asset_server.load("sprites/era_80s/tunnel_miner/nobbin.png");
+    // Load textures
+    // Background: Use environment background if available, else fallback to color. 
+    // Ideally we'd use a raw image for background, but slicing might have removed it if it was plain black.
+    // Let's try index 001 for background if 000 is earth.
+    let background_handle: Handle<Image> = asset_server.load("sprites/80s/tunnel_miner_environment/tunnel_miner_environment_000.png"); // Large file, likely background
+    let earth_handle: Handle<Image> = asset_server.load("sprites/80s/tunnel_miner_environment/tunnel_miner_environment_001.png"); // Smaller file, likely tile
+    
+    // Gems: Try index 005 for Emerald (hope it's a single gem) and 025 for Gold.
+    let emerald_handle: Handle<Image> = asset_server.load("sprites/80s/tunnel_miner_gems/tunnel_miner_gems_005.png");
+    let gold_handle: Handle<Image> = asset_server.load("sprites/80s/tunnel_miner_gems/tunnel_miner_gems_025.png"); 
+    
+    // Player: Use 001 to avoid "Idle" text
+    let player_handle: Handle<Image> = asset_server.load("sprites/80s/tunnel_miner_player/tunnel_miner_player_001.png");
+    let nobbin_handle: Handle<Image> = asset_server.load("sprites/80s/tunnel_miner_enemy_nobbins/tunnel_miner_enemy_nobbins_000.png");
 
     // Background
     commands.spawn((
