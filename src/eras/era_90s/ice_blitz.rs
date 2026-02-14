@@ -309,8 +309,8 @@ fn stick_handling(
 }
 
 fn goal_system(
-    mut puck_query: Query<(&mut Velocity, &mut Transform), With<Puck>>,
-    goal_query: Query<(&Transform, &Goal)>,
+    mut puck_query: Query<(&mut Velocity, &mut Transform), (With<Puck>, Without<Goal>)>,
+    goal_query: Query<(&Transform, &Goal), Without<Puck>>,
     mut scores: ResMut<Scores>,
 ) {
     let (mut puck_vel, mut puck_transform) = match puck_query.single_mut() {
