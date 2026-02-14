@@ -123,7 +123,7 @@ fn boot_timer(
 
 // ─── Main menu ─────────────────────────────────────────────────────
 
-fn setup_menu(mut commands: Commands) {
+fn setup_menu(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands
         .spawn((
             MenuRoot,
@@ -138,15 +138,12 @@ fn setup_menu(mut commands: Commands) {
             BackgroundColor(Color::srgb(0.02, 0.02, 0.08)),
         ))
         .with_children(|parent| {
-            // Title
+            // Title (Graphic)
             parent.spawn((
-                Text::new("RETROGAMEGAME"),
-                TextFont {
-                    font_size: 64.0,
-                    ..default()
-                },
-                TextColor(colors::CGA_BRIGHT_CYAN),
+                ImageNode::new(asset_server.load::<Image>("sprites/menu/title_logo.png")),
                 Node {
+                    width: Val::Px(512.0),
+                    height: Val::Px(256.0),
                     margin: UiRect::bottom(Val::Px(10.0)),
                     ..default()
                 },

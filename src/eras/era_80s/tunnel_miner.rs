@@ -113,7 +113,7 @@ struct TunnelMinerState {
 
 // ─── Setup ─────────────────────────────────────────────────────────
 
-fn setup_tunnel_miner(mut commands: Commands) {
+fn setup_tunnel_miner(mut commands: Commands, asset_server: Res<AssetServer>) {
     info!("Setting up Tunnel Miner level...");
 
     // Initialize game state
@@ -130,6 +130,14 @@ fn setup_tunnel_miner(mut commands: Commands) {
     // Grid origin (center the grid on screen)
     let origin_x = -(GRID_WIDTH as f32 * TILE_SIZE) / 2.0;
     let origin_y = -(GRID_HEIGHT as f32 * TILE_SIZE) / 2.0;
+
+    // Load textures
+    let background_handle: Handle<Image> = asset_server.load("sprites/era_80s/tunnel_miner/background.png");
+    let earth_handle: Handle<Image> = asset_server.load("sprites/era_80s/tunnel_miner/earth.png");
+    let emerald_handle: Handle<Image> = asset_server.load("sprites/era_80s/tunnel_miner/emerald.png");
+    let gold_handle: Handle<Image> = asset_server.load("sprites/era_80s/tunnel_miner/gold_bag.png");
+    let player_handle: Handle<Image> = asset_server.load("sprites/era_80s/tunnel_miner/player.png");
+    let nobbin_handle: Handle<Image> = asset_server.load("sprites/era_80s/tunnel_miner/nobbin.png");
 
     // Background
     commands.spawn((
@@ -166,8 +174,9 @@ fn setup_tunnel_miner(mut commands: Commands) {
                 EarthTile,
                 GridPosition::new(x, y),
                 Sprite {
-                    color: Color::srgb(0.55, 0.35, 0.15), // Brown earth
-                    custom_size: Some(Vec2::new(TILE_SIZE - 2.0, TILE_SIZE - 2.0)),
+                    image: earth_handle.clone(),
+                    color: Color::srgb(0.55, 0.35, 0.15),
+                    custom_size: Some(Vec2::new(TILE_SIZE, TILE_SIZE)),
                     ..default()
                 },
                 Transform::from_xyz(world_x, world_y, 0.0),
@@ -181,8 +190,9 @@ fn setup_tunnel_miner(mut commands: Commands) {
                     Emerald,
                     GridPosition::new(x, y),
                     Sprite {
+                        image: emerald_handle.clone(),
                         color: colors::CGA_BRIGHT_GREEN,
-                        custom_size: Some(Vec2::new(TILE_SIZE * 0.5, TILE_SIZE * 0.5)),
+                        custom_size: Some(Vec2::new(TILE_SIZE * 0.8, TILE_SIZE * 0.8)),
                         ..default()
                     },
                     Transform::from_xyz(world_x, world_y, 1.0),
@@ -204,8 +214,9 @@ fn setup_tunnel_miner(mut commands: Commands) {
             },
             GridPosition::new(gx, gy),
             Sprite {
+                image: gold_handle.clone(),
                 color: colors::CGA_YELLOW,
-                custom_size: Some(Vec2::new(TILE_SIZE * 0.7, TILE_SIZE * 0.7)),
+                custom_size: Some(Vec2::new(TILE_SIZE * 0.8, TILE_SIZE * 0.8)),
                 ..default()
             },
             Transform::from_xyz(world_x, world_y, 2.0),
@@ -226,8 +237,9 @@ fn setup_tunnel_miner(mut commands: Commands) {
         GridPosition::new(GRID_WIDTH / 2, GRID_HEIGHT - 1),
         Health::new(1),
         Sprite {
+            image: player_handle.clone(),
             color: colors::CGA_BRIGHT_CYAN,
-            custom_size: Some(Vec2::new(TILE_SIZE * 0.8, TILE_SIZE * 0.8)),
+            custom_size: Some(Vec2::new(TILE_SIZE * 0.9, TILE_SIZE * 0.9)),
             ..default()
         },
         Transform::from_xyz(player_x, player_y, 3.0),
@@ -247,8 +259,9 @@ fn setup_tunnel_miner(mut commands: Commands) {
             GridPosition::new(ex, ey),
             Health::new(1),
             Sprite {
+                image: nobbin_handle.clone(),
                 color: colors::CGA_RED,
-                custom_size: Some(Vec2::new(TILE_SIZE * 0.7, TILE_SIZE * 0.7)),
+                custom_size: Some(Vec2::new(TILE_SIZE * 0.8, TILE_SIZE * 0.8)),
                 ..default()
             },
             Transform::from_xyz(world_x, world_y, 3.0),
