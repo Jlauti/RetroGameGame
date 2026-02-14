@@ -1,5 +1,7 @@
+pub mod carousel;
 pub mod era_select;
 pub mod menu;
+pub mod particles;
 pub mod results;
 pub mod timeline;
 
@@ -12,6 +14,8 @@ impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((
             menu::MenuPlugin,
+            carousel::CarouselPlugin,
+            particles::ParticlesPlugin,
             timeline::TimelinePlugin,
             era_select::EraSelectPlugin,
             results::ResultsPlugin,
@@ -26,22 +30,22 @@ pub mod colors {
     use bevy::prelude::*;
 
     // EGA 16-color palette for 80s era
-    pub const EGA_BLACK: Color = Color::srgb(0.0, 0.0, 0.0);           // 0
-    pub const EGA_BLUE: Color = Color::srgb(0.0, 0.0, 0.67);           // 1
-    pub const EGA_GREEN: Color = Color::srgb(0.0, 0.67, 0.0);          // 2
-    pub const EGA_CYAN: Color = Color::srgb(0.0, 0.67, 0.67);          // 3
-    pub const EGA_RED: Color = Color::srgb(0.67, 0.0, 0.0);            // 4
-    pub const EGA_MAGENTA: Color = Color::srgb(0.67, 0.0, 0.67);       // 5
-    pub const EGA_BROWN: Color = Color::srgb(0.67, 0.33, 0.0);         // 6
-    pub const EGA_LIGHT_GRAY: Color = Color::srgb(0.67, 0.67, 0.67);   // 7
-    pub const EGA_DARK_GRAY: Color = Color::srgb(0.33, 0.33, 0.33);    // 8
-    pub const EGA_BRIGHT_BLUE: Color = Color::srgb(0.33, 0.33, 1.0);   // 9
-    pub const EGA_BRIGHT_GREEN: Color = Color::srgb(0.33, 1.0, 0.33);  // 10
-    pub const EGA_BRIGHT_CYAN: Color = Color::srgb(0.33, 1.0, 1.0);    // 11
-    pub const EGA_BRIGHT_RED: Color = Color::srgb(1.0, 0.33, 0.33);    // 12
+    pub const EGA_BLACK: Color = Color::srgb(0.0, 0.0, 0.0); // 0
+    pub const EGA_BLUE: Color = Color::srgb(0.0, 0.0, 0.67); // 1
+    pub const EGA_GREEN: Color = Color::srgb(0.0, 0.67, 0.0); // 2
+    pub const EGA_CYAN: Color = Color::srgb(0.0, 0.67, 0.67); // 3
+    pub const EGA_RED: Color = Color::srgb(0.67, 0.0, 0.0); // 4
+    pub const EGA_MAGENTA: Color = Color::srgb(0.67, 0.0, 0.67); // 5
+    pub const EGA_BROWN: Color = Color::srgb(0.67, 0.33, 0.0); // 6
+    pub const EGA_LIGHT_GRAY: Color = Color::srgb(0.67, 0.67, 0.67); // 7
+    pub const EGA_DARK_GRAY: Color = Color::srgb(0.33, 0.33, 0.33); // 8
+    pub const EGA_BRIGHT_BLUE: Color = Color::srgb(0.33, 0.33, 1.0); // 9
+    pub const EGA_BRIGHT_GREEN: Color = Color::srgb(0.33, 1.0, 0.33); // 10
+    pub const EGA_BRIGHT_CYAN: Color = Color::srgb(0.33, 1.0, 1.0); // 11
+    pub const EGA_BRIGHT_RED: Color = Color::srgb(1.0, 0.33, 0.33); // 12
     pub const EGA_BRIGHT_MAGENTA: Color = Color::srgb(1.0, 0.33, 1.0); // 13
-    pub const EGA_BRIGHT_YELLOW: Color = Color::srgb(1.0, 1.0, 0.33);  // 14
-    pub const EGA_BRIGHT_WHITE: Color = Color::srgb(1.0, 1.0, 1.0);    // 15
+    pub const EGA_BRIGHT_YELLOW: Color = Color::srgb(1.0, 1.0, 0.33); // 14
+    pub const EGA_BRIGHT_WHITE: Color = Color::srgb(1.0, 1.0, 1.0); // 15
 
     // UI chrome colors
     pub const PANEL_BG: Color = Color::srgba(0.05, 0.05, 0.12, 0.92);
