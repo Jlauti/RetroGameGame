@@ -1,0 +1,872 @@
+    Checking retro-game-game v0.1.0 (C:\Users\jlaut\git\RetroGameGame)
+error[E0428]: the name `handle_pause` is defined multiple times
+   --> src\eras\era_80s\tunnel_miner.rs:646:1
+    |
+610 | / fn handle_pause(
+611 | |     keyboard: Res<ButtonInput<KeyCode>>,
+612 | |     mut next_state: ResMut<NextState<GameState>>,
+613 | |     score: Res<Score>,
+...   |
+628 | | }
+    | |_- previous definition of the value `handle_pause` here
+...
+646 | / fn handle_pause(
+647 | |     keyboard: Res<ButtonInput<KeyCode>>,
+648 | |     mut next_state: ResMut<NextState<GameState>>,
+649 | |     score: Res<Score>,
+...   |
+664 | | }
+    | |_^ `handle_pause` redefined here
+    |
+    = note: `handle_pause` must be defined only once in the value namespace of this module
+
+error[E0425]: cannot find type `EventReader` in this scope
+  --> src\effects\transitions.rs:36:17
+   |
+36 |     mut events: EventReader<ScreenTransitionEvent>,
+   |                 ^^^^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find type `ChildBuilder` in this scope
+   --> src\ui\era_select.rs:139:18
+    |
+139 |     parent: &mut ChildBuilder,
+    |                  ^^^^^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find type `ChildBuilder` in this scope
+   --> src\ui\menu.rs:197:35
+    |
+197 | fn spawn_menu_button(parent: &mut ChildBuilder, label: &str, action: MenuButton) {
+    |                                   ^^^^^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find type `EventWriter` in this scope
+   --> src\ui\menu.rs:255:15
+    |
+255 |     mut exit: EventWriter<AppExit>,
+    |               ^^^^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find type `ChildBuilder` in this scope
+   --> src\ui\results.rs:199:38
+    |
+199 | fn spawn_results_button(parent: &mut ChildBuilder, label: &str, action: ResultsButton) {
+    |                                      ^^^^^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find type `ChildBuilder` in this scope
+   --> src\ui\timeline.rs:147:18
+    |
+147 |     parent: &mut ChildBuilder,
+    |                  ^^^^^^^^^^^^ not found in this scope
+
+warning: unused import: `Score`
+ --> src\eras\era_80s\cosmic_captain.rs:3:49
+  |
+3 | use crate::shared::components::{Health, Player, Score, Velocity};
+  |                                                 ^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `Score`
+ --> src\eras\era_80s\star_goose.rs:3:49
+  |
+3 | use crate::shared::components::{Health, Player, Score, Velocity};
+  |                                                 ^^^^^
+
+warning: unused import: `Score`
+ --> src\eras\era_90s\depths_of_doom.rs:3:63
+  |
+3 | use crate::shared::components::{GridPosition, Health, Player, Score};
+  |                                                               ^^^^^
+
+warning: unused import: `Score`
+ --> src\eras\era_90s\ice_blitz.rs:3:41
+  |
+3 | use crate::shared::components::{Player, Score, Velocity};
+  |                                         ^^^^^
+
+warning: unused imports: `Player` and `Score`
+ --> src\eras\era_90s\worm_wars.rs:3:41
+  |
+3 | use crate::shared::components::{Health, Player, Score, Velocity};
+  |                                         ^^^^^^  ^^^^^
+
+error[E0599]: no method named `add_event` found for mutable reference `&mut bevy::prelude::App` in the current scope
+ --> src\effects\transitions.rs:8:13
+  |
+8 |         app.add_event::<ScreenTransitionEvent>()
+  |             ^^^^^^^^^ method not found in `&mut bevy::prelude::App`
+
+error[E0599]: no method named `finished` found for struct `bevy::prelude::Timer` in the current scope
+  --> src\effects\transitions.rs:92:26
+   |
+92 |         if overlay.timer.finished() {
+   |                          ^^^^^^^^ private field, not a method
+   |
+help: there is a method `finish` with a similar name
+   |
+92 -         if overlay.timer.finished() {
+92 +         if overlay.timer.finish() {
+   |
+
+error[E0599]: no method named `get_single` found for struct `bevy::prelude::Query<'world, 'state, D, F>` in the current scope
+   --> src\eras\era_80s\cosmic_captain.rs:231:42
+    |
+231 |     let p_transform = match player_query.get_single() {
+    |                                          ^^^^^^^^^^
+    |
+help: there is a method `single` with a similar name
+    |
+231 -     let p_transform = match player_query.get_single() {
+231 +     let p_transform = match player_query.single() {
+    |
+
+error[E0599]: no method named `get_single_mut` found for struct `bevy::prelude::Query<'world, 'state, D, F>` in the current scope
+   --> src\eras\era_80s\cosmic_captain.rs:239:52
+    |
+239 |             if let Ok(mut captain) = captain_query.get_single_mut() {
+    |                                                    ^^^^^^^^^^^^^^
+    |
+help: there is a method `single_mut` with a similar name
+    |
+239 -             if let Ok(mut captain) = captain_query.get_single_mut() {
+239 +             if let Ok(mut captain) = captain_query.single_mut() {
+    |
+
+error[E0599]: no method named `get_single` found for struct `bevy::prelude::Query<'world, 'state, D, F>` in the current scope
+   --> src\eras\era_80s\cosmic_captain.rs:263:45
+    |
+263 |     if let Ok((hp, captain)) = player_query.get_single() {
+    |                                             ^^^^^^^^^^
+    |
+help: there is a method `single` with a similar name
+    |
+263 -     if let Ok((hp, captain)) = player_query.get_single() {
+263 +     if let Ok((hp, captain)) = player_query.single() {
+    |
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `rand`
+   --> src\eras\era_80s\star_goose.rs:107:19
+    |
+107 |         let rx = (rand::random::<f32>() - 0.5) * 400.0;
+    |                   ^^^^ use of unresolved module or unlinked crate `rand`
+    |
+    = help: if you wanted to use a crate named `rand`, use `cargo add rand` to add it to your `Cargo.toml`
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `rand`
+   --> src\eras\era_80s\star_goose.rs:108:19
+    |
+108 |         let ry = (rand::random::<f32>() * 800.0) - 200.0;
+    |                   ^^^^ use of unresolved module or unlinked crate `rand`
+    |
+    = help: if you wanted to use a crate named `rand`, use `cargo add rand` to add it to your `Cargo.toml`
+
+error[E0599]: no method named `get_single` found for struct `bevy::prelude::Query<'world, 'state, D, F>` in the current scope
+   --> src\eras\era_80s\star_goose.rs:202:36
+    |
+202 |     let p_pos = match player_query.get_single() {
+    |                                    ^^^^^^^^^^
+    |
+help: there is a method `single` with a similar name
+    |
+202 -     let p_pos = match player_query.get_single() {
+202 +     let p_pos = match player_query.single() {
+    |
+
+error[E0308]: mismatched types
+   --> src\eras\era_80s\tunnel_miner.rs:259:12
+    |
+259 |     if let Some(mut state) = commands.get_entity(commands.spawn_empty().id()) {
+    |            ^^^^^^^^^^^^^^^   ------------------------------------------------ this expression has type `Result<EntityCommands<'_>, InvalidEntityError>`
+    |            |
+    |            expected `Result<EntityCommands<'_>, ...>`, found `Option<_>`
+    |
+    = note: expected enum `Result<EntityCommands<'_>, InvalidEntityError>`
+               found enum `std::option::Option<_>`
+
+error[E0599]: no method named `finished` found for struct `bevy::prelude::Timer` in the current scope
+   --> src\eras\era_80s\tunnel_miner.rs:350:31
+    |
+350 |         if !player.move_timer.finished() {
+    |                               ^^^^^^^^ private field, not a method
+    |
+help: there is a method `finish` with a similar name
+    |
+350 -         if !player.move_timer.finished() {
+350 +         if !player.move_timer.finish() {
+    |
+
+error[E0599]: no method named `finished` found for struct `bevy::prelude::Timer` in the current scope
+   --> src\eras\era_80s\tunnel_miner.rs:450:31
+    |
+450 |         if !nobbin.move_timer.finished() {
+    |                               ^^^^^^^^ private field, not a method
+    |
+help: there is a method `finish` with a similar name
+    |
+450 -         if !nobbin.move_timer.finished() {
+450 +         if !nobbin.move_timer.finish() {
+    |
+
+error[E0599]: no method named `finished` found for struct `bevy::prelude::Timer` in the current scope
+   --> src\eras\era_80s\tunnel_miner.rs:537:31
+    |
+537 |             if bag.fall_timer.finished() {
+    |                               ^^^^^^^^ private field, not a method
+    |
+help: there is a method `finish` with a similar name
+    |
+537 -             if bag.fall_timer.finished() {
+537 +             if bag.fall_timer.finish() {
+    |
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `rand`
+  --> src\eras\era_90s\depths_of_doom.rs:77:76
+   |
+77 |             let is_wall = (x == -20 || x == 19 || y == -15 || y == 14) || (rand::random::<f32>() < 0.15);
+   |                                                                            ^^^^ use of unresolved module or unlinked crate `rand`
+   |
+   = help: if you wanted to use a crate named `rand`, use `cargo add rand` to add it to your `Cargo.toml`
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `rand`
+   --> src\eras\era_90s\depths_of_doom.rs:125:19
+    |
+125 |         let mx = (rand::random::<f32>() * 30.0 - 15.0) as i32;
+    |                   ^^^^ use of unresolved module or unlinked crate `rand`
+    |
+    = help: if you wanted to use a crate named `rand`, use `cargo add rand` to add it to your `Cargo.toml`
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `rand`
+   --> src\eras\era_90s\depths_of_doom.rs:126:19
+    |
+126 |         let my = (rand::random::<f32>() * 20.0 - 10.0) as i32;
+    |                   ^^^^ use of unresolved module or unlinked crate `rand`
+    |
+    = help: if you wanted to use a crate named `rand`, use `cargo add rand` to add it to your `Cargo.toml`
+
+error[E0599]: no method named `get_single_mut` found for struct `bevy::prelude::Query<'world, 'state, D, F>` in the current scope
+   --> src\eras\era_90s\depths_of_doom.rs:199:60
+    |
+199 |     let (mut pos, mut transform, _hp) = match player_query.get_single_mut() {
+    |                                                            ^^^^^^^^^^^^^^
+    |
+help: there is a method `single_mut` with a similar name
+    |
+199 -     let (mut pos, mut transform, _hp) = match player_query.get_single_mut() {
+199 +     let (mut pos, mut transform, _hp) = match player_query.single_mut() {
+    |
+
+error[E0599]: no method named `get_single` found for struct `bevy::prelude::Query<'world, 'state, D, F>` in the current scope
+   --> src\eras\era_90s\depths_of_doom.rs:240:34
+    |
+240 |     if let Ok(hp) = player_query.get_single() {
+    |                                  ^^^^^^^^^^
+    |
+help: there is a method `single` with a similar name
+    |
+240 -     if let Ok(hp) = player_query.get_single() {
+240 +     if let Ok(hp) = player_query.single() {
+    |
+
+error[E0282]: type annotations needed
+   --> src\eras\era_90s\depths_of_doom.rs:241:12
+    |
+241 |         if hp.is_dead() {
+    |            ^^ cannot infer type
+
+error[E0599]: no method named `get_single` found for struct `bevy::prelude::Query<'world, 'state, D, F>` in the current scope
+   --> src\eras\era_90s\depths_of_doom.rs:251:34
+    |
+251 |     if let Ok(hp) = player_query.get_single() {
+    |                                  ^^^^^^^^^^
+    |
+help: there is a method `single` with a similar name
+    |
+251 -     if let Ok(hp) = player_query.get_single() {
+251 +     if let Ok(hp) = player_query.single() {
+    |
+
+error[E0599]: no method named `get_single` found for struct `bevy::prelude::Query<'world, 'state, D, F>` in the current scope
+   --> src\eras\era_90s\ice_blitz.rs:248:37
+    |
+248 |     let puck_pos = match puck_query.get_single() {
+    |                                     ^^^^^^^^^^
+    |
+help: there is a method `single` with a similar name
+    |
+248 -     let puck_pos = match puck_query.get_single() {
+248 +     let puck_pos = match puck_query.single() {
+    |
+
+error[E0599]: no method named `get_single_mut` found for struct `bevy::prelude::Query<'world, 'state, D, F>` in the current scope
+   --> src\eras\era_90s\ice_blitz.rs:296:63
+    |
+296 |     let (mut puck_vel, mut puck_transform) = match puck_query.get_single_mut() {
+    |                                                               ^^^^^^^^^^^^^^
+    |
+help: there is a method `single_mut` with a similar name
+    |
+296 -     let (mut puck_vel, mut puck_transform) = match puck_query.get_single_mut() {
+296 +     let (mut puck_vel, mut puck_transform) = match puck_query.single_mut() {
+    |
+
+error[E0599]: no method named `get_single_mut` found for struct `bevy::prelude::Query<'world, 'state, D, F>` in the current scope
+   --> src\eras\era_90s\ice_blitz.rs:316:63
+    |
+316 |     let (mut puck_vel, mut puck_transform) = match puck_query.get_single_mut() {
+    |                                                               ^^^^^^^^^^^^^^
+    |
+help: there is a method `single_mut` with a similar name
+    |
+316 -     let (mut puck_vel, mut puck_transform) = match puck_query.get_single_mut() {
+316 +     let (mut puck_vel, mut puck_transform) = match puck_query.single_mut() {
+    |
+
+error[E0599]: no method named `get_single` found for struct `bevy::prelude::Query<'world, 'state, D, F>` in the current scope
+   --> src\eras\era_90s\worm_wars.rs:215:51
+    |
+215 |         if let Ok(old_active) = active_worm_query.get_single() {
+    |                                                   ^^^^^^^^^^
+    |
+help: there is a method `single` with a similar name
+    |
+215 -         if let Ok(old_active) = active_worm_query.get_single() {
+215 +         if let Ok(old_active) = active_worm_query.single() {
+    |
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `rand`
+   --> src\eras\era_90s\worm_wars.rs:228:33
+    |
+228 |             state.wind_force = (rand::random::<f32>() - 0.5) * 100.0;
+    |                                 ^^^^ use of unresolved module or unlinked crate `rand`
+    |
+    = help: if you wanted to use a crate named `rand`, use `cargo add rand` to add it to your `Cargo.toml`
+
+error[E0599]: no method named `get_single` found for struct `bevy::prelude::Query<'world, 'state, D, F>` in the current scope
+   --> src\eras\era_90s\worm_wars.rs:285:55
+    |
+285 |         if let Ok(worm_transform) = active_worm_query.get_single() {
+    |                                                       ^^^^^^^^^^
+    |
+help: there is a method `single` with a similar name
+    |
+285 -         if let Ok(worm_transform) = active_worm_query.get_single() {
+285 +         if let Ok(worm_transform) = active_worm_query.single() {
+    |
+
+error[E0423]: expected function, tuple struct or tuple variant, found struct `BorderColor`
+    --> src\ui\era_select.rs:176:13
+     |
+ 176 |             BorderColor(border),
+     |             ^^^^^^^^^^^^^^^^^^^
+     |
+    ::: C:\Users\jlaut\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bevy_ui-0.18.0\src\ui_node.rs:2242:1
+     |
+2242 | pub struct BorderColor {
+     | ---------------------- `BorderColor` defined here
+     |
+help: use struct literal syntax instead
+     |
+ 176 -             BorderColor(border),
+ 176 +             BorderColor { top: val, right: val, bottom: val, left: val },
+     |
+help: you might have meant to use the `all` associated function
+     |
+ 176 |             BorderColor::all(border),
+     |                        +++++
+
+error[E0282]: type annotations needed
+   --> src\ui\era_select.rs:179:25
+    |
+179 |         .with_children(|card| {
+    |                         ^^^^
+180 |             // Game icon area (placeholder ΓÇö will be replaced by sprite)
+181 |             card.spawn((
+    |             ---- type must be known at this point
+    |
+help: consider giving this closure parameter an explicit type
+    |
+179 |         .with_children(|card: /* Type */| {
+    |                             ++++++++++++
+
+error[E0423]: expected function, tuple struct or tuple variant, found struct `BorderColor`
+    --> src\ui\era_select.rs:191:17
+     |
+ 191 |                 BorderColor(colors::PANEL_BORDER),
+     |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+    ::: C:\Users\jlaut\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bevy_ui-0.18.0\src\ui_node.rs:2242:1
+     |
+2242 | pub struct BorderColor {
+     | ---------------------- `BorderColor` defined here
+     |
+help: use struct literal syntax instead
+     |
+ 191 -                 BorderColor(colors::PANEL_BORDER),
+ 191 +                 BorderColor { top: val, right: val, bottom: val, left: val },
+     |
+help: you might have meant to use the `all` associated function
+     |
+ 191 |                 BorderColor::all(colors::PANEL_BORDER),
+     |                            +++++
+
+error[E0282]: type annotations needed
+   --> src\ui\era_select.rs:194:29
+    |
+194 |             .with_children(|icon_area| {
+    |                             ^^^^^^^^^
+...
+204 |                 icon_area.spawn((
+    |                 --------- type must be known at this point
+    |
+help: consider giving this closure parameter an explicit type
+    |
+194 |             .with_children(|icon_area: /* Type */| {
+    |                                      ++++++++++++
+
+error[E0423]: expected function, tuple struct or tuple variant, found struct `BorderColor`
+    --> src\ui\era_select.rs:300:27
+     |
+ 300 |                 *border = BorderColor(colors::TEXT_ACCENT);
+     |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+    ::: C:\Users\jlaut\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bevy_ui-0.18.0\src\ui_node.rs:2242:1
+     |
+2242 | pub struct BorderColor {
+     | ---------------------- `BorderColor` defined here
+     |
+help: use struct literal syntax instead
+     |
+ 300 -                 *border = BorderColor(colors::TEXT_ACCENT);
+ 300 +                 *border = BorderColor { top: val, right: val, bottom: val, left: val };
+     |
+help: you might have meant to use the `all` associated function
+     |
+ 300 |                 *border = BorderColor::all(colors::TEXT_ACCENT);
+     |                                      +++++
+
+error[E0423]: expected function, tuple struct or tuple variant, found struct `BorderColor`
+    --> src\ui\era_select.rs:304:27
+     |
+ 304 |                 *border = BorderColor(colors::CGA_BRIGHT_CYAN);
+     |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+    ::: C:\Users\jlaut\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bevy_ui-0.18.0\src\ui_node.rs:2242:1
+     |
+2242 | pub struct BorderColor {
+     | ---------------------- `BorderColor` defined here
+     |
+help: use struct literal syntax instead
+     |
+ 304 -                 *border = BorderColor(colors::CGA_BRIGHT_CYAN);
+ 304 +                 *border = BorderColor { top: val, right: val, bottom: val, left: val };
+     |
+help: you might have meant to use the `all` associated function
+     |
+ 304 |                 *border = BorderColor::all(colors::CGA_BRIGHT_CYAN);
+     |                                      +++++
+
+error[E0423]: expected function, tuple struct or tuple variant, found struct `BorderColor`
+    --> src\ui\era_select.rs:312:27
+     |
+ 312 |                   *border = BorderColor(if completed {
+     |  ___________________________^
+ 313 | |                     colors::CGA_BRIGHT_GREEN
+ 314 | |                 } else {
+ 315 | |                     colors::PANEL_BORDER
+ 316 | |                 });
+     | |__________________^
+     |
+    ::: C:\Users\jlaut\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bevy_ui-0.18.0\src\ui_node.rs:2242:1
+     |
+2242 |   pub struct BorderColor {
+     |   ---------------------- `BorderColor` defined here
+     |
+help: use struct literal syntax instead
+     |
+ 312 -                 *border = BorderColor(if completed {
+ 313 -                     colors::CGA_BRIGHT_GREEN
+ 314 -                 } else {
+ 315 -                     colors::PANEL_BORDER
+ 316 -                 });
+ 312 +                 *border = BorderColor { top: val, right: val, bottom: val, left: val };
+     |
+help: you might have meant to use the `all` associated function
+     |
+ 312 |                 *border = BorderColor::all(if completed {
+     |                                      +++++
+
+error[E0599]: no method named `run_if` found for tuple `(fn(Query<'a, 'b, (&..., ..., ...), ...>) {button_interaction}, ...)` in the current scope
+  --> src\ui\menu.rs:16:51
+   |
+16 |                 (button_interaction, menu_action).run_if(in_state(GameState::Menu)),
+   |                                                   ^^^^^^ method not found in `(fn(Query<'a, 'b, (&..., ..., ...), ...>) {button_interaction}, ...)`
+   |
+   = note: the full name for the type has been written to 'C:\Users\jlaut\git\RetroGameGame\target\debug\deps\retro_game_game-22edaba48963a901.long-type-10482051367816288761.txt'
+   = note: consider using `--verbose` to print the full type name to the console
+help: one of the expressions' fields has a method of the same name
+   |
+16 |                 (button_interaction, menu_action).0.run_if(in_state(GameState::Menu)),
+   |                                                   ++
+
+error[E0599]: no method named `finished` found for struct `bevy::prelude::Timer` in the current scope
+   --> src\ui\menu.rs:111:20
+    |
+111 |         if timer.0.finished() {
+    |                    ^^^^^^^^ private field, not a method
+    |
+help: there is a method `finish` with a similar name
+    |
+111 -         if timer.0.finished() {
+111 +         if timer.0.finish() {
+    |
+
+error[E0423]: expected function, tuple struct or tuple variant, found struct `BorderColor`
+    --> src\ui\menu.rs:211:13
+     |
+ 211 |             BorderColor(colors::PANEL_BORDER),
+     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+    ::: C:\Users\jlaut\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bevy_ui-0.18.0\src\ui_node.rs:2242:1
+     |
+2242 | pub struct BorderColor {
+     | ---------------------- `BorderColor` defined here
+     |
+help: use struct literal syntax instead
+     |
+ 211 -             BorderColor(colors::PANEL_BORDER),
+ 211 +             BorderColor { top: val, right: val, bottom: val, left: val },
+     |
+help: you might have meant to use the `all` associated function
+     |
+ 211 |             BorderColor::all(colors::PANEL_BORDER),
+     |                        +++++
+
+error[E0282]: type annotations needed
+   --> src\ui\menu.rs:214:25
+    |
+214 |         .with_children(|btn| {
+    |                         ^^^
+215 |             btn.spawn((
+    |             --- type must be known at this point
+    |
+help: consider giving this closure parameter an explicit type
+    |
+214 |         .with_children(|btn: /* Type */| {
+    |                            ++++++++++++
+
+error[E0423]: expected function, tuple struct or tuple variant, found struct `BorderColor`
+    --> src\ui\menu.rs:238:27
+     |
+ 238 |                 *border = BorderColor(colors::TEXT_ACCENT);
+     |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+    ::: C:\Users\jlaut\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bevy_ui-0.18.0\src\ui_node.rs:2242:1
+     |
+2242 | pub struct BorderColor {
+     | ---------------------- `BorderColor` defined here
+     |
+help: use struct literal syntax instead
+     |
+ 238 -                 *border = BorderColor(colors::TEXT_ACCENT);
+ 238 +                 *border = BorderColor { top: val, right: val, bottom: val, left: val };
+     |
+help: you might have meant to use the `all` associated function
+     |
+ 238 |                 *border = BorderColor::all(colors::TEXT_ACCENT);
+     |                                      +++++
+
+error[E0423]: expected function, tuple struct or tuple variant, found struct `BorderColor`
+    --> src\ui\menu.rs:242:27
+     |
+ 242 |                 *border = BorderColor(colors::CGA_BRIGHT_CYAN);
+     |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+    ::: C:\Users\jlaut\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bevy_ui-0.18.0\src\ui_node.rs:2242:1
+     |
+2242 | pub struct BorderColor {
+     | ---------------------- `BorderColor` defined here
+     |
+help: use struct literal syntax instead
+     |
+ 242 -                 *border = BorderColor(colors::CGA_BRIGHT_CYAN);
+ 242 +                 *border = BorderColor { top: val, right: val, bottom: val, left: val };
+     |
+help: you might have meant to use the `all` associated function
+     |
+ 242 |                 *border = BorderColor::all(colors::CGA_BRIGHT_CYAN);
+     |                                      +++++
+
+error[E0423]: expected function, tuple struct or tuple variant, found struct `BorderColor`
+    --> src\ui\menu.rs:246:27
+     |
+ 246 |                 *border = BorderColor(colors::PANEL_BORDER);
+     |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+    ::: C:\Users\jlaut\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bevy_ui-0.18.0\src\ui_node.rs:2242:1
+     |
+2242 | pub struct BorderColor {
+     | ---------------------- `BorderColor` defined here
+     |
+help: use struct literal syntax instead
+     |
+ 246 -                 *border = BorderColor(colors::PANEL_BORDER);
+ 246 +                 *border = BorderColor { top: val, right: val, bottom: val, left: val };
+     |
+help: you might have meant to use the `all` associated function
+     |
+ 246 |                 *border = BorderColor::all(colors::PANEL_BORDER);
+     |                                      +++++
+
+error[E0423]: expected function, tuple struct or tuple variant, found struct `BorderColor`
+    --> src\ui\results.rs:78:21
+     |
+  78 |                     BorderColor(colors::PANEL_BORDER),
+     |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+    ::: C:\Users\jlaut\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bevy_ui-0.18.0\src\ui_node.rs:2242:1
+     |
+2242 | pub struct BorderColor {
+     | ---------------------- `BorderColor` defined here
+     |
+help: use struct literal syntax instead
+     |
+  78 -                     BorderColor(colors::PANEL_BORDER),
+  78 +                     BorderColor { top: val, right: val, bottom: val, left: val },
+     |
+help: you might have meant to use the `all` associated function
+     |
+  78 |                     BorderColor::all(colors::PANEL_BORDER),
+     |                                +++++
+
+error[E0423]: expected function, tuple struct or tuple variant, found struct `BorderColor`
+    --> src\ui\results.rs:213:13
+     |
+ 213 |             BorderColor(colors::PANEL_BORDER),
+     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+    ::: C:\Users\jlaut\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bevy_ui-0.18.0\src\ui_node.rs:2242:1
+     |
+2242 | pub struct BorderColor {
+     | ---------------------- `BorderColor` defined here
+     |
+help: use struct literal syntax instead
+     |
+ 213 -             BorderColor(colors::PANEL_BORDER),
+ 213 +             BorderColor { top: val, right: val, bottom: val, left: val },
+     |
+help: you might have meant to use the `all` associated function
+     |
+ 213 |             BorderColor::all(colors::PANEL_BORDER),
+     |                        +++++
+
+error[E0282]: type annotations needed
+   --> src\ui\results.rs:216:25
+    |
+216 |         .with_children(|btn| {
+    |                         ^^^
+217 |             btn.spawn((
+    |             --- type must be known at this point
+    |
+help: consider giving this closure parameter an explicit type
+    |
+216 |         .with_children(|btn: /* Type */| {
+    |                            ++++++++++++
+
+error[E0423]: expected function, tuple struct or tuple variant, found struct `BorderColor`
+    --> src\ui\results.rs:249:27
+     |
+ 249 |                 *border = BorderColor(colors::TEXT_ACCENT);
+     |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+    ::: C:\Users\jlaut\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bevy_ui-0.18.0\src\ui_node.rs:2242:1
+     |
+2242 | pub struct BorderColor {
+     | ---------------------- `BorderColor` defined here
+     |
+help: use struct literal syntax instead
+     |
+ 249 -                 *border = BorderColor(colors::TEXT_ACCENT);
+ 249 +                 *border = BorderColor { top: val, right: val, bottom: val, left: val };
+     |
+help: you might have meant to use the `all` associated function
+     |
+ 249 |                 *border = BorderColor::all(colors::TEXT_ACCENT);
+     |                                      +++++
+
+error[E0423]: expected function, tuple struct or tuple variant, found struct `BorderColor`
+    --> src\ui\results.rs:253:27
+     |
+ 253 |                 *border = BorderColor(colors::CGA_BRIGHT_CYAN);
+     |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+    ::: C:\Users\jlaut\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bevy_ui-0.18.0\src\ui_node.rs:2242:1
+     |
+2242 | pub struct BorderColor {
+     | ---------------------- `BorderColor` defined here
+     |
+help: use struct literal syntax instead
+     |
+ 253 -                 *border = BorderColor(colors::CGA_BRIGHT_CYAN);
+ 253 +                 *border = BorderColor { top: val, right: val, bottom: val, left: val };
+     |
+help: you might have meant to use the `all` associated function
+     |
+ 253 |                 *border = BorderColor::all(colors::CGA_BRIGHT_CYAN);
+     |                                      +++++
+
+error[E0423]: expected function, tuple struct or tuple variant, found struct `BorderColor`
+    --> src\ui\results.rs:257:27
+     |
+ 257 |                 *border = BorderColor(colors::PANEL_BORDER);
+     |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+    ::: C:\Users\jlaut\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bevy_ui-0.18.0\src\ui_node.rs:2242:1
+     |
+2242 | pub struct BorderColor {
+     | ---------------------- `BorderColor` defined here
+     |
+help: use struct literal syntax instead
+     |
+ 257 -                 *border = BorderColor(colors::PANEL_BORDER);
+ 257 +                 *border = BorderColor { top: val, right: val, bottom: val, left: val };
+     |
+help: you might have meant to use the `all` associated function
+     |
+ 257 |                 *border = BorderColor::all(colors::PANEL_BORDER);
+     |                                      +++++
+
+error[E0423]: expected function, tuple struct or tuple variant, found struct `BorderColor`
+    --> src\ui\timeline.rs:183:13
+     |
+ 183 |             BorderColor(border_color),
+     |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+    ::: C:\Users\jlaut\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bevy_ui-0.18.0\src\ui_node.rs:2242:1
+     |
+2242 | pub struct BorderColor {
+     | ---------------------- `BorderColor` defined here
+     |
+help: use struct literal syntax instead
+     |
+ 183 -             BorderColor(border_color),
+ 183 +             BorderColor { top: val, right: val, bottom: val, left: val },
+     |
+help: you might have meant to use the `all` associated function
+     |
+ 183 |             BorderColor::all(border_color),
+     |                        +++++
+help: a local variable with a similar name exists
+     |
+ 183 -             BorderColor(border_color),
+ 183 +             border_color(border_color),
+     |
+
+error[E0282]: type annotations needed
+   --> src\ui\timeline.rs:186:25
+    |
+186 |         .with_children(|card| {
+    |                         ^^^^
+187 |             // Icon
+188 |             card.spawn((
+    |             ---- type must be known at this point
+    |
+help: consider giving this closure parameter an explicit type
+    |
+186 |         .with_children(|card: /* Type */| {
+    |                             ++++++++++++
+
+error[E0423]: expected function, tuple struct or tuple variant, found struct `BorderColor`
+    --> src\ui\timeline.rs:274:27
+     |
+ 274 |                 *border = BorderColor(colors::TEXT_ACCENT);
+     |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+    ::: C:\Users\jlaut\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bevy_ui-0.18.0\src\ui_node.rs:2242:1
+     |
+2242 | pub struct BorderColor {
+     | ---------------------- `BorderColor` defined here
+     |
+help: use struct literal syntax instead
+     |
+ 274 -                 *border = BorderColor(colors::TEXT_ACCENT);
+ 274 +                 *border = BorderColor { top: val, right: val, bottom: val, left: val };
+     |
+help: you might have meant to use the `all` associated function
+     |
+ 274 |                 *border = BorderColor::all(colors::TEXT_ACCENT);
+     |                                      +++++
+
+error[E0423]: expected function, tuple struct or tuple variant, found struct `BorderColor`
+    --> src\ui\timeline.rs:278:27
+     |
+ 278 |                 *border = BorderColor(colors::CGA_BRIGHT_CYAN);
+     |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+    ::: C:\Users\jlaut\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bevy_ui-0.18.0\src\ui_node.rs:2242:1
+     |
+2242 | pub struct BorderColor {
+     | ---------------------- `BorderColor` defined here
+     |
+help: use struct literal syntax instead
+     |
+ 278 -                 *border = BorderColor(colors::CGA_BRIGHT_CYAN);
+ 278 +                 *border = BorderColor { top: val, right: val, bottom: val, left: val };
+     |
+help: you might have meant to use the `all` associated function
+     |
+ 278 |                 *border = BorderColor::all(colors::CGA_BRIGHT_CYAN);
+     |                                      +++++
+
+error[E0423]: expected function, tuple struct or tuple variant, found struct `BorderColor`
+    --> src\ui\timeline.rs:282:27
+     |
+ 282 |                 *border = BorderColor(colors::PANEL_BORDER);
+     |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+    ::: C:\Users\jlaut\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\bevy_ui-0.18.0\src\ui_node.rs:2242:1
+     |
+2242 | pub struct BorderColor {
+     | ---------------------- `BorderColor` defined here
+     |
+help: use struct literal syntax instead
+     |
+ 282 -                 *border = BorderColor(colors::PANEL_BORDER);
+ 282 +                 *border = BorderColor { top: val, right: val, bottom: val, left: val };
+     |
+help: you might have meant to use the `all` associated function
+     |
+ 282 |                 *border = BorderColor::all(colors::PANEL_BORDER);
+     |                                      +++++
+
+warning: variable does not need to be mutable
+   --> src\eras\era_90s\depths_of_doom.rs:229:5
+    |
+229 |     mut monster_query: Query<(&mut GridPosition, &mut Transform), With<Monster>>,
+    |     ----^^^^^^^^^^^^^
+    |     |
+    |     help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `player_query`
+   --> src\eras\era_90s\depths_of_doom.rs:228:5
+    |
+228 |     player_query: Query<&GridPosition, With<Player>>,
+    |     ^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_player_query`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `monster_query`
+   --> src\eras\era_90s\depths_of_doom.rs:229:5
+    |
+229 |     mut monster_query: Query<(&mut GridPosition, &mut Transform), With<Monster>>,
+    |     ^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_monster_query`
+
+warning: unused variable: `map`
+   --> src\eras\era_90s\depths_of_doom.rs:230:5
+    |
+230 |     map: Res<DungeonMap>,
+    |     ^^^ help: if this is intentional, prefix it with an underscore: `_map`
+
+Some errors have detailed explanations: E0282, E0308, E0423, E0425, E0428, E0433, E0599.
+For more information about an error, try `rustc --explain E0282`.
+warning: `retro-game-game` (lib) generated 9 warnings
+error: could not compile `retro-game-game` (lib) due to 57 previous errors; 9 warnings emitted
