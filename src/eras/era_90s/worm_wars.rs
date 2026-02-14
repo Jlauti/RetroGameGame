@@ -275,8 +275,8 @@ fn gravity_system(
 fn projectile_system(
     mut commands: Commands,
     keyboard: Res<ButtonInput<KeyCode>>,
-    active_worm_query: Query<&Transform, With<ActiveWorm>>,
-    mut projectile_query: Query<(Entity, &mut Transform, &mut Velocity, &Projectile)>,
+    active_worm_query: Query<&Transform, (With<ActiveWorm>, Without<Projectile>)>,
+    mut projectile_query: Query<(Entity, &mut Transform, &mut Velocity, &Projectile), Without<ActiveWorm>>,
     time: Res<Time>,
     state: Res<WormWarsState>,
 ) {
