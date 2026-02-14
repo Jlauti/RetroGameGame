@@ -238,7 +238,6 @@ fn setup_tunnel_miner(mut commands: Commands, asset_server: Res<AssetServer>) {
         Health::new(1),
         Sprite {
             image: player_handle.clone(),
-            color: colors::CGA_BRIGHT_CYAN,
             custom_size: Some(Vec2::new(TILE_SIZE * 0.9, TILE_SIZE * 0.9)),
             ..default()
         },
