@@ -74,7 +74,7 @@ fn setup_era_select(
                     font_size: 32.0,
                     ..default()
                 },
-                TextColor(colors::CGA_BRIGHT_YELLOW),
+                TextColor(colors::EGA_BRIGHT_YELLOW),
                 Node {
                     margin: UiRect::bottom(Val::Px(10.0)),
                     ..default()
@@ -83,7 +83,7 @@ fn setup_era_select(
 
             // Era description
             let desc = match era {
-                Era::The80s => "CGA graphics • PC speaker beeps • Chunky pixels",
+                Era::The80s => "EGA graphics • PC speaker beeps • Chunky pixels",
                 Era::The90s => "16-bit pixel art • Chiptune melodies • Parallax scrolling",
                 _ => "Coming soon...",
             };
@@ -126,7 +126,7 @@ fn setup_era_select(
                         };
 
                         let border = if completed {
-                            colors::CGA_BRIGHT_GREEN
+                            colors::EGA_BRIGHT_GREEN
                         } else if unlocked {
                             colors::PANEL_BORDER
                         } else {
@@ -198,7 +198,7 @@ fn setup_era_select(
                                         ..default()
                                     },
                                     TextColor(if unlocked {
-                                        colors::CGA_BRIGHT_YELLOW
+                                        colors::EGA_BRIGHT_YELLOW
                                     } else {
                                         colors::TEXT_SECONDARY
                                     }),
@@ -234,7 +234,7 @@ fn setup_era_select(
                                         ..default()
                                     },
                                     TextColor(if completed {
-                                        colors::CGA_BRIGHT_GREEN
+                                        colors::EGA_BRIGHT_GREEN
                                     } else if unlocked {
                                         colors::TEXT_ACCENT
                                     } else {
@@ -295,7 +295,7 @@ fn game_card_interaction(
             }
             Interaction::Hovered => {
                 *bg = BackgroundColor(colors::BUTTON_HOVER);
-                *border = BorderColor::all(colors::CGA_BRIGHT_CYAN);
+                *border = BorderColor::all(colors::EGA_BRIGHT_CYAN);
             }
             Interaction::None => {
                 *bg = BackgroundColor(if completed {
@@ -304,7 +304,7 @@ fn game_card_interaction(
                     colors::BUTTON_NORMAL
                 });
                 *border = BorderColor::all(if completed {
-                    colors::CGA_BRIGHT_GREEN
+                    colors::EGA_BRIGHT_GREEN
                 } else {
                     colors::PANEL_BORDER
                 });

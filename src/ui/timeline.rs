@@ -84,7 +84,7 @@ fn setup_timeline(mut commands: Commands, progress: Res<PlayerProgress>) {
                             font_size: 36.0,
                             ..default()
                         },
-                        TextColor(colors::CGA_BRIGHT_CYAN),
+                        TextColor(colors::EGA_BRIGHT_CYAN),
                     ));
 
                     // Token counter
@@ -178,7 +178,7 @@ fn setup_timeline(mut commands: Commands, progress: Res<PlayerProgress>) {
                                         ..default()
                                     },
                                     TextColor(if unlocked {
-                                        colors::CGA_BRIGHT_YELLOW
+                                        colors::EGA_BRIGHT_YELLOW
                                     } else {
                                         colors::TEXT_SECONDARY
                                     }),
@@ -266,7 +266,7 @@ fn era_button_interaction(
             }
             Interaction::Hovered => {
                 *bg = BackgroundColor(colors::BUTTON_HOVER);
-                *border = BorderColor::all(colors::CGA_BRIGHT_CYAN);
+                *border = BorderColor::all(colors::EGA_BRIGHT_CYAN);
             }
             Interaction::None => {
                 *bg = BackgroundColor(colors::BUTTON_NORMAL);

@@ -60,7 +60,7 @@ fn setup_boot(mut commands: Commands) {
                 flex_direction: FlexDirection::Column,
                 ..default()
             },
-            BackgroundColor(colors::CGA_BLACK),
+            BackgroundColor(colors::EGA_BLACK),
         ))
         .with_children(|parent| {
             // DOS-style boot text
@@ -70,7 +70,7 @@ fn setup_boot(mut commands: Commands) {
                     font_size: 24.0,
                     ..default()
                 },
-                TextColor(colors::CGA_BRIGHT_GREEN),
+                TextColor(colors::EGA_BRIGHT_GREEN),
             ));
 
             parent.spawn((
@@ -79,7 +79,7 @@ fn setup_boot(mut commands: Commands) {
                     font_size: 18.0,
                     ..default()
                 },
-                TextColor(colors::CGA_GREEN),
+                TextColor(colors::EGA_GREEN),
                 Node {
                     margin: UiRect::top(Val::Px(20.0)),
                     ..default()
@@ -93,7 +93,7 @@ fn setup_boot(mut commands: Commands) {
                     font_size: 24.0,
                     ..default()
                 },
-                TextColor(colors::CGA_BRIGHT_GREEN),
+                TextColor(colors::EGA_BRIGHT_GREEN),
                 Node {
                     margin: UiRect::top(Val::Px(10.0)),
                     ..default()
@@ -242,7 +242,7 @@ fn button_interaction(
             }
             Interaction::Hovered => {
                 *bg = BackgroundColor(colors::BUTTON_HOVER);
-                *border = BorderColor::all(colors::CGA_BRIGHT_CYAN);
+                *border = BorderColor::all(colors::EGA_BRIGHT_CYAN);
             }
             Interaction::None => {
                 *bg = BackgroundColor(colors::BUTTON_NORMAL);

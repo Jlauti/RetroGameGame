@@ -95,7 +95,7 @@ fn setup_star_goose(mut commands: Commands) {
         Velocity::default(),
         Health::new(100),
         Sprite {
-            color: colors::CGA_BRIGHT_CYAN,
+            color: colors::EGA_BRIGHT_CYAN,
             custom_size: Some(Vec2::new(32.0, 32.0)),
             ..default()
         },
@@ -110,7 +110,7 @@ fn setup_star_goose(mut commands: Commands) {
             StarGooseEntity,
             Crystal,
             Sprite {
-                color: colors::CGA_BRIGHT_GREEN,
+                color: colors::EGA_BRIGHT_GREEN,
                 custom_size: Some(Vec2::new(12.0, 12.0)),
                 ..default()
             },
@@ -142,13 +142,13 @@ fn spawn_goose_hud(commands: &mut Commands) {
                 FuelText,
                 Text::new("Fuel: 100%"),
                 TextFont { font_size: 18.0, ..default() },
-                TextColor(colors::CGA_YELLOW),
+                TextColor(colors::EGA_BROWN),
             ));
             hud.spawn((
                 CrystalText,
                 Text::new("Crystals: 0/6"),
                 TextFont { font_size: 18.0, ..default() },
-                TextColor(colors::CGA_BRIGHT_GREEN),
+                TextColor(colors::EGA_BRIGHT_GREEN),
             ));
         });
 }

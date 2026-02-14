@@ -113,7 +113,7 @@ fn setup_dungeon(mut commands: Commands, mut map: ResMut<DungeonMap>) {
         GridPosition::new(0, 0),
         Health::new(100),
         Sprite {
-            color: colors::CGA_BRIGHT_CYAN,
+            color: colors::EGA_BRIGHT_CYAN,
             custom_size: Some(Vec2::new(TILE_SIZE * 0.8, TILE_SIZE * 0.8)),
             ..default()
         },
@@ -132,7 +132,7 @@ fn setup_dungeon(mut commands: Commands, mut map: ResMut<DungeonMap>) {
                 GridPosition::new(mx, my),
                 Health::new(20),
                 Sprite {
-                    color: colors::CGA_RED,
+                    color: colors::EGA_RED,
                     custom_size: Some(Vec2::new(TILE_SIZE * 0.7, TILE_SIZE * 0.7)),
                     ..default()
                 },
@@ -165,7 +165,7 @@ fn spawn_doom_hud(commands: &mut Commands) {
                 DoomHpText,
                 Text::new("HP: 100/100"),
                 TextFont { font_size: 18.0, ..default() },
-                TextColor(colors::CGA_BRIGHT_GREEN),
+                TextColor(colors::EGA_BRIGHT_GREEN),
             ));
             hud.spawn((
                 Text::new("DEPTHS OF DOOM — B1"),

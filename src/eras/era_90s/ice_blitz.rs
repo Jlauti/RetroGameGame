@@ -130,7 +130,7 @@ fn setup_hockey(mut commands: Commands) {
         HockeyPlayer { team_id: 0, has_puck: false },
         Velocity::default(),
         Sprite {
-            color: colors::CGA_BLUE,
+            color: colors::EGA_BLUE,
             custom_size: Some(Vec2::new(24.0, 24.0)),
             ..default()
         },
@@ -143,7 +143,7 @@ fn setup_hockey(mut commands: Commands) {
         HockeyPlayer { team_id: 1, has_puck: false },
         Velocity::default(),
         Sprite {
-            color: colors::CGA_RED,
+            color: colors::EGA_RED,
             custom_size: Some(Vec2::new(24.0, 24.0)),
             ..default()
         },
@@ -188,7 +188,7 @@ fn spawn_hockey_hud(commands: &mut Commands) {
                 TeamScoreText { team_id: 0 },
                 Text::new("BLUE: 0"),
                 TextFont { font_size: 24.0, ..default() },
-                TextColor(colors::CGA_BRIGHT_CYAN),
+                TextColor(colors::EGA_BRIGHT_CYAN),
             ));
             hud.spawn((
                 Text::new("ICE BLITZ"),
@@ -199,7 +199,7 @@ fn spawn_hockey_hud(commands: &mut Commands) {
                 TeamScoreText { team_id: 1 },
                 Text::new("RED: 0"),
                 TextFont { font_size: 24.0, ..default() },
-                TextColor(colors::CGA_RED),
+                TextColor(colors::EGA_RED),
             ));
         });
 }

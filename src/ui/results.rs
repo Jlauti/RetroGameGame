@@ -124,7 +124,7 @@ fn setup_results(mut commands: Commands, results: Res<GameResults>) {
                             font_size: 28.0,
                             ..default()
                         },
-                        TextColor(colors::CGA_BRIGHT_YELLOW),
+                        TextColor(colors::EGA_BRIGHT_YELLOW),
                     ));
 
                     // High score
@@ -293,7 +293,7 @@ fn results_button_interaction(
             }
             Interaction::Hovered => {
                 *bg = BackgroundColor(colors::BUTTON_HOVER);
-                *border = BorderColor::all(colors::CGA_BRIGHT_CYAN);
+                *border = BorderColor::all(colors::EGA_BRIGHT_CYAN);
             }
             Interaction::None => {
                 *bg = BackgroundColor(colors::BUTTON_NORMAL);

@@ -143,7 +143,7 @@ fn setup_tunnel_miner(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn((
         TunnelMinerEntity,
         Sprite {
-            color: colors::CGA_BLACK,
+            color: colors::EGA_BLACK,
             custom_size: Some(Vec2::new(
                 GRID_WIDTH as f32 * TILE_SIZE + 40.0,
                 GRID_HEIGHT as f32 * TILE_SIZE + 40.0,
@@ -191,7 +191,7 @@ fn setup_tunnel_miner(mut commands: Commands, asset_server: Res<AssetServer>) {
                     GridPosition::new(x, y),
                     Sprite {
                         image: emerald_handle.clone(),
-                        color: colors::CGA_BRIGHT_GREEN,
+                        color: colors::EGA_BRIGHT_GREEN,
                         custom_size: Some(Vec2::new(TILE_SIZE * 0.8, TILE_SIZE * 0.8)),
                         ..default()
                     },
@@ -215,7 +215,7 @@ fn setup_tunnel_miner(mut commands: Commands, asset_server: Res<AssetServer>) {
             GridPosition::new(gx, gy),
             Sprite {
                 image: gold_handle.clone(),
-                color: colors::CGA_YELLOW,
+                color: colors::EGA_BROWN,
                 custom_size: Some(Vec2::new(TILE_SIZE * 0.8, TILE_SIZE * 0.8)),
                 ..default()
             },
@@ -259,7 +259,7 @@ fn setup_tunnel_miner(mut commands: Commands, asset_server: Res<AssetServer>) {
             Health::new(1),
             Sprite {
                 image: nobbin_handle.clone(),
-                color: colors::CGA_RED,
+                color: colors::EGA_RED,
                 custom_size: Some(Vec2::new(TILE_SIZE * 0.8, TILE_SIZE * 0.8)),
                 ..default()
             },
@@ -313,7 +313,7 @@ fn spawn_hud(commands: &mut Commands) {
                     font_size: 20.0,
                     ..default()
                 },
-                TextColor(colors::CGA_BRIGHT_YELLOW),
+                TextColor(colors::EGA_BRIGHT_YELLOW),
             ));
 
             // Level display
@@ -323,7 +323,7 @@ fn spawn_hud(commands: &mut Commands) {
                     font_size: 18.0,
                     ..default()
                 },
-                TextColor(colors::CGA_BRIGHT_GREEN),
+                TextColor(colors::EGA_BRIGHT_GREEN),
             ));
 
             // Lives display
@@ -334,7 +334,7 @@ fn spawn_hud(commands: &mut Commands) {
                     font_size: 20.0,
                     ..default()
                 },
-                TextColor(colors::CGA_RED),
+                TextColor(colors::EGA_RED),
             ));
         });
 }

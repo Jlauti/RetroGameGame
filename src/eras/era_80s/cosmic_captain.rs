@@ -117,7 +117,7 @@ fn setup_captain(mut commands: Commands) {
         Health::new(12),
         Velocity::default(),
         Sprite {
-            color: colors::CGA_BRIGHT_CYAN,
+            color: colors::EGA_BRIGHT_CYAN,
             custom_size: Some(Vec2::new(28.0, 36.0)),
             ..default()
         },
@@ -129,7 +129,7 @@ fn setup_captain(mut commands: Commands) {
         CaptainEntity,
         Item { kind: ItemKind::BlastolaCola },
         Sprite {
-            color: colors::CGA_YELLOW,
+            color: colors::EGA_BROWN,
             custom_size: Some(Vec2::new(16.0, 24.0)),
             ..default()
         },
@@ -159,14 +159,14 @@ fn spawn_captain_hud(commands: &mut Commands) {
             hud.spawn((
                 Text::new("COSMIC CAPTAIN"),
                 TextFont { font_size: 20.0, ..default() },
-                TextColor(colors::CGA_BRIGHT_CYAN),
+                TextColor(colors::EGA_BRIGHT_CYAN),
             ));
 
             hud.spawn((
                 CaptainStatsText,
                 Text::new("Shield: 12/12 | Weapon: No"),
                 TextFont { font_size: 18.0, ..default() },
-                TextColor(colors::CGA_BRIGHT_YELLOW),
+                TextColor(colors::EGA_BRIGHT_YELLOW),
             ));
         });
 }

@@ -132,7 +132,7 @@ fn setup_worms(mut commands: Commands, mut state: ResMut<WormWarsState>) {
             Health::new(100),
             Velocity::default(),
             Sprite {
-                color: if team == 0 { colors::CGA_BRIGHT_CYAN } else { colors::CGA_RED },
+                color: if team == 0 { colors::EGA_BRIGHT_CYAN } else { colors::EGA_RED },
                 custom_size: Some(Vec2::new(WORM_SIZE, WORM_SIZE * 1.5)),
                 ..default()
             },
@@ -175,21 +175,21 @@ fn spawn_worms_hud(commands: &mut Commands) {
             hud.spawn((
                 Text::new("WORM WARS"),
                 TextFont { font_size: 20.0, ..default() },
-                TextColor(colors::CGA_BRIGHT_GREEN),
+                TextColor(colors::EGA_BRIGHT_GREEN),
             ));
 
             hud.spawn((
                 TurnTimerText,
                 Text::new("Time: 30"),
                 TextFont { font_size: 20.0, ..default() },
-                TextColor(colors::CGA_BRIGHT_YELLOW),
+                TextColor(colors::EGA_BRIGHT_YELLOW),
             ));
 
             hud.spawn((
                 WindText,
                 Text::new("Wind: 0"),
                 TextFont { font_size: 20.0, ..default() },
-                TextColor(colors::CGA_CYAN),
+                TextColor(colors::EGA_CYAN),
             ));
         });
 }
@@ -291,7 +291,7 @@ fn projectile_system(
                 },
                 Velocity::new(300.0, 300.0), // Hardcoded arc for now
                 Sprite {
-                    color: colors::CGA_BRIGHT_WHITE,
+                    color: colors::EGA_BRIGHT_WHITE,
                     custom_size: Some(Vec2::new(8.0, 8.0)),
                     ..default()
                 },

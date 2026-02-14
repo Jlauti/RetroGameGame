@@ -55,9 +55,15 @@ complexity of gameplay, the UI chrome, and even the "hardware" framing the scree
 
 ### �️ Era 1: The 1980s — "The DOS Age"
 
-**Visual Style:** CGA/EGA palette, CRT scanline effect, chunky pixels
+**Visual Style:** EGA palette (16-color), CRT scanline effect, chunky pixels
 **Frame:** DOS command prompt / early PC monitor border
 **Audio Style:** PC speaker beeps, simple square wave melodies
+
+> **Design Note:** We originally considered supporting both CGA and EGA palettes,
+> but the cyan-heavy CGA aesthetic was only representative of non-EGA graphics
+> adapters. Since the games we're inspired by (Digger, Captain Comic, Star Goose)
+> all supported EGA, we're going with the richer EGA 16-color palette exclusively.
+> This gives us a broader, more vibrant color range while still looking authentically 80s.
 
 | Mini-Game | Inspired By | Core Mechanic |
 |-----------|-------------|---------------|
