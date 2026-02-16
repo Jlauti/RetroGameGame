@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
-use crate::core::states::GameState;
 use super::colors;
+use crate::core::states::GameState;
 
 /// Plugin for the results / score screen shown after a mini-game.
 pub struct ResultsPlugin;
@@ -12,7 +12,11 @@ impl Plugin for ResultsPlugin {
             .add_systems(OnEnter(GameState::Results), setup_results)
             .add_systems(
                 Update,
-                (results_input, results_button_interaction, results_button_action)
+                (
+                    results_input,
+                    results_button_interaction,
+                    results_button_action,
+                )
                     .run_if(in_state(GameState::Results)),
             )
             .add_systems(OnExit(GameState::Results), cleanup_results);
@@ -65,17 +69,17 @@ fn setup_results(mut commands: Commands, results: Res<GameResults>) {
             // Panel
             parent
                 .spawn(Node {
-                        width: Val::Px(500.0),
-                        flex_direction: FlexDirection::Column,
-                        align_items: AlignItems::Center,
-                        padding: UiRect::all(Val::Px(30.0)),
-                        border: UiRect::all(Val::Px(2.0)),
-                        row_gap: Val::Px(15.0),
-                        border_radius: BorderRadius::all(Val::Px(12.0)),
-                        ..default()
-                    })
-                    .insert(BackgroundColor(colors::PANEL_BG))
-                    .insert(BorderColor::all(colors::PANEL_BORDER))
+                    width: Val::Px(500.0),
+                    flex_direction: FlexDirection::Column,
+                    align_items: AlignItems::Center,
+                    padding: UiRect::all(Val::Px(30.0)),
+                    border: UiRect::all(Val::Px(2.0)),
+                    row_gap: Val::Px(15.0),
+                    border_radius: BorderRadius::all(Val::Px(12.0)),
+                    ..default()
+                })
+                .insert(BackgroundColor(colors::PANEL_BG))
+                .insert(BorderColor::all(colors::PANEL_BORDER))
                 .with_children(|panel| {
                     // Title
                     let title = if results.newly_completed {

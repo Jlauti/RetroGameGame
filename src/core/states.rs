@@ -17,11 +17,11 @@ impl Plugin for StatesPlugin {
 #[derive(States, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum GameState {
     /// Initial boot / splash screen
-    #[default]
     Boot,
     /// Main menu and its sub-screens
     Menu,
     /// The timeline hub where the player picks an era
+    #[default]
     Timeline,
     /// Inside an era — browsing mini-games
     EraSelect,
@@ -63,6 +63,8 @@ pub enum PlayingState {
     WormWars,
     IceBlitz,
     DepthsOfDoom,
+    // Era Future
+    NebulaBouncer,
 }
 
 // ─── Era identification ────────────────────────────────────────────
@@ -74,6 +76,7 @@ pub enum Era {
     The90s,
     The2000s,
     The2010s,
+    Future,
 }
 
 impl Era {
@@ -84,6 +87,7 @@ impl Era {
             Era::The90s => "The 1990s — The Golden Age",
             Era::The2000s => "The 2000s",
             Era::The2010s => "The 2010s",
+            Era::Future => "Future — Experimental Frontier",
         }
     }
 
@@ -94,6 +98,7 @@ impl Era {
             Era::The90s => "1990s",
             Era::The2000s => "2000s",
             Era::The2010s => "2010s",
+            Era::Future => "Future",
         }
     }
 }
@@ -114,6 +119,7 @@ impl MiniGameId {
             (Era::The90s, 0) => "Worm Wars",
             (Era::The90s, 1) => "Ice Blitz",
             (Era::The90s, 2) => "Depths of Doom",
+            (Era::Future, 0) => "Nebula Bouncer",
             _ => "Unknown",
         }
     }
@@ -126,6 +132,7 @@ impl MiniGameId {
             (Era::The90s, 0) => "Turn-based artillery with destructible terrain",
             (Era::The90s, 1) => "Fast-paced top-down arcade ice hockey",
             (Era::The90s, 2) => "Turn-based roguelike dungeon crawler",
+            (Era::Future, 0) => "Ricochet-driven sci-fi shooter with buildcrafting",
             _ => "",
         }
     }
@@ -138,6 +145,7 @@ impl MiniGameId {
             (Era::The90s, 0) => PlayingState::WormWars,
             (Era::The90s, 1) => PlayingState::IceBlitz,
             (Era::The90s, 2) => PlayingState::DepthsOfDoom,
+            (Era::Future, 0) => PlayingState::NebulaBouncer,
             _ => PlayingState::TunnelMiner,
         }
     }

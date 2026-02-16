@@ -35,9 +35,12 @@ impl Default for PlayerProgress {
     fn default() -> Self {
         let mut eras_unlocked = HashMap::new();
         eras_unlocked.insert(0, true); // 80s always unlocked
+        eras_unlocked.insert(4, true); // Future era unlocked for active development
 
         let mut games_unlocked = HashMap::new();
         games_unlocked.insert((0, 0), true); // Tunnel Miner always unlocked
+        games_unlocked.insert((0, 2), true); // Star Goose unlocked for testing
+        games_unlocked.insert((4, 0), true); // Nebula Bouncer unlocked for testing
 
         Self {
             tokens: 0,
@@ -116,9 +119,8 @@ impl PlayerProgress {
         }
 
         // Check if all games in era are completed → unlock next era
-        let all_done = (0..games_in_era).all(|i| {
-            *self.games_completed.get(&(era_idx, i)).unwrap_or(&false)
-        });
+        let all_done =
+            (0..games_in_era).all(|i| *self.games_completed.get(&(era_idx, i)).unwrap_or(&false));
 
         if all_done {
             let next_era = era_idx + 1;
@@ -162,6 +164,7 @@ fn era_to_index(era: Era) -> u8 {
         Era::The90s => 1,
         Era::The2000s => 2,
         Era::The2010s => 3,
+        Era::Future => 4,
     }
 }
 
@@ -175,6 +178,7 @@ fn games_per_era(era: Era) -> u8 {
         Era::The90s => 3,
         Era::The2000s => 0,
         Era::The2010s => 0,
+        Era::Future => 1,
     }
 }
 

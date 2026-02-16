@@ -7,18 +7,22 @@ fn main() {
     println!("Asset root: {}", asset_root);
 
     App::new()
-        .add_plugins(DefaultPlugins.set(WindowPlugin {
-            primary_window: Some(Window {
-                title: "RetroGameGame".into(),
-                resolution: (1024, 768).into(),
-                resizable: true,
-                ..default()
-            }),
-            ..default()
-        }).set(AssetPlugin {
-            file_path: asset_root,
-            ..default()
-        }))
+        .add_plugins(
+            DefaultPlugins
+                .set(WindowPlugin {
+                    primary_window: Some(Window {
+                        title: "RetroGameGame".into(),
+                        resolution: (1024, 768).into(),
+                        resizable: true,
+                        ..default()
+                    }),
+                    ..default()
+                })
+                .set(AssetPlugin {
+                    file_path: asset_root,
+                    ..default()
+                }),
+        )
         .add_plugins(RetroGameGamePlugin)
         .run();
 }

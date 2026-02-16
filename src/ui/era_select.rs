@@ -180,10 +180,7 @@ fn setup_era_select(
 
             for (index, game) in games.iter().enumerate() {
                 root.spawn((
-                    GameCarouselCard {
-                        game: *game,
-                        index,
-                    },
+                    GameCarouselCard { game: *game, index },
                     Node {
                         position_type: PositionType::Absolute,
                         width: Val::Px(300.0),
@@ -391,6 +388,7 @@ fn game_thumbnail_path(game: MiniGameId) -> &'static str {
         (Era::The90s, 0) => "ui/thumbnails/worm_wars.png",
         (Era::The90s, 1) => "ui/thumbnails/ice_blitz.png",
         (Era::The90s, 2) => "ui/thumbnails/depths_of_doom.png",
+        (Era::Future, 0) => "ui/thumbnails/nebula_bouncer.png",
         _ => "ui/thumbnails/tunnel_miner.png",
     }
 }
@@ -407,6 +405,7 @@ fn get_era_games(era: Era) -> Vec<MiniGameId> {
             MiniGameId { era, index: 1 },
             MiniGameId { era, index: 2 },
         ],
+        Era::Future => vec![MiniGameId { era, index: 0 }],
         _ => vec![],
     }
 }

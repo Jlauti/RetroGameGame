@@ -1,8 +1,8 @@
-use bevy::prelude::*;
 use crate::core::states::{GameState, PlayingState};
 use crate::shared::components::{Player, Score, Velocity};
 use crate::ui::colors;
 use crate::ui::results::GameResults;
+use bevy::prelude::*;
 
 /// Ice Blitz — inspired by NHL 98 (1997).
 /// Fast-paced top-down arcade ice hockey.
@@ -13,22 +13,22 @@ impl Plugin for IceBlitzPlugin {
         app.init_resource::<Scores>()
             .add_systems(
                 OnEnter(GameState::Playing),
-            setup_hockey.run_if(in_state(PlayingState::IceBlitz)),
-        )
-        .add_systems(
-            Update,
-            (
-                player_skating,
-                ai_behavior,
-                puck_physics,
-                stick_handling,
-                goal_system,
-                update_hud,
-                handle_pause,
+                setup_hockey.run_if(in_state(PlayingState::IceBlitz)),
             )
-                .run_if(in_state(PlayingState::IceBlitz)),
-        )
-        .add_systems(OnExit(GameState::Playing), cleanup_hockey);
+            .add_systems(
+                Update,
+                (
+                    player_skating,
+                    ai_behavior,
+                    puck_physics,
+                    stick_handling,
+                    goal_system,
+                    update_hud,
+                    handle_pause,
+                )
+                    .run_if(in_state(PlayingState::IceBlitz)),
+            )
+            .add_systems(OnExit(GameState::Playing), cleanup_hockey);
     }
 }
 
@@ -87,7 +87,7 @@ fn setup_hockey(mut commands: Commands) {
             custom_size: Some(Vec2::new(RINK_WIDTH + 10.0, 10.0)),
             ..default()
         },
-        Transform::from_xyz(0.0, RINK_HEIGHT/2.0, 1.0),
+        Transform::from_xyz(0.0, RINK_HEIGHT / 2.0, 1.0),
     ));
     commands.spawn((
         IceBlitzEntity,
@@ -96,7 +96,7 @@ fn setup_hockey(mut commands: Commands) {
             custom_size: Some(Vec2::new(RINK_WIDTH + 10.0, 10.0)),
             ..default()
         },
-        Transform::from_xyz(0.0, -RINK_HEIGHT/2.0, 1.0),
+        Transform::from_xyz(0.0, -RINK_HEIGHT / 2.0, 1.0),
     ));
 
     // Goals
@@ -108,7 +108,7 @@ fn setup_hockey(mut commands: Commands) {
             custom_size: Some(Vec2::new(20.0, GOAL_SIZE)),
             ..default()
         },
-        Transform::from_xyz(-RINK_WIDTH/2.0 + 10.0, 0.0, 1.0),
+        Transform::from_xyz(-RINK_WIDTH / 2.0 + 10.0, 0.0, 1.0),
     ));
 
     commands.spawn((
@@ -119,7 +119,7 @@ fn setup_hockey(mut commands: Commands) {
             custom_size: Some(Vec2::new(20.0, GOAL_SIZE)),
             ..default()
         },
-        Transform::from_xyz(RINK_WIDTH/2.0 - 10.0, 0.0, 1.0),
+        Transform::from_xyz(RINK_WIDTH / 2.0 - 10.0, 0.0, 1.0),
     ));
 
     // Players
@@ -127,7 +127,10 @@ fn setup_hockey(mut commands: Commands) {
     commands.spawn((
         IceBlitzEntity,
         Player,
-        HockeyPlayer { team_id: 0, has_puck: false },
+        HockeyPlayer {
+            team_id: 0,
+            has_puck: false,
+        },
         Velocity::default(),
         Sprite {
             color: colors::EGA_BLUE,
@@ -140,7 +143,10 @@ fn setup_hockey(mut commands: Commands) {
     // AI Team (1)
     commands.spawn((
         IceBlitzEntity,
-        HockeyPlayer { team_id: 1, has_puck: false },
+        HockeyPlayer {
+            team_id: 1,
+            has_puck: false,
+        },
         Velocity::default(),
         Sprite {
             color: colors::EGA_RED,
@@ -187,25 +193,36 @@ fn spawn_hockey_hud(commands: &mut Commands) {
             hud.spawn((
                 TeamScoreText { team_id: 0 },
                 Text::new("BLUE: 0"),
-                TextFont { font_size: 24.0, ..default() },
+                TextFont {
+                    font_size: 24.0,
+                    ..default()
+                },
                 TextColor(colors::EGA_BRIGHT_CYAN),
             ));
             hud.spawn((
                 Text::new("ICE BLITZ"),
-                TextFont { font_size: 20.0, ..default() },
+                TextFont {
+                    font_size: 20.0,
+                    ..default()
+                },
                 TextColor(colors::TEXT_SECONDARY),
             ));
             hud.spawn((
                 TeamScoreText { team_id: 1 },
                 Text::new("RED: 0"),
-                TextFont { font_size: 24.0, ..default() },
+                TextFont {
+                    font_size: 24.0,
+                    ..default()
+                },
                 TextColor(colors::EGA_RED),
             ));
         });
 }
 
 #[derive(Component)]
-struct TeamScoreText { team_id: u8 }
+struct TeamScoreText {
+    team_id: u8,
+}
 
 // ─── Systems ───────────────────────────────────────────────────────
 
@@ -216,10 +233,18 @@ fn player_skating(
 ) {
     for (mut vel, mut transform) in &mut query {
         let mut input = Vec2::ZERO;
-        if keyboard.pressed(KeyCode::ArrowUp) || keyboard.pressed(KeyCode::KeyW) { input.y += 1.0; }
-        if keyboard.pressed(KeyCode::ArrowDown) || keyboard.pressed(KeyCode::KeyS) { input.y -= 1.0; }
-        if keyboard.pressed(KeyCode::ArrowLeft) || keyboard.pressed(KeyCode::KeyA) { input.x -= 1.0; }
-        if keyboard.pressed(KeyCode::ArrowRight) || keyboard.pressed(KeyCode::KeyD) { input.x += 1.0; }
+        if keyboard.pressed(KeyCode::ArrowUp) || keyboard.pressed(KeyCode::KeyW) {
+            input.y += 1.0;
+        }
+        if keyboard.pressed(KeyCode::ArrowDown) || keyboard.pressed(KeyCode::KeyS) {
+            input.y -= 1.0;
+        }
+        if keyboard.pressed(KeyCode::ArrowLeft) || keyboard.pressed(KeyCode::KeyA) {
+            input.x -= 1.0;
+        }
+        if keyboard.pressed(KeyCode::ArrowRight) || keyboard.pressed(KeyCode::KeyD) {
+            input.x += 1.0;
+        }
 
         if input.length_squared() > 0.0 {
             let accel = input.normalize() * SKATING_ACCEL * time.delta_secs();
@@ -235,8 +260,14 @@ fn player_skating(
         transform.translation.y += vel.y * time.delta_secs();
 
         // Rink boundaries
-        transform.translation.x = transform.translation.x.clamp(-RINK_WIDTH/2.0 + 15.0, RINK_WIDTH/2.0 - 15.0);
-        transform.translation.y = transform.translation.y.clamp(-RINK_HEIGHT/2.0 + 15.0, RINK_HEIGHT/2.0 - 15.0);
+        transform.translation.x = transform
+            .translation
+            .x
+            .clamp(-RINK_WIDTH / 2.0 + 15.0, RINK_WIDTH / 2.0 - 15.0);
+        transform.translation.y = transform
+            .translation
+            .y
+            .clamp(-RINK_HEIGHT / 2.0 + 15.0, RINK_HEIGHT / 2.0 - 15.0);
     }
 }
 
@@ -275,13 +306,13 @@ fn puck_physics(
         transform.translation.y += vel.y * time.delta_secs();
 
         // Bounce off walls
-        if transform.translation.x.abs() > RINK_WIDTH/2.0 - 5.0 {
+        if transform.translation.x.abs() > RINK_WIDTH / 2.0 - 5.0 {
             vel.x *= -0.8;
-            transform.translation.x = (RINK_WIDTH/2.0 - 5.1) * transform.translation.x.signum();
+            transform.translation.x = (RINK_WIDTH / 2.0 - 5.1) * transform.translation.x.signum();
         }
-        if transform.translation.y.abs() > RINK_HEIGHT/2.0 - 5.0 {
+        if transform.translation.y.abs() > RINK_HEIGHT / 2.0 - 5.0 {
             vel.y *= -0.8;
-            transform.translation.y = (RINK_HEIGHT/2.0 - 5.1) * transform.translation.y.signum();
+            transform.translation.y = (RINK_HEIGHT / 2.0 - 5.1) * transform.translation.y.signum();
         }
 
         vel.x *= 0.99; // Less friction for puck
@@ -321,11 +352,15 @@ fn goal_system(
     for (goal_transform, goal) in &goal_query {
         let dist_x = (puck_transform.translation.x - goal_transform.translation.x).abs();
         let dist_y = (puck_transform.translation.y - goal_transform.translation.y).abs();
-        
-        if dist_x < 15.0 && dist_y < GOAL_SIZE/2.0 {
+
+        if dist_x < 15.0 && dist_y < GOAL_SIZE / 2.0 {
             info!("GOAL for Team {}!", 1 - goal.team_id);
-            if goal.team_id == 0 { scores.team1 += 1; } else { scores.team0 += 1; }
-            
+            if goal.team_id == 0 {
+                scores.team1 += 1;
+            } else {
+                scores.team0 += 1;
+            }
+
             // Reset puck
             puck_transform.translation = Vec3::new(0.0, 0.0, 2.0);
             puck_vel.x = 0.0;
@@ -340,10 +375,7 @@ struct Scores {
     team1: u32,
 }
 
-fn update_hud(
-    scores: Res<Scores>,
-    mut query: Query<(&mut Text, &TeamScoreText)>,
-) {
+fn update_hud(scores: Res<Scores>, mut query: Query<(&mut Text, &TeamScoreText)>) {
     for (mut text, team_score) in &mut query {
         if team_score.team_id == 0 {
             **text = format!("BLUE: {}", scores.team0);
@@ -365,5 +397,7 @@ fn handle_pause(
 }
 
 fn cleanup_hockey(mut commands: Commands, query: Query<Entity, With<IceBlitzEntity>>) {
-    for entity in &query { commands.entity(entity).despawn(); }
+    for entity in &query {
+        commands.entity(entity).despawn();
+    }
 }

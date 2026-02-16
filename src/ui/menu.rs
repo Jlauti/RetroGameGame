@@ -2,7 +2,6 @@ use bevy::prelude::*;
 
 use super::colors;
 use crate::core::states::GameState;
-
 /// Plugin for the main menu screen.
 pub struct MenuPlugin;
 
