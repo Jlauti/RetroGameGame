@@ -43,6 +43,7 @@ impl Plugin for NebulaBouncerPlugin {
             .insert_resource(ProcGenState::default())
             .init_resource::<ActiveLoadout>()
             .init_resource::<OrbSynergyMatrix>()
+            .init_resource::<CameraFeedbackSettings>()
             .init_resource::<HitStop>();
 
         app.register_type::<ChunkLibrary>()
@@ -59,6 +60,9 @@ impl Plugin for NebulaBouncerPlugin {
             (
                 attach_screen_shake_to_cameras,
                 update_active_loadout_hotkeys,
+                toggle_camera_shake,
+                cycle_feedback_profile,
+                feedback_telemetry_hotkey,
                 debug_telemetry_hotkey,
                 handle_orb_collisions,
                 update_enemy_status_effects,
