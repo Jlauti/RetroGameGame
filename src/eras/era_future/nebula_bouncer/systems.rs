@@ -3,11 +3,13 @@ use crate::eras::era_future::nebula_bouncer::procgen::*;
 use crate::eras::era_future::nebula_bouncer::resources::{
     ActiveLoadout, HitStop, KineticOrbPool, OrbSpawnStats, OrbSynergyMatrix,
     resolve_orb_spawn_stats,
+    HitStop, KineticOrbPool, ProcgenValidatorTelemetry,
 };
 use crate::shared::components::Health;
 use avian2d::prelude::*;
 use bevy::ecs::message::MessageReader;
 use bevy::prelude::*;
+use std::path::PathBuf;
 // use rand::prelude::*; // Use explicit random calls
 
 const SHIP_FORWARD_OFFSET_RADIANS: f32 = -std::f32::consts::FRAC_PI_2;
@@ -19,6 +21,8 @@ const BASE_ORB_BOUNCES: u32 = 3;
 const BASE_ORB_RADIUS: f32 = 5.0;
 const BASE_ORB_TRAIL_WIDTH: f32 = 4.0;
 const VOID_DOT_TICK_INTERVAL_SECS: f32 = 0.5;
+const PREFLIGHT_SUMMARY_REL_PATH: &str =
+    "agents/deliverables/codex_worker2/NB-CX-006_preflight_summary.txt";
 
 fn facing_angle(direction: Vec2, forward_offset: f32) -> Option<f32> {
     if direction.length_squared() <= f32::EPSILON {
@@ -83,12 +87,15 @@ fn advance_enemy_status_effects(status: &mut EnemyStatusEffects, health: &mut He
             status.void_dot_tick_timer = 0.0;
         }
     }
+fn preflight_artifact_path() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(PREFLIGHT_SUMMARY_REL_PATH)
 }
 
 pub fn setup_nebula_bouncer(
     mut commands: Commands,
     mut library: ResMut<ChunkLibrary>,
     mut procgen_state: ResMut<ProcGenState>,
+    mut validator_telemetry: ResMut<ProcgenValidatorTelemetry>,
 ) {
     info!("Nebula Bouncer scaffold loaded (Avian 2D integrated).");
     // Ensure gravity is zero for top-down physics
@@ -276,10 +283,20 @@ pub fn setup_nebula_bouncer(
     };
     library.chunks.push(pillar_chunk);
 
-    // Validate static chunks for softlocks
-    for chunk in &library.chunks {
-        if let ValidationResult::Fail(msg) = validate_softlock_constraints(&chunk.walls) {
-            warn!("Chunk '{}' failed softlock validation: {}", chunk.name, msg);
+    let policy = ProcgenValidationPolicy::default();
+    let preflight = run_preflight_validation(&library, &policy);
+    let preflight_artifact = preflight_artifact_path();
+    match write_preflight_summary_artifact(&preflight_artifact, &preflight) {
+        Ok(()) => {
+            validator_telemetry.set_preflight(&preflight, preflight_artifact.display().to_string());
+            info!("{}", format_preflight_summary(&preflight));
+        }
+        Err(err) => {
+            warn!(
+                "Failed to write procgen preflight summary artifact at {}: {}",
+                preflight_artifact.display(),
+                err
+            );
         }
     }
 
@@ -290,7 +307,12 @@ pub fn setup_nebula_bouncer(
     procgen_state.chunks_in_current_pacing = 0;
 
     // Spawn first chunk
-    spawn_next_chunk(&mut commands, &mut procgen_state, &*library);
+    spawn_next_chunk(
+        &mut commands,
+        &mut procgen_state,
+        &*library,
+        &mut validator_telemetry,
+    );
 }
 
 pub fn spawn_orb_pool(mut commands: Commands, mut orb_pool: ResMut<KineticOrbPool>) {
@@ -448,6 +470,7 @@ pub fn update_level_scrolling(
     mut commands: Commands,
     mut procgen_state: ResMut<ProcGenState>,
     library: Res<ChunkLibrary>,
+    mut validator_telemetry: ResMut<ProcgenValidatorTelemetry>,
     mut q_chunks: Query<(Entity, &mut Transform), With<ChunkMember>>,
 ) {
     const SCROLL_SPEED: f32 = 150.0;
@@ -466,11 +489,21 @@ pub fn update_level_scrolling(
 
     // Spawn when needed
     if procgen_state.next_spawn_y < 1200.0 {
-        spawn_next_chunk(&mut commands, &mut procgen_state, &*library);
+        spawn_next_chunk(
+            &mut commands,
+            &mut procgen_state,
+            &*library,
+            &mut validator_telemetry,
+        );
     }
 }
 
-pub fn spawn_next_chunk(commands: &mut Commands, state: &mut ProcGenState, library: &ChunkLibrary) {
+pub fn spawn_next_chunk(
+    commands: &mut Commands,
+    state: &mut ProcGenState,
+    library: &ChunkLibrary,
+    telemetry: &mut ProcgenValidatorTelemetry,
+) {
     // Determine next target pacing
     let target_pacing = match state.current_pacing {
         ChunkPacing::Open => {
@@ -500,8 +533,16 @@ pub fn spawn_next_chunk(commands: &mut Commands, state: &mut ProcGenState, libra
         }
     };
 
-    let Some(selected) = select_chunk(library, &state.last_chunk_bottom_profile, target_pacing)
-    else {
+    let policy = ProcgenValidationPolicy::default();
+    let (selected, rejection_counters) = select_chunk_validated(
+        library,
+        &state.last_chunk_bottom_profile,
+        target_pacing,
+        &policy,
+    );
+    telemetry.record_runtime_rejections(&rejection_counters);
+
+    let Some(selected) = selected else {
         warn!(
             "No candidates found for procgen chunk matching profile {:?} with pacing {:?}!",
             state.last_chunk_bottom_profile, target_pacing
@@ -573,6 +614,7 @@ pub fn spawn_next_chunk(commands: &mut Commands, state: &mut ProcGenState, libra
     // Update state
     state.next_spawn_y += selected.height;
     state.last_chunk_bottom_profile = selected.bottom_profile;
+    telemetry.record_selection();
 
     info!("Spawned chunk: {} at y={}", selected.name, chunk_y);
 }
@@ -642,6 +684,7 @@ pub fn debug_telemetry_hotkey(
     time: Res<Time>,
     orb_pool: Res<KineticOrbPool>,
     loadout: Res<ActiveLoadout>,
+    validator_telemetry: Res<ProcgenValidatorTelemetry>,
     q_enemies: Query<(), With<Enemy>>,
     q_chunk_members: Query<(), With<ChunkMember>>,
     mut last_log_time: Local<f32>,
@@ -657,12 +700,17 @@ pub fn debug_telemetry_hotkey(
 
     info!(
         "Nebula telemetry | active_orbs={} inactive_pool={} enemies={} chunk_members={} loadout={}+{}",
+        "Nebula telemetry | active_orbs={} inactive_pool={} enemies={} chunk_members={} selected_chunks={} reject_profile={} reject_concave={} reject_exit_angle={}",
         orb_pool.active_count,
         orb_pool.inactive.len(),
         q_enemies.iter().count(),
         q_chunk_members.iter().count(),
         loadout.element.as_str(),
         loadout.modifier.as_str()
+        validator_telemetry.selected_chunks,
+        validator_telemetry.profile_mismatch_rejections,
+        validator_telemetry.concave_trap_rejections,
+        validator_telemetry.exit_angle_fail_rejections
     );
     *last_log_time = now;
 }

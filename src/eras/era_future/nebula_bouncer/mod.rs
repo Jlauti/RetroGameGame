@@ -38,6 +38,7 @@ impl Plugin for NebulaBouncerPlugin {
         // Initialize resources
         app.insert_resource(KineticOrbPool::new(KineticOrbPool::DEFAULT_CAPACITY))
             .insert_resource(Gravity(Vec2::ZERO)) // ensure 2D gravity is zero
+            .insert_resource(ProcgenValidatorTelemetry::default())
             .insert_resource(ChunkLibrary::default())
             .insert_resource(ProcGenState::default())
             .init_resource::<ActiveLoadout>()
