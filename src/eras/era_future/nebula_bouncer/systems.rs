@@ -1,11 +1,9 @@
 use crate::eras::era_future::nebula_bouncer::components::*;
 use crate::eras::era_future::nebula_bouncer::procgen::*;
 use crate::eras::era_future::nebula_bouncer::resources::{
-    ActiveLoadout, HitStop, KineticOrbPool, OrbSpawnStats, OrbSynergyMatrix,
-    resolve_orb_spawn_stats,
-    HitStop, KineticOrbPool, ProcgenValidatorTelemetry,
-    CameraFeedbackSettings, HitStop, KineticOrbPool, compute_hit_stop_duration, feedback_tuning,
-    next_shake_intensity,
+    ActiveLoadout, CameraFeedbackSettings, HitStop, KineticOrbPool, OrbSpawnStats,
+    OrbSynergyMatrix, ProcgenValidatorTelemetry, compute_hit_stop_duration, feedback_tuning,
+    next_shake_intensity, resolve_orb_spawn_stats,
 };
 use crate::shared::components::Health;
 use avian2d::prelude::*;
@@ -90,6 +88,8 @@ fn advance_enemy_status_effects(status: &mut EnemyStatusEffects, health: &mut He
             status.void_dot_tick_timer = 0.0;
         }
     }
+}
+
 fn preflight_artifact_path() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(PREFLIGHT_SUMMARY_REL_PATH)
 }
@@ -721,14 +721,13 @@ pub fn debug_telemetry_hotkey(
     }
 
     info!(
-        "Nebula telemetry | active_orbs={} inactive_pool={} enemies={} chunk_members={} loadout={}+{}",
-        "Nebula telemetry | active_orbs={} inactive_pool={} enemies={} chunk_members={} selected_chunks={} reject_profile={} reject_concave={} reject_exit_angle={}",
+        "Nebula telemetry | active_orbs={} inactive_pool={} enemies={} chunk_members={} loadout={}+{} selected_chunks={} reject_profile={} reject_concave={} reject_exit_angle={}",
         orb_pool.active_count,
         orb_pool.inactive.len(),
         q_enemies.iter().count(),
         q_chunk_members.iter().count(),
         loadout.element.as_str(),
-        loadout.modifier.as_str()
+        loadout.modifier.as_str(),
         validator_telemetry.selected_chunks,
         validator_telemetry.profile_mismatch_rejections,
         validator_telemetry.concave_trap_rejections,

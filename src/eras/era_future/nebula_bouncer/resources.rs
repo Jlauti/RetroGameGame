@@ -74,6 +74,9 @@ impl ActiveLoadout {
     pub fn cycle_modifier(&mut self) {
         let next = (self.modifier.index() + 1) % OrbModifier::ALL.len();
         self.modifier = OrbModifier::ALL[next];
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum FeedbackProfile {
     Safe,
@@ -236,6 +239,9 @@ impl Default for OrbSynergyMatrix {
                 ],
             ],
         }
+    }
+}
+
 #[derive(Resource, Default)]
 pub struct ProcgenValidatorTelemetry {
     pub profile_mismatch_rejections: u64,
@@ -262,6 +268,10 @@ impl ProcgenValidatorTelemetry {
         self.preflight_total_chunks = summary.total_chunks;
         self.preflight_invalid_chunks = summary.invalid_chunks;
         self.preflight_summary_path = Some(artifact_path);
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct FeedbackTuning {
     pub shake_damage_threshold: f32,
     pub shake_damage_scale: f32,
