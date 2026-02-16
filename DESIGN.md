@@ -96,9 +96,15 @@ The goal of **RetroGameGame** is to *feel* the way we remember these games, rath
 
 *Games for this era will be selected later.*
 
-### 🕹️ Era 4: The 2010s — *TBD*
+### 🕹️ Era 4: The 2010s — "The Indie Renaissance"
 
-*Games for this era will be selected later.*
+**Visual Style:** HD vector graphics, neon glow, particle overload (Juice).
+**Frame:** Borderless window / Steam Deck style overlay.
+**Audio Style:** Synthwave, heavy bass, dynamic mixing.
+
+| Mini-Game | Spec | Inspiration |
+|-----------|------|-------------|
+| **Nebula Bouncer** | [Spec](file:///c:/Users/jlaut/git/RetroGameGame/specs/nebula_bouncer.md) | Geometry Wars x Breakout x Roguelites |
 
 ---
 

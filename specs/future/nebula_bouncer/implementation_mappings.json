@@ -1,0 +1,104 @@
+{
+  "elements": {
+    "PLASMA": { "id": 1, "description": "High impact standard damage" },
+    "CRYO": { "id": 2, "description": "Slows enemies by 30% for 2s" },
+    "TESLA": { "id": 3, "description": "25% chance to chain to 2 enemies" },
+    "VOID": { "id": 4, "description": "DOT and pull force" }
+  },
+  "modifiers": {
+    "ELASTICITY": { "id": 1, "description": "+2 Max Bounces" },
+    "SPLINTER": { "id": 2, "description": "Spawns 2 mini-projectiles on first bounce" },
+    "MASS": { "id": 3, "description": "Large size, high knockback, slow speed" },
+    "VELOCITY": { "id": 4, "description": "High speed and damage" }
+  },
+  "synergies": {
+    "PLASMA_ELASTICITY": {
+      "name": "Photon Pinball",
+      "damage": 12.0,
+      "lifetime": 8.0,
+      "special": "Gains speed on bounce"
+    },
+    "PLASMA_SPLINTER": {
+      "name": "Cluster Bomb",
+      "damage_main": 15.0,
+      "damage_mini": 5.0,
+      "split_count": 4,
+      "special": "Explodes on timeout"
+    },
+    "PLASMA_MASS": {
+      "name": "Super Collider",
+      "damage": 25.0,
+      "knockback_mult": 3.0,
+      "special": "Destroys small projectiles"
+    },
+    "PLASMA_VELOCITY": {
+      "name": "Hyper Beam",
+      "damage": 18.0,
+      "speed_mult": 2.0,
+      "pierce": 1
+    },
+    "CRYO_ELASTICITY": {
+      "name": "Frost Ricochet",
+      "slow_p_mult": 0.5,
+      "special": "Leaves ice trail"
+    },
+    "CRYO_SPLINTER": {
+      "name": "Hailstorm",
+      "shards": 3,
+      "damage_per_shard": 8.0,
+      "special": "Cone split on impact"
+    },
+    "CRYO_MASS": {
+      "name": "Avalanche",
+      "max_size_mult": 3.0,
+      "special": "Grows in size over distance"
+    },
+    "CRYO_VELOCITY": {
+      "name": "Ice Shard",
+      "stun_duration": 1.0,
+      "cooldown": 0.5,
+      "special": "High velocity piercing"
+    },
+    "TESLA_ELASTICITY": {
+      "name": "Lightning Rod",
+      "pulse_damage": 10.0,
+      "duration": 3.0,
+      "special": "Sticks to walls, pulse shockwaves"
+    },
+    "TESLA_SPLINTER": {
+      "name": "Storm Cloud",
+      "bolts_per_bounce": 3,
+      "bolt_damage": 6.0
+    },
+    "TESLA_MASS": {
+      "name": "Thunderball",
+      "chain_count": 5,
+      "chain_damage": 12.0,
+      "special": "Huge AoE shock on hit"
+    },
+    "TESLA_VELOCITY": {
+      "name": "Railgun",
+      "damage": 20.0,
+      "special": "Hitscan logic, penetrates shields"
+    },
+    "VOID_ELASTICITY": {
+      "name": "Singularity Pong",
+      "pull_strength": 50.0,
+      "special": "Pulls enemies towards it while traveling"
+    },
+    "VOID_SPLINTER": {
+      "name": "Fracture",
+      "rift_damage": 8.0,
+      "special": "Creates DOT rifts on hit"
+    },
+    "VOID_MASS": {
+      "name": "Black Hole",
+      "special": "Absorbs enemy projectiles converting to HP"
+    },
+    "VOID_VELOCITY": {
+      "name": "Warp Drive",
+      "damage": 15.0,
+      "special": "Phases through walls once"
+    }
+  }
+}

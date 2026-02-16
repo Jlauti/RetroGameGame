@@ -1,8 +1,8 @@
-use bevy::prelude::*;
 use crate::core::states::{GameState, PlayingState};
 use crate::shared::components::{Health, Player, Score, Velocity};
 use crate::ui::colors;
 use crate::ui::results::GameResults;
+use bevy::prelude::*;
 use std::collections::VecDeque;
 
 /// Worm Wars — inspired by Worms (1995).
@@ -123,21 +123,27 @@ fn setup_worms(mut commands: Commands, mut state: ResMut<WormWarsState>) {
     ];
 
     for (pos, team) in worm_positions {
-        let worm = commands.spawn((
-            WormWarsEntity,
-            Worm {
-                team_id: team,
-                is_active: false,
-            },
-            Health::new(100),
-            Velocity::default(),
-            Sprite {
-                color: if team == 0 { colors::EGA_BRIGHT_CYAN } else { colors::EGA_RED },
-                custom_size: Some(Vec2::new(WORM_SIZE, WORM_SIZE * 1.5)),
-                ..default()
-            },
-            Transform::from_translation(pos.extend(1.0)),
-        )).id();
+        let worm = commands
+            .spawn((
+                WormWarsEntity,
+                Worm {
+                    team_id: team,
+                    is_active: false,
+                },
+                Health::new(100),
+                Velocity::default(),
+                Sprite {
+                    color: if team == 0 {
+                        colors::EGA_BRIGHT_CYAN
+                    } else {
+                        colors::EGA_RED
+                    },
+                    custom_size: Some(Vec2::new(WORM_SIZE, WORM_SIZE * 1.5)),
+                    ..default()
+                },
+                Transform::from_translation(pos.extend(1.0)),
+            ))
+            .id();
 
         state.turn_queue.push_back(worm);
     }
@@ -174,21 +180,30 @@ fn spawn_worms_hud(commands: &mut Commands) {
         .with_children(|hud| {
             hud.spawn((
                 Text::new("WORM WARS"),
-                TextFont { font_size: 20.0, ..default() },
+                TextFont {
+                    font_size: 20.0,
+                    ..default()
+                },
                 TextColor(colors::EGA_BRIGHT_GREEN),
             ));
 
             hud.spawn((
                 TurnTimerText,
                 Text::new("Time: 30"),
-                TextFont { font_size: 20.0, ..default() },
+                TextFont {
+                    font_size: 20.0,
+                    ..default()
+                },
                 TextColor(colors::EGA_BRIGHT_YELLOW),
             ));
 
             hud.spawn((
                 WindText,
                 Text::new("Wind: 0"),
-                TextFont { font_size: 20.0, ..default() },
+                TextFont {
+                    font_size: 20.0,
+                    ..default()
+                },
                 TextColor(colors::EGA_CYAN),
             ));
         });
@@ -276,7 +291,10 @@ fn projectile_system(
     mut commands: Commands,
     keyboard: Res<ButtonInput<KeyCode>>,
     active_worm_query: Query<&Transform, (With<ActiveWorm>, Without<Projectile>)>,
-    mut projectile_query: Query<(Entity, &mut Transform, &mut Velocity, &Projectile), Without<ActiveWorm>>,
+    mut projectile_query: Query<
+        (Entity, &mut Transform, &mut Velocity, &Projectile),
+        Without<ActiveWorm>,
+    >,
     time: Res<Time>,
     state: Res<WormWarsState>,
 ) {

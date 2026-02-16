@@ -1,8 +1,8 @@
-use bevy::prelude::*;
 use crate::core::states::{GameState, PlayingState};
 use crate::shared::components::{Health, Player, Score, Velocity};
 use crate::ui::colors;
 use crate::ui::results::GameResults;
+use bevy::prelude::*;
 
 /// Cosmic Captain — inspired by Captain Comic (1988).
 /// Side-scrolling platformer with gravity and collectible abilities.
@@ -113,7 +113,10 @@ fn setup_captain(mut commands: Commands) {
     commands.spawn((
         CaptainEntity,
         Player,
-        Captain { can_shoot: false, has_boots: false },
+        Captain {
+            can_shoot: false,
+            has_boots: false,
+        },
         Health::new(12),
         Velocity::default(),
         Sprite {
@@ -127,7 +130,9 @@ fn setup_captain(mut commands: Commands) {
     // Items
     commands.spawn((
         CaptainEntity,
-        Item { kind: ItemKind::BlastolaCola },
+        Item {
+            kind: ItemKind::BlastolaCola,
+        },
         Sprite {
             color: colors::EGA_BROWN,
             custom_size: Some(Vec2::new(16.0, 24.0)),
@@ -158,14 +163,20 @@ fn spawn_captain_hud(commands: &mut Commands) {
         .with_children(|hud| {
             hud.spawn((
                 Text::new("COSMIC CAPTAIN"),
-                TextFont { font_size: 20.0, ..default() },
+                TextFont {
+                    font_size: 20.0,
+                    ..default()
+                },
                 TextColor(colors::EGA_BRIGHT_CYAN),
             ));
 
             hud.spawn((
                 CaptainStatsText,
                 Text::new("Shield: 12/12 | Weapon: No"),
-                TextFont { font_size: 18.0, ..default() },
+                TextFont {
+                    font_size: 18.0,
+                    ..default()
+                },
                 TextColor(colors::EGA_BRIGHT_YELLOW),
             ));
         });
@@ -183,8 +194,12 @@ fn captain_movement(
 ) {
     for (mut vel, mut transform, captain) in &mut query {
         let mut move_dir = 0.0;
-        if keyboard.pressed(KeyCode::ArrowLeft) || keyboard.pressed(KeyCode::KeyA) { move_dir -= 1.0; }
-        if keyboard.pressed(KeyCode::ArrowRight) || keyboard.pressed(KeyCode::KeyD) { move_dir += 1.0; }
+        if keyboard.pressed(KeyCode::ArrowLeft) || keyboard.pressed(KeyCode::KeyA) {
+            move_dir -= 1.0;
+        }
+        if keyboard.pressed(KeyCode::ArrowRight) || keyboard.pressed(KeyCode::KeyD) {
+            move_dir += 1.0;
+        }
 
         transform.translation.x += move_dir * MOVE_SPEED * time.delta_secs();
 
@@ -193,10 +208,17 @@ fn captain_movement(
         transform.translation.y += vel.y * time.delta_secs();
 
         // Jump
-        if keyboard.just_pressed(KeyCode::Space) || keyboard.just_pressed(KeyCode::ArrowUp) || keyboard.just_pressed(KeyCode::KeyW) {
+        if keyboard.just_pressed(KeyCode::Space)
+            || keyboard.just_pressed(KeyCode::ArrowUp)
+            || keyboard.just_pressed(KeyCode::KeyW)
+        {
             // Jump if on ground (simple threshold)
             if transform.translation.y <= -132.0 || transform.translation.y == -18.0 {
-                 vel.y = if captain.has_boots { JUMP_FORCE * 1.3 } else { JUMP_FORCE };
+                vel.y = if captain.has_boots {
+                    JUMP_FORCE * 1.3
+                } else {
+                    JUMP_FORCE
+                };
             }
         }
     }
@@ -241,11 +263,11 @@ fn collect_items(
                     ItemKind::BlastolaCola => {
                         captain.can_shoot = true;
                         info!("Found Blastola Cola! Now you can shoot!");
-                    },
+                    }
                     ItemKind::Boots => {
                         captain.has_boots = true;
                         info!("Found Boots! Jump higher!");
-                    },
+                    }
                 }
             }
         }
@@ -283,5 +305,7 @@ fn handle_pause(
 }
 
 fn cleanup_captain(mut commands: Commands, query: Query<Entity, With<CaptainEntity>>) {
-    for entity in &query { commands.entity(entity).despawn(); }
+    for entity in &query {
+        commands.entity(entity).despawn();
+    }
 }

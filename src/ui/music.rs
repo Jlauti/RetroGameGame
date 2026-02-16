@@ -39,7 +39,11 @@ fn setup_hub_music(mut commands: Commands, asset_server: Res<AssetServer>) {
     let handle: Handle<AudioSource> = asset_server.load(music_path);
     let entity = spawn_hub_music_entity(&mut commands, handle.clone());
 
-    info!("Hub music controller initialized with track '{}'", music_path);
+    info!(
+        "Hub music controller initialized with track '{}'",
+        music_path
+    );
+
     commands.insert_resource(HubMusicController {
         entity,
         handle,
@@ -68,7 +72,11 @@ fn control_hub_music(
         controller.entity = spawn_hub_music_entity(&mut commands, controller.handle.clone());
     }
 
-    let should_play = matches!(state.get(), GameState::Timeline | GameState::EraSelect);
+    let current_state = state.get();
+    let should_play = matches!(
+        current_state,
+        GameState::Menu | GameState::Timeline | GameState::EraSelect
+    );
     let load_state = asset_server.load_state(controller.handle.id());
 
     if let LoadState::Failed(err) = &load_state {
@@ -87,8 +95,7 @@ fn control_hub_music(
         if controller.load_wait_frames > 600 && !controller.tried_known_good_fallback {
             warn!(
                 "Hub music did not reach Loaded state in time ({:?}). Switching to fallback track '{}'",
-                load_state,
-                HUB_MUSIC_KNOWN_GOOD
+                load_state, HUB_MUSIC_KNOWN_GOOD
             );
             controller.handle = asset_server.load(HUB_MUSIC_KNOWN_GOOD);
             commands.entity(controller.entity).despawn();
@@ -114,13 +121,18 @@ fn control_hub_music(
         }
 
         if should_play {
+            if sink.is_paused() {
+                info!("Playing hub music (state: {:?})", current_state);
+                sink.play();
+            }
             sink.unmute();
             sink.set_volume(Volume::Linear(HUB_MUSIC_VOLUME));
-            sink.play();
+
             if sink.empty() {
                 warn!("Hub music sink is empty, respawning music entity");
                 commands.entity(controller.entity).despawn();
-                controller.entity = spawn_hub_music_entity(&mut commands, controller.handle.clone());
+                controller.entity =
+                    spawn_hub_music_entity(&mut commands, controller.handle.clone());
                 controller.logged_sink_ready = false;
             }
         } else if !sink.is_paused() {
@@ -151,7 +163,11 @@ fn spawn_hub_music_entity(commands: &mut Commands, handle: Handle<AudioSource>) 
 }
 
 fn choose_music_path() -> &'static str {
-    let primary = format!("{}/assets/{}", env!("CARGO_MANIFEST_DIR"), HUB_MUSIC_PRIMARY);
+    let primary = format!(
+        "{}/assets/{}",
+        env!("CARGO_MANIFEST_DIR"),
+        HUB_MUSIC_PRIMARY
+    );
     if std::path::Path::new(&primary).exists() {
         HUB_MUSIC_PRIMARY
     } else {

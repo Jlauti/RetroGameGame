@@ -31,16 +31,12 @@ struct TransitionOverlay {
     timer: Timer,
 }
 
-fn start_transition(
-    // mut events: EventReader<ScreenTransitionEvent>, // Error: EventReader not found
-) {
+fn start_transition(/* mut events: EventReader<ScreenTransitionEvent> */) {
     // Placeholder
 }
 
-fn update_transition(
-    // time: Res<Time>,
-    // mut query: Query<(&mut TransitionOverlay, &mut BackgroundColor, Entity)>,
-    // mut commands: Commands,
-) {
+fn update_transition(/* time: Res<Time>,
+    mut query: Query<(&mut TransitionOverlay, &mut BackgroundColor, Entity)>,
+    mut commands: Commands, */) {
     // Placeholder
 }

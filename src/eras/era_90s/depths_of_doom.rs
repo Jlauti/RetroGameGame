@@ -1,8 +1,8 @@
-use bevy::prelude::*;
 use crate::core::states::{GameState, PlayingState};
 use crate::shared::components::{GridPosition, Health, Player, Score};
 use crate::ui::colors;
 use crate::ui::results::GameResults;
+use bevy::prelude::*;
 use std::collections::HashMap;
 
 /// Depths of Doom — inspired by ADOM (1994).
@@ -74,8 +74,13 @@ fn setup_dungeon(mut commands: Commands, mut map: ResMut<DungeonMap>) {
     // Simple procedural dungeon: random walls
     for x in -20..20 {
         for y in -15..15 {
-            let is_wall = (x == -20 || x == 19 || y == -15 || y == 14) || (rand::random::<f32>() < 0.15);
-            let tile = if is_wall { TileType::Wall } else { TileType::Floor };
+            let is_wall =
+                (x == -20 || x == 19 || y == -15 || y == 14) || (rand::random::<f32>() < 0.15);
+            let tile = if is_wall {
+                TileType::Wall
+            } else {
+                TileType::Floor
+            };
             map.tiles.insert((x, y), tile);
 
             let world_pos = Vec3::new(x as f32 * TILE_SIZE, y as f32 * TILE_SIZE, 0.0);
@@ -93,7 +98,7 @@ fn setup_dungeon(mut commands: Commands, mut map: ResMut<DungeonMap>) {
                     Transform::from_translation(world_pos),
                 ));
             } else {
-                 commands.spawn((
+                commands.spawn((
                     DoomEntity,
                     Sprite {
                         color: Color::srgb(0.1, 0.1, 0.1),
@@ -164,12 +169,18 @@ fn spawn_doom_hud(commands: &mut Commands) {
             hud.spawn((
                 DoomHpText,
                 Text::new("HP: 100/100"),
-                TextFont { font_size: 18.0, ..default() },
+                TextFont {
+                    font_size: 18.0,
+                    ..default()
+                },
                 TextColor(colors::EGA_BRIGHT_GREEN),
             ));
             hud.spawn((
                 Text::new("DEPTHS OF DOOM — B1"),
-                TextFont { font_size: 14.0, ..default() },
+                TextFont {
+                    font_size: 14.0,
+                    ..default()
+                },
                 TextColor(colors::TEXT_SECONDARY),
             ));
         });
@@ -183,18 +194,31 @@ struct DoomHpText;
 fn handle_input(
     keyboard: Res<ButtonInput<KeyCode>>,
     map: Res<DungeonMap>,
-    mut player_query: Query<(&mut GridPosition, &mut Transform, &Health), (With<Player>, Without<Monster>)>,
-    mut monster_query: Query<(Entity, &GridPosition, &mut Health), (With<Monster>, Without<Player>)>,
+    mut player_query: Query<
+        (&mut GridPosition, &mut Transform, &Health),
+        (With<Player>, Without<Monster>),
+    >,
+    mut monster_query: Query<
+        (Entity, &GridPosition, &mut Health),
+        (With<Monster>, Without<Player>),
+    >,
     mut commands: Commands,
 ) {
     let mut move_delta = (0, 0);
 
-    if keyboard.just_pressed(KeyCode::ArrowUp) || keyboard.just_pressed(KeyCode::KeyW) { move_delta.1 += 1; }
-    else if keyboard.just_pressed(KeyCode::ArrowDown) || keyboard.just_pressed(KeyCode::KeyS) { move_delta.1 -= 1; }
-    else if keyboard.just_pressed(KeyCode::ArrowLeft) || keyboard.just_pressed(KeyCode::KeyA) { move_delta.0 -= 1; }
-    else if keyboard.just_pressed(KeyCode::ArrowRight) || keyboard.just_pressed(KeyCode::KeyD) { move_delta.0 += 1; }
+    if keyboard.just_pressed(KeyCode::ArrowUp) || keyboard.just_pressed(KeyCode::KeyW) {
+        move_delta.1 += 1;
+    } else if keyboard.just_pressed(KeyCode::ArrowDown) || keyboard.just_pressed(KeyCode::KeyS) {
+        move_delta.1 -= 1;
+    } else if keyboard.just_pressed(KeyCode::ArrowLeft) || keyboard.just_pressed(KeyCode::KeyA) {
+        move_delta.0 -= 1;
+    } else if keyboard.just_pressed(KeyCode::ArrowRight) || keyboard.just_pressed(KeyCode::KeyD) {
+        move_delta.0 += 1;
+    }
 
-    if move_delta == (0, 0) { return; }
+    if move_delta == (0, 0) {
+        return;
+    }
 
     let (mut pos, mut transform, _hp) = match player_query.single_mut() {
         Ok(p) => p,
@@ -267,5 +291,7 @@ fn handle_pause(
 }
 
 fn cleanup_dungeon(mut commands: Commands, query: Query<Entity, With<DoomEntity>>) {
-    for entity in &query { commands.entity(entity).despawn(); }
+    for entity in &query {
+        commands.entity(entity).despawn();
+    }
 }

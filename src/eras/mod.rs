@@ -1,5 +1,6 @@
 pub mod era_80s;
 pub mod era_90s;
+pub mod era_future;
 pub mod shared;
 
 use bevy::prelude::*;
@@ -12,6 +13,7 @@ impl Plugin for ErasPlugin {
         app.add_plugins((
             era_80s::Era80sPlugin,
             era_90s::Era90sPlugin,
+            era_future::EraFuturePlugin,
         ));
     }
 }

@@ -8,9 +8,6 @@ pub struct EffectsPlugin;
 
 impl Plugin for EffectsPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins((
-            crt::CrtPlugin,
-            transitions::TransitionsPlugin,
-        ));
+        app.add_plugins((crt::CrtPlugin, transitions::TransitionsPlugin));
     }
 }

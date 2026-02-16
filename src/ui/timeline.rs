@@ -15,7 +15,11 @@ impl Plugin for TimelinePlugin {
             .add_systems(OnEnter(GameState::Timeline), setup_timeline)
             .add_systems(
                 Update,
-                (timeline_input, layout_timeline_carousel, update_timeline_labels)
+                (
+                    timeline_input,
+                    layout_timeline_carousel,
+                    update_timeline_labels,
+                )
                     .run_if(in_state(GameState::Timeline)),
             )
             .add_systems(OnExit(GameState::Timeline), cleanup_timeline);
@@ -45,7 +49,7 @@ struct SelectedEraSubtitle;
 #[derive(Component)]
 struct SelectedEraStatus;
 
-const ERA_COUNT: usize = 4;
+const ERA_COUNT: usize = 5;
 
 fn setup_timeline(
     mut commands: Commands,
@@ -182,10 +186,7 @@ fn setup_timeline(
 
             for (index, (era, title, subtitle, image_path)) in era_entries().iter().enumerate() {
                 root.spawn((
-                    EraCarouselCard {
-                        era: *era,
-                        index,
-                    },
+                    EraCarouselCard { era: *era, index },
                     Node {
                         position_type: PositionType::Absolute,
                         width: Val::Px(280.0),
@@ -230,7 +231,6 @@ fn setup_timeline(
                 });
             }
         });
-
 }
 
 fn timeline_input(
@@ -384,6 +384,12 @@ fn era_entries() -> [(Era, &'static str, &'static str, &'static str); ERA_COUNT]
             "The 2010s",
             "Coming Soon",
             "ui/thumbnails/depths_of_doom.png",
+        ),
+        (
+            Era::Future,
+            "Future",
+            "Nebula Bouncer",
+            "ui/thumbnails/nebula_bouncer.png",
         ),
     ]
 }
