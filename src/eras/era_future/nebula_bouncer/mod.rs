@@ -28,6 +28,9 @@ impl Plugin for NebulaBouncerPlugin {
 
         // Register components for reflection
         app.register_type::<KineticOrb>()
+            .register_type::<OrbElement>()
+            .register_type::<OrbModifier>()
+            .register_type::<EnemyStatusEffects>()
             .register_type::<PlayerShip>()
             .register_type::<Enemy>()
             .register_type::<Wall>();
@@ -37,6 +40,8 @@ impl Plugin for NebulaBouncerPlugin {
             .insert_resource(Gravity(Vec2::ZERO)) // ensure 2D gravity is zero
             .insert_resource(ChunkLibrary::default())
             .insert_resource(ProcGenState::default())
+            .init_resource::<ActiveLoadout>()
+            .init_resource::<OrbSynergyMatrix>()
             .init_resource::<HitStop>();
 
         app.register_type::<ChunkLibrary>()
@@ -52,8 +57,10 @@ impl Plugin for NebulaBouncerPlugin {
             Update,
             (
                 attach_screen_shake_to_cameras,
+                update_active_loadout_hotkeys,
                 debug_telemetry_hotkey,
                 handle_orb_collisions,
+                update_enemy_status_effects,
                 systems::update_level_scrolling,
                 player_movement,
                 orient_player_to_cursor,
