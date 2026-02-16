@@ -1,6 +1,9 @@
 use crate::eras::era_future::nebula_bouncer::components::*;
 use crate::eras::era_future::nebula_bouncer::procgen::*;
-use crate::eras::era_future::nebula_bouncer::resources::{HitStop, KineticOrbPool};
+use crate::eras::era_future::nebula_bouncer::resources::{
+    CameraFeedbackSettings, HitStop, KineticOrbPool, compute_hit_stop_duration, feedback_tuning,
+    next_shake_intensity,
+};
 use crate::shared::components::Health;
 use avian2d::prelude::*;
 use bevy::ecs::message::MessageReader;
@@ -10,6 +13,7 @@ use bevy::prelude::*;
 const SHIP_FORWARD_OFFSET_RADIANS: f32 = -std::f32::consts::FRAC_PI_2;
 const ORB_FORWARD_OFFSET_RADIANS: f32 = -std::f32::consts::FRAC_PI_2;
 const TELEMETRY_COOLDOWN_SECS: f32 = 0.25;
+const FEEDBACK_TELEMETRY_COOLDOWN_SECS: f32 = 0.35;
 
 fn facing_angle(direction: Vec2, forward_offset: f32) -> Option<f32> {
     if direction.length_squared() <= f32::EPSILON {
@@ -311,10 +315,14 @@ pub fn handle_orb_collisions(
     mut collision_events: MessageReader<CollisionStart>,
     mut orbs: Query<(Entity, &mut KineticOrb)>,
     mut orb_pool: ResMut<KineticOrbPool>,
+    feedback_settings: Res<CameraFeedbackSettings>,
     mut shake: Query<&mut ScreenShake>,
     mut hit_stop: ResMut<HitStop>,
     mut enemies: Query<(Entity, &mut Health), With<Enemy>>,
 ) {
+    let profile = feedback_settings.profile;
+    let profile_tuning = feedback_tuning(profile);
+
     for event in collision_events.read() {
         let e1 = event.collider1;
         let e2 = event.collider2;
@@ -336,10 +344,18 @@ pub fn handle_orb_collisions(
                     hp.damage(orb.damage as i32);
 
                     // Trigger Hit Feedback
-                    hit_stop.timer = (orb.damage * 0.005).clamp(0.05, 0.2);
+                    hit_stop.timer = hit_stop
+                        .timer
+                        .max(compute_hit_stop_duration(orb.damage, profile));
                     if let Some(mut s) = shake.iter_mut().next() {
-                        s.intensity += orb.damage * 3.0;
-                        s.decay = 8.0;
+                        s.intensity = next_shake_intensity(
+                            s.intensity,
+                            orb.damage,
+                            false,
+                            feedback_settings.shake_enabled,
+                            profile,
+                        );
+                        s.decay = profile_tuning.shake_decay;
                     }
 
                     if hp.is_dead() {
@@ -351,8 +367,14 @@ pub fn handle_orb_collisions(
                     // Hit something else (Wall?)
                     // Minor shake for wall hits
                     if let Some(mut s) = shake.iter_mut().next() {
-                        s.intensity += 2.0;
-                        s.decay = 10.0;
+                        s.intensity = next_shake_intensity(
+                            s.intensity,
+                            orb.damage,
+                            true,
+                            feedback_settings.shake_enabled,
+                            profile,
+                        );
+                        s.decay = profile_tuning.shake_decay;
                     }
                 }
 
@@ -564,6 +586,77 @@ pub fn debug_telemetry_hotkey(
     *last_log_time = now;
 }
 
+pub fn toggle_camera_shake(
+    input: Res<ButtonInput<KeyCode>>,
+    mut feedback_settings: ResMut<CameraFeedbackSettings>,
+) {
+    if !input.just_pressed(KeyCode::F10) {
+        return;
+    }
+
+    feedback_settings.shake_enabled = !feedback_settings.shake_enabled;
+    info!(
+        "Camera shake toggled: {}",
+        if feedback_settings.shake_enabled {
+            "ON"
+        } else {
+            "OFF"
+        }
+    );
+}
+
+pub fn cycle_feedback_profile(
+    input: Res<ButtonInput<KeyCode>>,
+    mut feedback_settings: ResMut<CameraFeedbackSettings>,
+) {
+    if !input.just_pressed(KeyCode::F11) {
+        return;
+    }
+
+    feedback_settings.profile = feedback_settings.profile.next();
+    let tuning = feedback_tuning(feedback_settings.profile);
+    info!(
+        "Feedback profile: {} (threshold={:.1}, cap={:.1}, decay={:.1})",
+        feedback_settings.profile.as_str(),
+        tuning.shake_damage_threshold,
+        tuning.shake_cap,
+        tuning.shake_decay
+    );
+}
+
+pub fn feedback_telemetry_hotkey(
+    input: Res<ButtonInput<KeyCode>>,
+    time: Res<Time>,
+    feedback_settings: Res<CameraFeedbackSettings>,
+    hit_stop: Res<HitStop>,
+    q_shake: Query<&ScreenShake, With<Camera>>,
+    mut last_log_time: Local<f32>,
+) {
+    if !input.just_pressed(KeyCode::F9) {
+        return;
+    }
+
+    let now = time.elapsed_secs();
+    if now - *last_log_time < FEEDBACK_TELEMETRY_COOLDOWN_SECS {
+        return;
+    }
+
+    let (shake_intensity, shake_decay) = q_shake
+        .iter()
+        .next()
+        .map(|s| (s.intensity, s.decay))
+        .unwrap_or((0.0, 0.0));
+    info!(
+        "Feedback telemetry | profile={} shake_enabled={} shake_intensity={:.2} shake_decay={:.2} hit_stop={:.3}",
+        feedback_settings.profile.as_str(),
+        feedback_settings.shake_enabled,
+        shake_intensity,
+        shake_decay,
+        hit_stop.timer.max(0.0)
+    );
+    *last_log_time = now;
+}
+
 pub fn orient_player_to_cursor(
     q_window: Query<&Window>,
     q_camera: Query<(&Camera, &GlobalTransform)>,
@@ -718,14 +811,22 @@ pub fn update_trails(
 
 pub fn apply_shake(
     time: Res<Time<Real>>,
+    feedback_settings: Res<CameraFeedbackSettings>,
     mut query: Query<(&mut Transform, &mut ScreenShake), With<Camera>>,
 ) {
     let dt = time.delta_secs();
+    let tuning = feedback_tuning(feedback_settings.profile);
     for (mut transform, mut shake) in &mut query {
         // Remove last frame's offset so shake never accumulates as drift.
         transform.translation.x -= shake.last_offset.x;
         transform.translation.y -= shake.last_offset.y;
         shake.last_offset = Vec2::ZERO;
+        shake.decay = tuning.shake_decay;
+
+        if !feedback_settings.shake_enabled {
+            shake.intensity = 0.0;
+            continue;
+        }
 
         if shake.intensity > 0.0 {
             let offset = Vec2::new(

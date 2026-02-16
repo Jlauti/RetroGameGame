@@ -37,6 +37,7 @@ impl Plugin for NebulaBouncerPlugin {
             .insert_resource(Gravity(Vec2::ZERO)) // ensure 2D gravity is zero
             .insert_resource(ChunkLibrary::default())
             .insert_resource(ProcGenState::default())
+            .init_resource::<CameraFeedbackSettings>()
             .init_resource::<HitStop>();
 
         app.register_type::<ChunkLibrary>()
@@ -52,6 +53,9 @@ impl Plugin for NebulaBouncerPlugin {
             Update,
             (
                 attach_screen_shake_to_cameras,
+                toggle_camera_shake,
+                cycle_feedback_profile,
+                feedback_telemetry_hotkey,
                 debug_telemetry_hotkey,
                 handle_orb_collisions,
                 systems::update_level_scrolling,
