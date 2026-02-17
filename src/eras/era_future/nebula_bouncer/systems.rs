@@ -46,6 +46,12 @@ fn enemy_visual_for_pacing(pacing: ChunkPacing) -> (&'static str, Vec2) {
     }
 }
 
+#[derive(Component)]
+pub struct NebulaDebugOverlayRoot;
+
+#[derive(Component)]
+pub struct NebulaDebugOverlayText;
+
 fn facing_angle(direction: Vec2, forward_offset: f32) -> Option<f32> {
     if direction.length_squared() <= f32::EPSILON {
         None
@@ -146,6 +152,33 @@ pub fn setup_nebula_bouncer(
             ..default()
         },
     ));
+
+    // Spawn hidden debug overlay (F12 toggles) to verify asset usage in HITL sessions.
+    commands
+        .spawn((
+            NebulaDebugOverlayRoot,
+            Node {
+                position_type: PositionType::Absolute,
+                left: Val::Px(10.0),
+                top: Val::Px(10.0),
+                width: Val::Px(640.0),
+                padding: UiRect::all(Val::Px(8.0)),
+                ..default()
+            },
+            BackgroundColor(Color::srgba(0.04, 0.05, 0.08, 0.82)),
+            Visibility::Hidden,
+        ))
+        .with_children(|parent| {
+            parent.spawn((
+                NebulaDebugOverlayText,
+                Text::new("Nebula Debug Overlay (F12)"),
+                TextFont {
+                    font_size: 14.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(0.8, 0.95, 1.0)),
+            ));
+        });
 
     // -----------------------------------------------------------------------
     // CHUNK LIBRARY INITIALIZATION
@@ -396,12 +429,17 @@ pub fn cleanup_orb_pool(
     mut orb_pool: ResMut<KineticOrbPool>,
     q_orbs: Query<Entity, With<KineticOrb>>,
     q_player: Query<Entity, With<PlayerShip>>,
+    q_overlay: Query<Entity, With<NebulaDebugOverlayRoot>>,
 ) {
     // Optional: Despawn all orbs on exit to clean up memory
     for entity in q_orbs.iter() {
         commands.entity(entity).despawn();
     }
     for entity in q_player.iter() {
+        commands.entity(entity).despawn();
+    }
+    for entity in q_overlay.iter() {
+        commands.entity(entity).despawn_children();
         commands.entity(entity).despawn();
     }
     orb_pool.inactive.clear();
@@ -853,6 +891,88 @@ pub fn feedback_telemetry_hotkey(
         hit_stop.timer.max(0.0)
     );
     *last_log_time = now;
+}
+
+pub fn toggle_debug_asset_overlay(
+    input: Res<ButtonInput<KeyCode>>,
+    mut q_overlay: Query<&mut Visibility, With<NebulaDebugOverlayRoot>>,
+) {
+    if !input.just_pressed(KeyCode::F12) {
+        return;
+    }
+
+    if let Some(mut visibility) = q_overlay.iter_mut().next() {
+        *visibility = match *visibility {
+            Visibility::Visible => Visibility::Hidden,
+            _ => Visibility::Visible,
+        };
+    }
+}
+
+pub fn update_debug_asset_overlay_text(
+    q_player: Query<&Sprite, With<PlayerShip>>,
+    q_enemy: Query<&Sprite, With<Enemy>>,
+    q_wall: Query<&Sprite, With<Wall>>,
+    q_ground: Query<
+        &Sprite,
+        (
+            With<ChunkMember>,
+            Without<Wall>,
+            Without<Enemy>,
+            Without<PlayerShip>,
+            Without<KineticOrb>,
+        ),
+    >,
+    q_orb: Query<&Sprite, With<KineticOrb>>,
+    mut q_text: Query<&mut Text, With<NebulaDebugOverlayText>>,
+) {
+    let Some(mut text) = q_text.iter_mut().next() else {
+        return;
+    };
+
+    let player_size = q_player
+        .iter()
+        .next()
+        .and_then(|s| s.custom_size)
+        .map(|v| format!("{:.0}x{:.0}", v.x, v.y))
+        .unwrap_or_else(|| "n/a".to_string());
+    let enemy_size = q_enemy
+        .iter()
+        .next()
+        .and_then(|s| s.custom_size)
+        .map(|v| format!("{:.0}x{:.0}", v.x, v.y))
+        .unwrap_or_else(|| "n/a".to_string());
+    let wall_size = q_wall
+        .iter()
+        .next()
+        .and_then(|s| s.custom_size)
+        .map(|v| format!("{:.0}x{:.0}", v.x, v.y))
+        .unwrap_or_else(|| "n/a".to_string());
+    let ground_size = q_ground
+        .iter()
+        .next()
+        .and_then(|s| s.custom_size)
+        .map(|v| format!("{:.0}x{:.0}", v.x, v.y))
+        .unwrap_or_else(|| "n/a".to_string());
+    let orb_size = q_orb
+        .iter()
+        .next()
+        .and_then(|s| s.custom_size)
+        .map(|v| format!("{:.0}x{:.0}", v.x, v.y))
+        .unwrap_or_else(|| "n/a".to_string());
+
+    **text = format!(
+        "Nebula Asset Overlay (F12)\n\
+player: {PLAYER_SPRITE_PATH} | size={player_size}\n\
+enemy(s): scout={ENEMY_SCOUT_SPRITE_PATH} heavy={ENEMY_HEAVY_SPRITE_PATH} interceptor={ENEMY_INTERCEPTOR_SPRITE_PATH} | sample_size={enemy_size} | count={enemy_count}\n\
+wall: {WALL_TILE_SPRITE_PATH} | sample_size={wall_size} | count={wall_count}\n\
+ground: {GROUND_TILE_SPRITE_PATH} | sample_size={ground_size} | count={ground_count}\n\
+orb: {ORB_SPRITE_PATH} | sample_size={orb_size} | count={orb_count}",
+        enemy_count = q_enemy.iter().count(),
+        wall_count = q_wall.iter().count(),
+        ground_count = q_ground.iter().count(),
+        orb_count = q_orb.iter().count(),
+    );
 }
 
 pub fn orient_player_to_cursor(

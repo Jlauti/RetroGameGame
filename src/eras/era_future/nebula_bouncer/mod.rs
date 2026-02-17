@@ -64,6 +64,8 @@ impl Plugin for NebulaBouncerPlugin {
                 cycle_feedback_profile,
                 feedback_telemetry_hotkey,
                 debug_telemetry_hotkey,
+                toggle_debug_asset_overlay,
+                update_debug_asset_overlay_text,
                 handle_orb_collisions,
                 update_enemy_status_effects,
                 systems::update_level_scrolling,
