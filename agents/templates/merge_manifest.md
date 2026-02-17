@@ -4,7 +4,8 @@
 
 - Ticket ID: NB-XXX-000
 - Source Branch: codex/nb-xxx-000
-- Target Branch: main
+- Target Branch: develop|main
+- Merge Type: TICKET|PROMOTION
 - Lane Used: LOCAL
 - Cloud Attempt Summary: NONE
 - Takeover/Fallback Event: NONE

@@ -30,3 +30,10 @@ This repository uses `cargo-safe` as the default Cargo entrypoint for all compil
 
 - Current baseline remains `jobs=8`, `codegen-units=8`, memory guardrails around 9-10G.
 - If `cargo-safe` is missing, treat as environment misconfiguration and escalate.
+
+## Branching Mandate
+
+- Core branches are `develop` and `main`.
+- Ticket branches must start from `develop` and use the `codex/` prefix.
+- Ticket merges go to `develop`; only promoted, fully gated releases go to `main`.
+- Principal engineer is the sole merger to `main`.

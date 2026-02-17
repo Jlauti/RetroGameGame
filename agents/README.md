@@ -9,6 +9,13 @@ Local-first operating model for Nebula Bouncer vertical-slice delivery.
 - Agents deliver scoped artifacts via task/report files.
 - QA is a per-ticket merge gatekeeper.
 
+## Branch Model
+
+- `main`: stable release branch, updated only through promotion from `develop`.
+- `develop`: integration branch for validated ticket work.
+- `codex/*`: short-lived ticket branches that branch from `develop`.
+- Ticket merges target `develop`; release promotions target `main`.
+
 ## Control Plane
 
 All orchestration artifacts live under `/home/jl/git/RetroGameGame/agents`.
@@ -43,7 +50,13 @@ All orchestration artifacts live under `/home/jl/git/RetroGameGame/agents`.
 
 ## Merge Gates
 
-Every merge to `main` must pass:
+Every ticket merge to `develop` must pass:
+
+1. Scope boundary check.
+2. Ticket gate set (`check`, scoped test, `fmt --check`).
+3. QA signoff `PASS`.
+
+Every promotion merge to `main` must pass:
 
 1. Scope boundary check.
 2. `cargo-safe check`.
@@ -95,6 +108,7 @@ Starter prompts for local agent launches:
 
 Validation:
 
+- `/home/jl/git/RetroGameGame/agents/scripts/sync_core_branches.sh`
 - `/home/jl/git/RetroGameGame/agents/scripts/validate_ticket.py`
 - `/home/jl/git/RetroGameGame/agents/scripts/check_wip.py`
 - `/home/jl/git/RetroGameGame/agents/scripts/check_ticket_scope.py`

@@ -9,6 +9,14 @@ This is the durable orchestration protocol for Codex as principal engineer.
 - Preserve quality through strict QA and merge gates.
 - Maintain continuity across context compression and new sessions.
 
+## Branching Discipline
+
+- `develop` is the default integration branch.
+- All ticket branches are `codex/<ticket-or-scope>` cut from `develop`.
+- Ticket merges go into `develop` after ticket gates and QA pass.
+- `main` is promotion-only and reserved for release-ready snapshots.
+- Principal engineer is the sole merger to `main`.
+
 ## Session Bootstrap (Always)
 
 On any new session, read in this order:
@@ -52,7 +60,15 @@ Record model decisions in the ticket report notes.
 
 ## Review and Gate Protocol
 
-Before merge to `main`, enforce all gates:
+Before ticket merge to `develop`, enforce:
+
+1. Scope boundary check.
+2. `cargo-safe check`.
+3. Scoped test command for the ticket.
+4. `cargo-safe fmt -- --check`.
+5. QA signoff `PASS`.
+
+Before promotion merge to `main`, enforce all gates:
 
 1. Scope boundary check.
 2. `cargo-safe check`.
