@@ -20,10 +20,31 @@ const BASE_ORB_SPEED: f32 = 500.0;
 const BASE_ORB_BOUNCES: u32 = 3;
 const BASE_ORB_RADIUS: f32 = 5.0;
 const BASE_ORB_TRAIL_WIDTH: f32 = 4.0;
+const GROUND_CHUNK_WIDTH: f32 = 960.0;
 const VOID_DOT_TICK_INTERVAL_SECS: f32 = 0.5;
 const PREFLIGHT_SUMMARY_REL_PATH: &str =
     "agents/deliverables/codex_worker2/NB-CX-006_preflight_summary.txt";
 const FEEDBACK_TELEMETRY_COOLDOWN_SECS: f32 = 0.35;
+const PLAYER_SPRITE_PATH: &str = "sprites/future/nebula_bouncer/sprite_player_ship.png";
+const WALL_TILE_SPRITE_PATH: &str = "sprites/future/nebula_bouncer/sprite_wall_tile.png";
+const GROUND_TILE_SPRITE_PATH: &str = "sprites/future/nebula_bouncer/sprite_ground_tile.png";
+const ORB_SPRITE_PATH: &str = "sprites/future/nebula_bouncer/sprite_player_orb.png";
+const ENEMY_SCOUT_SPRITE_PATH: &str = "sprites/future/nebula_bouncer/sprite_enemy_scout.png";
+const ENEMY_HEAVY_SPRITE_PATH: &str = "sprites/future/nebula_bouncer/sprite_enemy_heavy.png";
+const ENEMY_INTERCEPTOR_SPRITE_PATH: &str =
+    "sprites/future/nebula_bouncer/sprite_enemy_interceptor.png";
+const PLAYER_SPRITE_SIZE: Vec2 = Vec2::new(64.0, 64.0);
+const SCOUT_SPRITE_SIZE: Vec2 = Vec2::new(62.0, 62.0);
+const HEAVY_SPRITE_SIZE: Vec2 = Vec2::new(78.0, 78.0);
+const INTERCEPTOR_SPRITE_SIZE: Vec2 = Vec2::new(70.0, 70.0);
+
+fn enemy_visual_for_pacing(pacing: ChunkPacing) -> (&'static str, Vec2) {
+    match pacing {
+        ChunkPacing::Open => (ENEMY_SCOUT_SPRITE_PATH, SCOUT_SPRITE_SIZE),
+        ChunkPacing::Transition => (ENEMY_INTERCEPTOR_SPRITE_PATH, INTERCEPTOR_SPRITE_SIZE),
+        ChunkPacing::Dense => (ENEMY_HEAVY_SPRITE_PATH, HEAVY_SPRITE_SIZE),
+    }
+}
 
 fn facing_angle(direction: Vec2, forward_offset: f32) -> Option<f32> {
     if direction.length_squared() <= f32::EPSILON {
@@ -96,6 +117,7 @@ fn preflight_artifact_path() -> PathBuf {
 
 pub fn setup_nebula_bouncer(
     mut commands: Commands,
+    asset_server: Res<AssetServer>,
     mut library: ResMut<ChunkLibrary>,
     mut procgen_state: ResMut<ProcGenState>,
     mut validator_telemetry: ResMut<ProcgenValidatorTelemetry>,
@@ -119,8 +141,8 @@ pub fn setup_nebula_bouncer(
         Restitution::new(0.5),
         Friction::new(0.1),
         Sprite {
-            color: Color::srgb(0.0, 1.0, 1.0),
-            custom_size: Some(Vec2::new(30.0, 30.0)),
+            image: asset_server.load(PLAYER_SPRITE_PATH),
+            custom_size: Some(PLAYER_SPRITE_SIZE),
             ..default()
         },
     ));
@@ -312,13 +334,18 @@ pub fn setup_nebula_bouncer(
     // Spawn first chunk
     spawn_next_chunk(
         &mut commands,
+        &asset_server,
         &mut procgen_state,
         &*library,
         &mut validator_telemetry,
     );
 }
 
-pub fn spawn_orb_pool(mut commands: Commands, mut orb_pool: ResMut<KineticOrbPool>) {
+pub fn spawn_orb_pool(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut orb_pool: ResMut<KineticOrbPool>,
+) {
     let current_count = orb_pool.inactive.len() + orb_pool.active_count;
     let needed = KineticOrbPool::DEFAULT_CAPACITY.saturating_sub(current_count);
 
@@ -345,6 +372,12 @@ pub fn spawn_orb_pool(mut commands: Commands, mut orb_pool: ResMut<KineticOrbPoo
                         max_length: 20,
                         width: BASE_ORB_TRAIL_WIDTH,
                         color: element_trail_color(OrbElement::default()),
+                    },
+                    Sprite {
+                        image: asset_server.load(ORB_SPRITE_PATH),
+                        color: element_trail_color(OrbElement::default()),
+                        custom_size: Some(Vec2::splat(BASE_ORB_RADIUS * 5.0)),
+                        ..default()
                     },
                 ))
                 .id();
@@ -490,6 +523,7 @@ pub fn handle_orb_collisions(
 pub fn update_level_scrolling(
     time: Res<Time>,
     mut commands: Commands,
+    asset_server: Res<AssetServer>,
     mut procgen_state: ResMut<ProcGenState>,
     library: Res<ChunkLibrary>,
     mut validator_telemetry: ResMut<ProcgenValidatorTelemetry>,
@@ -513,6 +547,7 @@ pub fn update_level_scrolling(
     if procgen_state.next_spawn_y < 1200.0 {
         spawn_next_chunk(
             &mut commands,
+            &asset_server,
             &mut procgen_state,
             &*library,
             &mut validator_telemetry,
@@ -522,6 +557,7 @@ pub fn update_level_scrolling(
 
 pub fn spawn_next_chunk(
     commands: &mut Commands,
+    asset_server: &AssetServer,
     state: &mut ProcGenState,
     library: &ChunkLibrary,
     telemetry: &mut ProcgenValidatorTelemetry,
@@ -584,17 +620,28 @@ pub fn spawn_next_chunk(
     // Spawn the chunk
     let chunk_y = state.next_spawn_y + selected.height / 2.0;
 
+    // Spawn floor backdrop so gameplay pieces render over real art, not only flat clear color.
+    commands.spawn((
+        ChunkMember,
+        Sprite {
+            image: asset_server.load(GROUND_TILE_SPRITE_PATH),
+            custom_size: Some(Vec2::new(GROUND_CHUNK_WIDTH, selected.height)),
+            ..default()
+        },
+        Transform::from_xyz(0.0, chunk_y, depth::BACKGROUND),
+    ));
+
     // Spawn walls
     for wall in &selected.walls {
         commands.spawn((
             Wall,
             ChunkMember,
             Sprite {
-                color: Color::srgb(0.3, 0.3, 0.9),
+                image: asset_server.load(WALL_TILE_SPRITE_PATH),
                 custom_size: Some(wall.size),
                 ..default()
             },
-            Transform::from_xyz(wall.position.x, chunk_y + wall.position.y, 0.0)
+            Transform::from_xyz(wall.position.x, chunk_y + wall.position.y, depth::WALL)
                 .with_rotation(Quat::from_rotation_z(wall.rotation)),
             RigidBody::Static,
             Collider::rectangle(wall.size.x, wall.size.y),
@@ -608,15 +655,16 @@ pub fn spawn_next_chunk(
     for spawn in &selected.spawns {
         match spawn.spawn_type {
             SpawnType::Enemy => {
+                let (enemy_sprite_path, enemy_size) = enemy_visual_for_pacing(selected.pacing);
                 commands.spawn((
                     Enemy,
                     ChunkMember,
                     Sprite {
-                        color: Color::srgb(0.9, 0.1, 0.1),
-                        custom_size: Some(Vec2::new(30.0, 30.0)),
+                        image: asset_server.load(enemy_sprite_path),
+                        custom_size: Some(enemy_size),
                         ..default()
                     },
-                    Transform::from_xyz(spawn.position.x, chunk_y + spawn.position.y, 1.0),
+                    Transform::from_xyz(spawn.position.x, chunk_y + spawn.position.y, depth::ENEMY),
                     RigidBody::Dynamic,
                     Collider::circle(15.0),
                     CollisionLayers::new(
@@ -835,6 +883,7 @@ pub fn orient_player_to_cursor(
 
 pub fn player_shoot(
     mut commands: Commands,
+    asset_server: Res<AssetServer>,
     mouse: Res<ButtonInput<MouseButton>>,
     q_window: Query<&Window>,
     q_camera: Query<(&Camera, &GlobalTransform)>,
@@ -913,6 +962,12 @@ pub fn player_shoot(
                 LinearVelocity(direction * resolved_stats.speed),
                 Visibility::Visible,
                 RigidBody::Dynamic,
+                Sprite {
+                    image: asset_server.load(ORB_SPRITE_PATH),
+                    color: element_trail_color(loadout.element),
+                    custom_size: Some(Vec2::splat((resolved_stats.radius * 5.0).max(12.0))),
+                    ..default()
+                },
                 KineticOrb {
                     active: true,
                     bounces_remaining: resolved_stats.bounces,

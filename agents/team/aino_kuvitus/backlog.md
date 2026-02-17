@@ -1,0 +1,9 @@
+# Aino Kuvitus Backlog
+
+| Ticket | Status | Execution Lane | Work Category |
+|---|---|---|---|
+| NB-A4-006 | IN_PROGRESS | LOCAL | ART_DIRECTION |
+| NB-A4-004 | COMPLETED | LOCAL | ART_DIRECTION |
+| NB-A4-003 | COMPLETED | LOCAL | ART_DIRECTION |
+| NB-A4-002 | COMPLETED | LOCAL | ART_DIRECTION |
+| NB-A4-001 | COMPLETED | LOCAL | ART_DIRECTION |
