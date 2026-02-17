@@ -86,7 +86,7 @@ fn setup_era_select(
         ))
         .with_children(|root| {
             root.spawn((
-                ImageNode::new(asset_server.load("ui/NewBackround.png")),
+                ImageNode::new(asset_server.load("ui/main_menu_bg_v2.png")),
                 Node {
                     position_type: PositionType::Absolute,
                     width: Val::Percent(100.0),

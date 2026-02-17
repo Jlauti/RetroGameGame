@@ -130,7 +130,7 @@ fn setup_menu(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn((
         MenuWorldElement,
         Sprite {
-            image: asset_server.load("ui/NewBackround.png"),
+            image: asset_server.load("ui/main_menu_bg_v2.png"),
             custom_size: Some(Vec2::new(1920.0, 1080.0)),
             ..default()
         },
