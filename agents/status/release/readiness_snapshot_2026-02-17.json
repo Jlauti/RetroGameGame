@@ -1,0 +1,955 @@
+{
+  "generated_at": "2026-02-17T18:20:11.458526+00:00",
+  "source_root": "/home/jl/git/RetroGameGame",
+  "tickets": [
+    {
+      "ticket_id": "NB-A1-001",
+      "owner_agent": "agent1",
+      "critical_path": "YES",
+      "declared_status": "READY_TO_MERGE",
+      "effective_status": "STALE_METADATA",
+      "base_effective_status": "IN_PROGRESS",
+      "lane": "LOCAL",
+      "latest_report_path": "/home/jl/git/RetroGameGame/agents/reports/agent1/NB-A1-001_task_report.md",
+      "qa_signoff_path": "/home/jl/git/RetroGameGame/agents/qa/NB-A1-001_qa_signoff.md",
+      "merge_manifest_path": null,
+      "latest_gate_job_id": null,
+      "evidence": [
+        "declared_status=READY_TO_MERGE",
+        "report_status=DONE",
+        "qa_result=PASS",
+        "conflict_count=1"
+      ],
+      "conflicts": [
+        "declared_status=READY_TO_MERGE is ahead of evidence_state=IN_PROGRESS"
+      ],
+      "last_activity_date": "2026-02-15T21:29:15.071666+00:00"
+    },
+    {
+      "ticket_id": "NB-A1-002",
+      "owner_agent": "agent1",
+      "critical_path": "NO",
+      "declared_status": "READY_TO_MERGE",
+      "effective_status": "STALE_METADATA",
+      "base_effective_status": "IN_PROGRESS",
+      "lane": "LOCAL",
+      "latest_report_path": "/home/jl/git/RetroGameGame/agents/reports/agent1/NB-A1-002_task_report.md",
+      "qa_signoff_path": "/home/jl/git/RetroGameGame/agents/qa/NB-A1-002_qa_signoff.md",
+      "merge_manifest_path": null,
+      "latest_gate_job_id": null,
+      "evidence": [
+        "declared_status=READY_TO_MERGE",
+        "report_status=COMPLETED",
+        "qa_result=PASS",
+        "conflict_count=1"
+      ],
+      "conflicts": [
+        "declared_status=READY_TO_MERGE is ahead of evidence_state=IN_PROGRESS"
+      ],
+      "last_activity_date": "2026-02-15T21:29:15.072362+00:00"
+    },
+    {
+      "ticket_id": "NB-A1-003",
+      "owner_agent": "agent1",
+      "critical_path": "NO",
+      "declared_status": "IN_PROGRESS",
+      "effective_status": "READY_FOR_QA",
+      "base_effective_status": "READY_FOR_QA",
+      "lane": "LOCAL",
+      "latest_report_path": "/home/jl/git/RetroGameGame/agents/reports/agent1/NB-A1-003_task_report.md",
+      "qa_signoff_path": null,
+      "merge_manifest_path": null,
+      "latest_gate_job_id": null,
+      "evidence": [
+        "declared_status=IN_PROGRESS",
+        "report_status=COMPLETED"
+      ],
+      "conflicts": [],
+      "last_activity_date": "2026-02-16T21:04:22.552449+00:00"
+    },
+    {
+      "ticket_id": "NB-A1-004",
+      "owner_agent": "agent1",
+      "critical_path": "NO",
+      "declared_status": "COMPLETED",
+      "effective_status": "READY_FOR_QA",
+      "base_effective_status": "READY_FOR_QA",
+      "lane": "LOCAL",
+      "latest_report_path": "/home/jl/git/RetroGameGame/agents/reports/agent1/NB-A1-004_task_report.md",
+      "qa_signoff_path": null,
+      "merge_manifest_path": null,
+      "latest_gate_job_id": null,
+      "evidence": [
+        "declared_status=COMPLETED",
+        "report_status=COMPLETED"
+      ],
+      "conflicts": [],
+      "last_activity_date": "2026-02-16T12:49:09.587090+00:00"
+    },
+    {
+      "ticket_id": "NB-A2-001",
+      "owner_agent": "agent2",
+      "critical_path": "YES",
+      "declared_status": "READY_TO_MERGE",
+      "effective_status": "STALE_METADATA",
+      "base_effective_status": "IN_PROGRESS",
+      "lane": "LOCAL",
+      "latest_report_path": "/home/jl/git/RetroGameGame/agents/reports/agent2/NB-A2-001_task_report.md",
+      "qa_signoff_path": "/home/jl/git/RetroGameGame/agents/qa/NB-A2-001_qa_signoff.md",
+      "merge_manifest_path": null,
+      "latest_gate_job_id": null,
+      "evidence": [
+        "declared_status=READY_TO_MERGE",
+        "report_status=COMPLETED",
+        "qa_result=PASS",
+        "conflict_count=1"
+      ],
+      "conflicts": [
+        "declared_status=READY_TO_MERGE is ahead of evidence_state=IN_PROGRESS"
+      ],
+      "last_activity_date": "2026-02-15T21:29:15.073340+00:00"
+    },
+    {
+      "ticket_id": "NB-A2-002",
+      "owner_agent": "agent2",
+      "critical_path": "YES",
+      "declared_status": "COMPLETED",
+      "effective_status": "IN_PROGRESS",
+      "base_effective_status": "IN_PROGRESS",
+      "lane": "LOCAL",
+      "latest_report_path": null,
+      "qa_signoff_path": null,
+      "merge_manifest_path": null,
+      "latest_gate_job_id": null,
+      "evidence": [
+        "declared_status=COMPLETED"
+      ],
+      "conflicts": [],
+      "last_activity_date": "2026-02-15T21:29:15.073711+00:00"
+    },
+    {
+      "ticket_id": "NB-A2-003",
+      "owner_agent": "agent2",
+      "critical_path": "YES",
+      "declared_status": "TODO",
+      "effective_status": "IN_PROGRESS",
+      "base_effective_status": "IN_PROGRESS",
+      "lane": "LOCAL",
+      "latest_report_path": null,
+      "qa_signoff_path": null,
+      "merge_manifest_path": null,
+      "latest_gate_job_id": null,
+      "evidence": [
+        "declared_status=TODO"
+      ],
+      "conflicts": [],
+      "last_activity_date": "2026-02-16T21:04:22.554300+00:00"
+    },
+    {
+      "ticket_id": "NB-A2-004",
+      "owner_agent": "agent2",
+      "critical_path": "NO",
+      "declared_status": "COMPLETED",
+      "effective_status": "IN_PROGRESS",
+      "base_effective_status": "IN_PROGRESS",
+      "lane": "JULES",
+      "latest_report_path": null,
+      "qa_signoff_path": null,
+      "merge_manifest_path": null,
+      "latest_gate_job_id": null,
+      "evidence": [
+        "declared_status=COMPLETED"
+      ],
+      "conflicts": [],
+      "last_activity_date": "2026-02-16T10:35:15.218287+00:00"
+    },
+    {
+      "ticket_id": "NB-A2-005",
+      "owner_agent": "agent2",
+      "critical_path": "NO",
+      "declared_status": "COMPLETED",
+      "effective_status": "IN_PROGRESS",
+      "base_effective_status": "IN_PROGRESS",
+      "lane": "JULES",
+      "latest_report_path": null,
+      "qa_signoff_path": null,
+      "merge_manifest_path": null,
+      "latest_gate_job_id": null,
+      "evidence": [
+        "declared_status=COMPLETED"
+      ],
+      "conflicts": [],
+      "last_activity_date": "2026-02-16T11:44:32.840645+00:00"
+    },
+    {
+      "ticket_id": "NB-A3-001",
+      "owner_agent": "agent3",
+      "critical_path": "YES",
+      "declared_status": "READY_FOR_QA",
+      "effective_status": "READY_FOR_QA",
+      "base_effective_status": "READY_FOR_QA",
+      "lane": "LOCAL",
+      "latest_report_path": "/home/jl/git/RetroGameGame/agents/reports/agent3/NB-A3-001_task_report.md",
+      "qa_signoff_path": "/home/jl/git/RetroGameGame/agents/qa/NB-A3-001_qa_signoff.md",
+      "merge_manifest_path": null,
+      "latest_gate_job_id": null,
+      "evidence": [
+        "declared_status=READY_FOR_QA",
+        "report_status=READY_FOR_REVIEW",
+        "qa_result=PASS"
+      ],
+      "conflicts": [],
+      "last_activity_date": "2026-02-15T21:29:15.074535+00:00"
+    },
+    {
+      "ticket_id": "NB-A3-002",
+      "owner_agent": "agent3",
+      "critical_path": "YES",
+      "declared_status": "IN_PROGRESS",
+      "effective_status": "IN_PROGRESS",
+      "base_effective_status": "IN_PROGRESS",
+      "lane": "LOCAL",
+      "latest_report_path": "/home/jl/git/RetroGameGame/agents/reports/agent3/NB-A3-002_task_report.md",
+      "qa_signoff_path": null,
+      "merge_manifest_path": null,
+      "latest_gate_job_id": null,
+      "evidence": [
+        "declared_status=IN_PROGRESS",
+        "report_status=READY_FOR_REVIEW"
+      ],
+      "conflicts": [],
+      "last_activity_date": "2026-02-16T21:04:22.556448+00:00"
+    },
+    {
+      "ticket_id": "NB-A4-001",
+      "owner_agent": "agent4",
+      "critical_path": "NO",
+      "declared_status": "READY_TO_MERGE",
+      "effective_status": "STALE_METADATA",
+      "base_effective_status": "IN_PROGRESS",
+      "lane": "LOCAL",
+      "latest_report_path": null,
+      "qa_signoff_path": "/home/jl/git/RetroGameGame/agents/qa/NB-A4-001_qa_signoff.md",
+      "merge_manifest_path": null,
+      "latest_gate_job_id": null,
+      "evidence": [
+        "declared_status=READY_TO_MERGE",
+        "qa_result=PASS",
+        "conflict_count=1"
+      ],
+      "conflicts": [
+        "declared_status=READY_TO_MERGE is ahead of evidence_state=IN_PROGRESS"
+      ],
+      "last_activity_date": "2026-02-15T21:29:15.075624+00:00"
+    },
+    {
+      "ticket_id": "NB-A4-002",
+      "owner_agent": "agent4",
+      "critical_path": "NO",
+      "declared_status": "READY_TO_MERGE",
+      "effective_status": "STALE_METADATA",
+      "base_effective_status": "IN_PROGRESS",
+      "lane": "LOCAL",
+      "latest_report_path": null,
+      "qa_signoff_path": "/home/jl/git/RetroGameGame/agents/qa/NB-A4-002_qa_signoff.md",
+      "merge_manifest_path": null,
+      "latest_gate_job_id": null,
+      "evidence": [
+        "declared_status=READY_TO_MERGE",
+        "qa_result=PASS",
+        "conflict_count=1"
+      ],
+      "conflicts": [
+        "declared_status=READY_TO_MERGE is ahead of evidence_state=IN_PROGRESS"
+      ],
+      "last_activity_date": "2026-02-15T21:29:15.076143+00:00"
+    },
+    {
+      "ticket_id": "NB-A4-003",
+      "owner_agent": "agent4",
+      "critical_path": "NO",
+      "declared_status": "READY_FOR_QA",
+      "effective_status": "READY_FOR_QA",
+      "base_effective_status": "READY_FOR_QA",
+      "lane": "LOCAL",
+      "latest_report_path": null,
+      "qa_signoff_path": null,
+      "merge_manifest_path": null,
+      "latest_gate_job_id": null,
+      "evidence": [
+        "declared_status=READY_FOR_QA"
+      ],
+      "conflicts": [],
+      "last_activity_date": "2026-02-15T21:29:15.076577+00:00"
+    },
+    {
+      "ticket_id": "NB-A4-004",
+      "owner_agent": "agent4",
+      "critical_path": "YES",
+      "declared_status": "IN_PROGRESS",
+      "effective_status": "IN_PROGRESS",
+      "base_effective_status": "IN_PROGRESS",
+      "lane": "LOCAL",
+      "latest_report_path": null,
+      "qa_signoff_path": "/home/jl/git/RetroGameGame/agents/qa/NB-A4-004_qa_signoff.md",
+      "merge_manifest_path": null,
+      "latest_gate_job_id": null,
+      "evidence": [
+        "declared_status=IN_PROGRESS",
+        "qa_result=PASS"
+      ],
+      "conflicts": [],
+      "last_activity_date": "2026-02-16T21:04:22.556448+00:00"
+    },
+    {
+      "ticket_id": "NB-A4-005",
+      "owner_agent": "agent4",
+      "critical_path": "YES",
+      "declared_status": "TODO",
+      "effective_status": "IN_PROGRESS",
+      "base_effective_status": "IN_PROGRESS",
+      "lane": "LOCAL",
+      "latest_report_path": null,
+      "qa_signoff_path": null,
+      "merge_manifest_path": null,
+      "latest_gate_job_id": null,
+      "evidence": [
+        "declared_status=TODO"
+      ],
+      "conflicts": [],
+      "last_activity_date": "2026-02-16T18:14:19.625701+00:00"
+    },
+    {
+      "ticket_id": "NB-A4-006",
+      "owner_agent": "agent4",
+      "critical_path": "NO",
+      "declared_status": "TODO",
+      "effective_status": "IN_PROGRESS",
+      "base_effective_status": "IN_PROGRESS",
+      "lane": "LOCAL",
+      "latest_report_path": null,
+      "qa_signoff_path": null,
+      "merge_manifest_path": null,
+      "latest_gate_job_id": null,
+      "evidence": [
+        "declared_status=TODO"
+      ],
+      "conflicts": [],
+      "last_activity_date": "2026-02-17T17:51:43.730767+00:00"
+    },
+    {
+      "ticket_id": "NB-A5-001",
+      "owner_agent": "agent5",
+      "critical_path": "YES",
+      "declared_status": "READY_FOR_QA",
+      "effective_status": "READY_FOR_QA",
+      "base_effective_status": "READY_FOR_QA",
+      "lane": "LOCAL",
+      "latest_report_path": null,
+      "qa_signoff_path": "/home/jl/git/RetroGameGame/agents/qa/NB-A5-001_qa_signoff.md",
+      "merge_manifest_path": null,
+      "latest_gate_job_id": null,
+      "evidence": [
+        "declared_status=READY_FOR_QA",
+        "qa_result=PASS"
+      ],
+      "conflicts": [],
+      "last_activity_date": "2026-02-15T21:29:15.077469+00:00"
+    },
+    {
+      "ticket_id": "NB-A5-002",
+      "owner_agent": "agent5",
+      "critical_path": "YES",
+      "declared_status": "READY_FOR_QA",
+      "effective_status": "READY_FOR_QA",
+      "base_effective_status": "READY_FOR_QA",
+      "lane": "LOCAL",
+      "latest_report_path": null,
+      "qa_signoff_path": null,
+      "merge_manifest_path": null,
+      "latest_gate_job_id": null,
+      "evidence": [
+        "declared_status=READY_FOR_QA"
+      ],
+      "conflicts": [],
+      "last_activity_date": "2026-02-15T21:29:15.077720+00:00"
+    },
+    {
+      "ticket_id": "NB-A5-003",
+      "owner_agent": "agent5",
+      "critical_path": "NO",
+      "declared_status": "COMPLETED",
+      "effective_status": "IN_PROGRESS",
+      "base_effective_status": "IN_PROGRESS",
+      "lane": "JULES",
+      "latest_report_path": null,
+      "qa_signoff_path": null,
+      "merge_manifest_path": null,
+      "latest_gate_job_id": null,
+      "evidence": [
+        "declared_status=COMPLETED"
+      ],
+      "conflicts": [],
+      "last_activity_date": "2026-02-16T10:35:18.782945+00:00"
+    },
+    {
+      "ticket_id": "NB-A5-004",
+      "owner_agent": "agent5",
+      "critical_path": "NO",
+      "declared_status": "COMPLETED",
+      "effective_status": "IN_PROGRESS",
+      "base_effective_status": "IN_PROGRESS",
+      "lane": "LOCAL",
+      "latest_report_path": null,
+      "qa_signoff_path": null,
+      "merge_manifest_path": null,
+      "latest_gate_job_id": null,
+      "evidence": [
+        "declared_status=COMPLETED"
+      ],
+      "conflicts": [],
+      "last_activity_date": "2026-02-16T12:04:23.780440+00:00"
+    },
+    {
+      "ticket_id": "NB-A5-005",
+      "owner_agent": "agent5",
+      "critical_path": "NO",
+      "declared_status": "IN_PROGRESS",
+      "effective_status": "IN_PROGRESS",
+      "base_effective_status": "IN_PROGRESS",
+      "lane": "JULES",
+      "latest_report_path": null,
+      "qa_signoff_path": null,
+      "merge_manifest_path": null,
+      "latest_gate_job_id": null,
+      "evidence": [
+        "declared_status=IN_PROGRESS"
+      ],
+      "conflicts": [],
+      "last_activity_date": "2026-02-16T12:19:41.224040+00:00"
+    },
+    {
+      "ticket_id": "NB-CX-002",
+      "owner_agent": "codex_worker2",
+      "critical_path": "YES",
+      "declared_status": "TODO",
+      "effective_status": "IN_PROGRESS",
+      "base_effective_status": "IN_PROGRESS",
+      "lane": "LOCAL",
+      "latest_report_path": null,
+      "qa_signoff_path": null,
+      "merge_manifest_path": null,
+      "latest_gate_job_id": null,
+      "evidence": [
+        "declared_status=TODO"
+      ],
+      "conflicts": [],
+      "last_activity_date": "2026-02-16T13:06:00.409484+00:00"
+    },
+    {
+      "ticket_id": "NB-CX-003",
+      "owner_agent": "codex_worker1",
+      "critical_path": "YES",
+      "declared_status": "TODO",
+      "effective_status": "IN_PROGRESS",
+      "base_effective_status": "IN_PROGRESS",
+      "lane": "LOCAL",
+      "latest_report_path": null,
+      "qa_signoff_path": null,
+      "merge_manifest_path": null,
+      "latest_gate_job_id": null,
+      "evidence": [
+        "declared_status=TODO"
+      ],
+      "conflicts": [],
+      "last_activity_date": "2026-02-16T16:39:08.249414+00:00"
+    },
+    {
+      "ticket_id": "NB-CX-004",
+      "owner_agent": "codex_worker2",
+      "critical_path": "YES",
+      "declared_status": "TODO",
+      "effective_status": "IN_PROGRESS",
+      "base_effective_status": "IN_PROGRESS",
+      "lane": "LOCAL",
+      "latest_report_path": null,
+      "qa_signoff_path": null,
+      "merge_manifest_path": null,
+      "latest_gate_job_id": null,
+      "evidence": [
+        "declared_status=TODO"
+      ],
+      "conflicts": [],
+      "last_activity_date": "2026-02-16T16:39:22.006440+00:00"
+    },
+    {
+      "ticket_id": "NB-CX-005",
+      "owner_agent": "codex_worker1",
+      "critical_path": "YES",
+      "declared_status": "TODO",
+      "effective_status": "IN_PROGRESS",
+      "base_effective_status": "IN_PROGRESS",
+      "lane": "LOCAL",
+      "latest_report_path": null,
+      "qa_signoff_path": null,
+      "merge_manifest_path": "/home/jl/git/RetroGameGame/agents/merge/NB-CX-005_merge_manifest.md",
+      "latest_gate_job_id": "20260216T190950Z_ticket_NB-CX-005_476594_990939",
+      "evidence": [
+        "declared_status=TODO",
+        "merge_manifest_present=YES",
+        "ticket_gate_status=PASS"
+      ],
+      "conflicts": [],
+      "last_activity_date": "2026-02-16T21:38:10.980409+00:00"
+    },
+    {
+      "ticket_id": "NB-CX-006",
+      "owner_agent": "codex_worker2",
+      "critical_path": "YES",
+      "declared_status": "TODO",
+      "effective_status": "IN_PROGRESS",
+      "base_effective_status": "IN_PROGRESS",
+      "lane": "LOCAL",
+      "latest_report_path": null,
+      "qa_signoff_path": null,
+      "merge_manifest_path": "/home/jl/git/RetroGameGame/agents/merge/NB-CX-006_merge_manifest.md",
+      "latest_gate_job_id": "20260216T191031Z_ticket_NB-CX-006_482527_31914",
+      "evidence": [
+        "declared_status=TODO",
+        "merge_manifest_present=YES",
+        "ticket_gate_status=PASS"
+      ],
+      "conflicts": [],
+      "last_activity_date": "2026-02-16T21:38:10.980137+00:00"
+    },
+    {
+      "ticket_id": "NB-CX-007",
+      "owner_agent": "codex_worker1",
+      "critical_path": "YES",
+      "declared_status": "TODO",
+      "effective_status": "READY_FOR_MERGE",
+      "base_effective_status": "READY_FOR_MERGE",
+      "lane": "LOCAL",
+      "latest_report_path": null,
+      "qa_signoff_path": "/home/jl/git/RetroGameGame/agents/qa/NB-CX-007_qa_signoff.md",
+      "merge_manifest_path": "/home/jl/git/RetroGameGame/agents/merge/NB-CX-007_merge_manifest.md",
+      "latest_gate_job_id": "20260216T212034Z_merge_NB-CX-007_684278_834637",
+      "evidence": [
+        "declared_status=TODO",
+        "qa_result=PASS",
+        "merge_manifest_present=YES",
+        "ticket_gate_status=PASS"
+      ],
+      "conflicts": [],
+      "last_activity_date": "2026-02-16T21:31:20.773482+00:00"
+    },
+    {
+      "ticket_id": "NB-CX-008",
+      "owner_agent": "codex_worker2",
+      "critical_path": "YES",
+      "declared_status": "TODO",
+      "effective_status": "READY_FOR_MERGE",
+      "base_effective_status": "READY_FOR_MERGE",
+      "lane": "LOCAL",
+      "latest_report_path": null,
+      "qa_signoff_path": "/home/jl/git/RetroGameGame/agents/qa/NB-CX-008_qa_signoff.md",
+      "merge_manifest_path": "/home/jl/git/RetroGameGame/agents/merge/NB-CX-008_merge_manifest.md",
+      "latest_gate_job_id": "20260216T204556Z_ticket_NB-CX-008_610532_756077",
+      "evidence": [
+        "declared_status=TODO",
+        "qa_result=PASS",
+        "merge_manifest_present=YES",
+        "ticket_gate_status=PASS"
+      ],
+      "conflicts": [],
+      "last_activity_date": "2026-02-16T21:31:29.033528+00:00"
+    },
+    {
+      "ticket_id": "NB-CX-009",
+      "owner_agent": "codex_worker1",
+      "critical_path": "YES",
+      "declared_status": "READY_FOR_MERGE",
+      "effective_status": "READY_FOR_MERGE",
+      "base_effective_status": "READY_FOR_MERGE",
+      "lane": "LOCAL",
+      "latest_report_path": null,
+      "qa_signoff_path": "/home/jl/git/RetroGameGame/agents/qa/NB-CX-009_qa_signoff.md",
+      "merge_manifest_path": "/home/jl/git/RetroGameGame/agents/merge/NB-CX-009_merge_manifest.md",
+      "latest_gate_job_id": "20260217T174826Z_ticket_NB-CX-009_277877_506384",
+      "evidence": [
+        "declared_status=READY_FOR_MERGE",
+        "qa_result=PASS",
+        "merge_manifest_present=YES",
+        "merge_decision=PENDING",
+        "ticket_gate_status=PASS"
+      ],
+      "conflicts": [],
+      "last_activity_date": "2026-02-17T18:00:27.025877+00:00"
+    },
+    {
+      "ticket_id": "NB-CX-010",
+      "owner_agent": "codex_worker2",
+      "critical_path": "YES",
+      "declared_status": "READY_FOR_MERGE",
+      "effective_status": "READY_FOR_MERGE",
+      "base_effective_status": "READY_FOR_MERGE",
+      "lane": "LOCAL",
+      "latest_report_path": "/home/jl/git/RetroGameGame/agents/reports/codex_worker2/NB-CX-010_task_report.md",
+      "qa_signoff_path": "/home/jl/git/RetroGameGame/agents/qa/NB-CX-010_qa_signoff.md",
+      "merge_manifest_path": "/home/jl/git/RetroGameGame/agents/merge/NB-CX-010_merge_manifest.md",
+      "latest_gate_job_id": null,
+      "evidence": [
+        "declared_status=READY_FOR_MERGE",
+        "report_status=DONE",
+        "qa_result=PASS",
+        "merge_manifest_present=YES",
+        "merge_decision=PENDING",
+        "manifest_gate_status=PASS"
+      ],
+      "conflicts": [],
+      "last_activity_date": "2026-02-17T18:00:52.657525+00:00"
+    },
+    {
+      "ticket_id": "NB-CX-011",
+      "owner_agent": "codex_worker1",
+      "critical_path": "YES",
+      "declared_status": "READY_FOR_QA",
+      "effective_status": "READY_FOR_QA",
+      "base_effective_status": "READY_FOR_QA",
+      "lane": "LOCAL",
+      "latest_report_path": null,
+      "qa_signoff_path": null,
+      "merge_manifest_path": null,
+      "latest_gate_job_id": null,
+      "evidence": [
+        "declared_status=READY_FOR_QA"
+      ],
+      "conflicts": [],
+      "last_activity_date": "2026-02-17T18:18:54.718266+00:00"
+    },
+    {
+      "ticket_id": "NB-FIX-001",
+      "owner_agent": "agent2",
+      "critical_path": "YES",
+      "declared_status": "READY_TO_MERGE",
+      "effective_status": "STALE_METADATA",
+      "base_effective_status": "IN_PROGRESS",
+      "lane": "LOCAL",
+      "latest_report_path": null,
+      "qa_signoff_path": "/home/jl/git/RetroGameGame/agents/qa/NB-FIX-001_qa_signoff.md",
+      "merge_manifest_path": null,
+      "latest_gate_job_id": null,
+      "evidence": [
+        "declared_status=READY_TO_MERGE",
+        "qa_result=PASS",
+        "conflict_count=1"
+      ],
+      "conflicts": [
+        "declared_status=READY_TO_MERGE is ahead of evidence_state=IN_PROGRESS"
+      ],
+      "last_activity_date": "2026-02-15T21:29:15.078344+00:00"
+    },
+    {
+      "ticket_id": "NB-QA-001",
+      "owner_agent": "qa",
+      "critical_path": "NO",
+      "declared_status": "DONE",
+      "effective_status": "READY_FOR_QA",
+      "base_effective_status": "READY_FOR_QA",
+      "lane": "LOCAL",
+      "latest_report_path": "/home/jl/git/RetroGameGame/agents/reports/qa/NB-QA-001_task_report.md",
+      "qa_signoff_path": null,
+      "merge_manifest_path": null,
+      "latest_gate_job_id": null,
+      "evidence": [
+        "declared_status=DONE",
+        "report_status=DONE"
+      ],
+      "conflicts": [],
+      "last_activity_date": "2026-02-15T21:29:15.078664+00:00"
+    },
+    {
+      "ticket_id": "NB-QA-002",
+      "owner_agent": "qa",
+      "critical_path": "NO",
+      "declared_status": "DONE",
+      "effective_status": "READY_FOR_QA",
+      "base_effective_status": "READY_FOR_QA",
+      "lane": "LOCAL",
+      "latest_report_path": "/home/jl/git/RetroGameGame/agents/reports/qa/NB-QA-002_task_report.md",
+      "qa_signoff_path": null,
+      "merge_manifest_path": null,
+      "latest_gate_job_id": null,
+      "evidence": [
+        "declared_status=DONE",
+        "report_status=DONE"
+      ],
+      "conflicts": [],
+      "last_activity_date": "2026-02-15T21:29:15.078974+00:00"
+    },
+    {
+      "ticket_id": "NB-QA-003",
+      "owner_agent": "qa",
+      "critical_path": "NO",
+      "declared_status": "DONE",
+      "effective_status": "READY_FOR_QA",
+      "base_effective_status": "READY_FOR_QA",
+      "lane": "LOCAL",
+      "latest_report_path": "/home/jl/git/RetroGameGame/agents/reports/qa/NB-QA-003_task_report.md",
+      "qa_signoff_path": null,
+      "merge_manifest_path": null,
+      "latest_gate_job_id": null,
+      "evidence": [
+        "declared_status=DONE",
+        "report_status=DONE"
+      ],
+      "conflicts": [],
+      "last_activity_date": "2026-02-15T21:29:15.079280+00:00"
+    },
+    {
+      "ticket_id": "NB-QA-004",
+      "owner_agent": "qa",
+      "critical_path": "YES",
+      "declared_status": "DONE",
+      "effective_status": "READY_FOR_QA",
+      "base_effective_status": "READY_FOR_QA",
+      "lane": "LOCAL",
+      "latest_report_path": "/home/jl/git/RetroGameGame/agents/reports/qa/NB-QA-004_task_report.md",
+      "qa_signoff_path": null,
+      "merge_manifest_path": null,
+      "latest_gate_job_id": null,
+      "evidence": [
+        "declared_status=DONE",
+        "report_status=DONE"
+      ],
+      "conflicts": [],
+      "last_activity_date": "2026-02-15T21:29:15.079515+00:00"
+    },
+    {
+      "ticket_id": "NB-QA-005",
+      "owner_agent": "qa",
+      "critical_path": "YES",
+      "declared_status": "DONE",
+      "effective_status": "READY_FOR_QA",
+      "base_effective_status": "READY_FOR_QA",
+      "lane": "LOCAL",
+      "latest_report_path": "/home/jl/git/RetroGameGame/agents/reports/qa/NB-QA-005_task_report.md",
+      "qa_signoff_path": null,
+      "merge_manifest_path": null,
+      "latest_gate_job_id": null,
+      "evidence": [
+        "declared_status=DONE",
+        "report_status=DONE"
+      ],
+      "conflicts": [],
+      "last_activity_date": "2026-02-15T21:29:15.079728+00:00"
+    },
+    {
+      "ticket_id": "NB-QA-006",
+      "owner_agent": "qa",
+      "critical_path": "NO",
+      "declared_status": "DONE",
+      "effective_status": "READY_FOR_QA",
+      "base_effective_status": "READY_FOR_QA",
+      "lane": "LOCAL",
+      "latest_report_path": "/home/jl/git/RetroGameGame/agents/reports/qa/NB-QA-006_task_report.md",
+      "qa_signoff_path": null,
+      "merge_manifest_path": null,
+      "latest_gate_job_id": null,
+      "evidence": [
+        "declared_status=DONE",
+        "report_status=DONE"
+      ],
+      "conflicts": [],
+      "last_activity_date": "2026-02-15T21:29:15.079990+00:00"
+    },
+    {
+      "ticket_id": "NB-QA-007",
+      "owner_agent": "qa",
+      "critical_path": "NO",
+      "declared_status": "DONE",
+      "effective_status": "READY_FOR_QA",
+      "base_effective_status": "READY_FOR_QA",
+      "lane": "LOCAL",
+      "latest_report_path": "/home/jl/git/RetroGameGame/agents/reports/qa/NB-QA-007_task_report.md",
+      "qa_signoff_path": null,
+      "merge_manifest_path": null,
+      "latest_gate_job_id": null,
+      "evidence": [
+        "declared_status=DONE",
+        "report_status=DONE"
+      ],
+      "conflicts": [],
+      "last_activity_date": "2026-02-15T21:29:15.080248+00:00"
+    },
+    {
+      "ticket_id": "NB-QA-008",
+      "owner_agent": "qa",
+      "critical_path": "YES",
+      "declared_status": "DONE",
+      "effective_status": "READY_FOR_QA",
+      "base_effective_status": "READY_FOR_QA",
+      "lane": "LOCAL",
+      "latest_report_path": "/home/jl/git/RetroGameGame/agents/reports/qa/NB-QA-008_task_report.md",
+      "qa_signoff_path": null,
+      "merge_manifest_path": null,
+      "latest_gate_job_id": null,
+      "evidence": [
+        "declared_status=DONE",
+        "report_status=DONE"
+      ],
+      "conflicts": [],
+      "last_activity_date": "2026-02-15T21:29:15.080463+00:00"
+    },
+    {
+      "ticket_id": "NB-QA-009",
+      "owner_agent": "qa",
+      "critical_path": "YES",
+      "declared_status": "DONE",
+      "effective_status": "READY_FOR_QA",
+      "base_effective_status": "READY_FOR_QA",
+      "lane": "LOCAL",
+      "latest_report_path": "/home/jl/git/RetroGameGame/agents/reports/qa/NB-QA-009_task_report.md",
+      "qa_signoff_path": null,
+      "merge_manifest_path": null,
+      "latest_gate_job_id": null,
+      "evidence": [
+        "declared_status=DONE",
+        "report_status=DONE"
+      ],
+      "conflicts": [],
+      "last_activity_date": "2026-02-15T21:29:15.080682+00:00"
+    },
+    {
+      "ticket_id": "NB-QA-010",
+      "owner_agent": "qa",
+      "critical_path": "YES",
+      "declared_status": "TODO",
+      "effective_status": "READY_FOR_QA",
+      "base_effective_status": "READY_FOR_QA",
+      "lane": "LOCAL",
+      "latest_report_path": "/home/jl/git/RetroGameGame/agents/reports/qa/NB-QA-010_task_report.md",
+      "qa_signoff_path": null,
+      "merge_manifest_path": null,
+      "latest_gate_job_id": null,
+      "evidence": [
+        "declared_status=TODO",
+        "report_status=DONE"
+      ],
+      "conflicts": [],
+      "last_activity_date": "2026-02-16T21:04:22.556448+00:00"
+    },
+    {
+      "ticket_id": "NB-QA-011",
+      "owner_agent": "qa",
+      "critical_path": "YES",
+      "declared_status": "IN_PROGRESS",
+      "effective_status": "IN_PROGRESS",
+      "base_effective_status": "IN_PROGRESS",
+      "lane": "LOCAL",
+      "latest_report_path": null,
+      "qa_signoff_path": null,
+      "merge_manifest_path": null,
+      "latest_gate_job_id": null,
+      "evidence": [
+        "declared_status=IN_PROGRESS"
+      ],
+      "conflicts": [],
+      "last_activity_date": "2026-02-16T13:09:20.165090+00:00"
+    },
+    {
+      "ticket_id": "NB-QA-012",
+      "owner_agent": "qa",
+      "critical_path": "YES",
+      "declared_status": "IN_PROGRESS",
+      "effective_status": "READY_FOR_QA",
+      "base_effective_status": "READY_FOR_QA",
+      "lane": "LOCAL",
+      "latest_report_path": "/home/jl/git/RetroGameGame/agents/reports/qa/NB-QA-012_task_report.md",
+      "qa_signoff_path": null,
+      "merge_manifest_path": null,
+      "latest_gate_job_id": null,
+      "evidence": [
+        "declared_status=IN_PROGRESS",
+        "report_status=DONE"
+      ],
+      "conflicts": [],
+      "last_activity_date": "2026-02-16T20:57:11.798763+00:00"
+    },
+    {
+      "ticket_id": "NB-QA-013",
+      "owner_agent": "qa",
+      "critical_path": "YES",
+      "declared_status": "TODO",
+      "effective_status": "READY_FOR_QA",
+      "base_effective_status": "READY_FOR_QA",
+      "lane": "LOCAL",
+      "latest_report_path": "/home/jl/git/RetroGameGame/agents/reports/qa/NB-QA-013_task_report.md",
+      "qa_signoff_path": null,
+      "merge_manifest_path": null,
+      "latest_gate_job_id": null,
+      "evidence": [
+        "declared_status=TODO",
+        "report_status=DONE"
+      ],
+      "conflicts": [],
+      "last_activity_date": "2026-02-16T20:57:23.992841+00:00"
+    },
+    {
+      "ticket_id": "NB-QA-014",
+      "owner_agent": "qa",
+      "critical_path": "YES",
+      "declared_status": "DONE",
+      "effective_status": "READY_FOR_QA",
+      "base_effective_status": "READY_FOR_QA",
+      "lane": "LOCAL",
+      "latest_report_path": "/home/jl/git/RetroGameGame/agents/reports/qa/NB-QA-014_task_report.md",
+      "qa_signoff_path": null,
+      "merge_manifest_path": null,
+      "latest_gate_job_id": null,
+      "evidence": [
+        "declared_status=DONE",
+        "report_status=DONE"
+      ],
+      "conflicts": [],
+      "last_activity_date": "2026-02-17T17:54:23.624106+00:00"
+    },
+    {
+      "ticket_id": "NB-QA-015",
+      "owner_agent": "qa",
+      "critical_path": "YES",
+      "declared_status": "DONE",
+      "effective_status": "READY_FOR_QA",
+      "base_effective_status": "READY_FOR_QA",
+      "lane": "LOCAL",
+      "latest_report_path": "/home/jl/git/RetroGameGame/agents/reports/qa/NB-QA-015_task_report.md",
+      "qa_signoff_path": null,
+      "merge_manifest_path": null,
+      "latest_gate_job_id": null,
+      "evidence": [
+        "declared_status=DONE",
+        "report_status=DONE"
+      ],
+      "conflicts": [],
+      "last_activity_date": "2026-02-17T17:55:35.607524+00:00"
+    },
+    {
+      "ticket_id": "NB-QA-016",
+      "owner_agent": "qa",
+      "critical_path": "YES",
+      "declared_status": "TODO",
+      "effective_status": "IN_PROGRESS",
+      "base_effective_status": "IN_PROGRESS",
+      "lane": "LOCAL",
+      "latest_report_path": null,
+      "qa_signoff_path": null,
+      "merge_manifest_path": null,
+      "latest_gate_job_id": null,
+      "evidence": [
+        "declared_status=TODO"
+      ],
+      "conflicts": [],
+      "last_activity_date": "2026-02-17T18:19:02.049450+00:00"
+    }
+  ]
+}

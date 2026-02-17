@@ -1,0 +1,6 @@
+{
+  "player_ship": "sprites/future/nebula_bouncer/sprite_player_ship.png",
+  "kinetic_orb": "sprites/future/nebula_bouncer/sprite_player_orb.png",
+  "enemy_default": "sprites/future/nebula_bouncer/sprite_enemy_scout.png",
+  "wall_tile": "sprites/future/nebula_bouncer/sprite_wall_tile.png"
+}
