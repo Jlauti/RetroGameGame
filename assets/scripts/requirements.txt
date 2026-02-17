@@ -1,0 +1,5 @@
+# Asset pipeline Python dependencies
+Pillow>=10.0,<12
+numpy>=1.26,<3
+# Optional but recommended: enables morphology cleanup in slice_spritesheet.py
+opencv-python>=4.9,<5

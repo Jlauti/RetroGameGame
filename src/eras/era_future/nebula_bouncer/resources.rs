@@ -1,9 +1,84 @@
 use bevy::prelude::*;
+use serde::{Deserialize, Serialize};
+use std::fs;
+use std::path::PathBuf;
 
 use crate::eras::era_future::nebula_bouncer::components::{OrbElement, OrbModifier};
 use crate::eras::era_future::nebula_bouncer::procgen::{
     ProcgenPreflightSummary, ValidationCounters,
 };
+
+const SPRITE_ORIENTATION_CONFIG_REL_PATH: &str =
+    "specs/future/nebula_bouncer/sprite_orientation.json";
+
+#[derive(Resource, Clone, Copy, Debug, Serialize, Deserialize)]
+#[serde(default)]
+pub struct SpriteOrientationConfig {
+    pub player_forward_offset_deg: f32,
+    pub orb_forward_offset_deg: f32,
+    pub enemy_forward_offset_deg: f32,
+}
+
+impl Default for SpriteOrientationConfig {
+    fn default() -> Self {
+        Self {
+            // Default assumes source art points up (north) at zero rotation.
+            player_forward_offset_deg: -90.0,
+            orb_forward_offset_deg: -90.0,
+            enemy_forward_offset_deg: -90.0,
+        }
+    }
+}
+
+impl SpriteOrientationConfig {
+    pub fn player_forward_offset_radians(self) -> f32 {
+        self.player_forward_offset_deg.to_radians()
+    }
+
+    pub fn orb_forward_offset_radians(self) -> f32 {
+        self.orb_forward_offset_deg.to_radians()
+    }
+
+    pub fn enemy_forward_offset_radians(self) -> f32 {
+        self.enemy_forward_offset_deg.to_radians()
+    }
+}
+
+pub fn load_sprite_orientation_config() -> SpriteOrientationConfig {
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(SPRITE_ORIENTATION_CONFIG_REL_PATH);
+    let fallback = SpriteOrientationConfig::default();
+
+    let raw = match fs::read_to_string(&path) {
+        Ok(raw) => raw,
+        Err(err) => {
+            warn!(
+                "Sprite orientation config missing at {:?} ({err}); using defaults",
+                path
+            );
+            return fallback;
+        }
+    };
+
+    match serde_json::from_str::<SpriteOrientationConfig>(&raw) {
+        Ok(config) => {
+            info!(
+                "Loaded sprite orientation config from {:?}: player={:.1}deg orb={:.1}deg enemy={:.1}deg",
+                path,
+                config.player_forward_offset_deg,
+                config.orb_forward_offset_deg,
+                config.enemy_forward_offset_deg
+            );
+            config
+        }
+        Err(err) => {
+            warn!(
+                "Failed to parse sprite orientation config at {:?} ({err}); using defaults",
+                path
+            );
+            fallback
+        }
+    }
+}
 
 #[derive(Resource, Default)]
 pub struct KineticOrbPool {

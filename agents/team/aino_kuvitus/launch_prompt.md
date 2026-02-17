@@ -17,8 +17,10 @@ Rules:
 4. Prioritize in-game readability over concept-art detail.
 5. Do not use white-background prompts; require transparent background or chroma key.
 6. Enforce top-down orientation (facing up/north); reject diagonal/isometric outputs.
-7. Run `python assets/scripts/check_bg.py /home/jl/git/RetroGameGame/assets/sprites/future/nebula_bouncer --strict` before report.
-8. If any Cargo command is needed, use `cargo-safe` by default.
+7. Use `/home/jl/git/RetroGameGame/agents/art/reviews/NB-A4-006_review_loop.md` as the mandatory review loop.
+8. Record `orientation_offset_deg` per canonical sprite in review metadata.
+9. Run `python assets/scripts/check_bg.py /home/jl/git/RetroGameGame/assets/sprites/future/nebula_bouncer --strict` before report.
+10. If any Cargo command is needed, use `cargo-safe` by default.
 
 Output:
 

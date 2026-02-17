@@ -64,6 +64,32 @@ If sprites are being cut incorrectly or noise is included:
 *   **Min Area**: Increase `--min-area` (default is 64) in `generate_assets.py`.
 *   **Background Color**: The script auto-detects background colors. If it fails, you can manually specify colors in the underlying `slice_spritesheet.py` call.
 
+## 4. Review + Metadata (Nebula)
+
+For Nebula gameplay assets, enforce human-in-the-loop review with metadata:
+
+```bash
+python3 assets/scripts/sprite_inspector.py init \
+  --root assets/sprites/future/nebula_bouncer \
+  --metadata agents/art/reviews/NB-A4-006_sprite_metadata.json
+
+python3 assets/scripts/sprite_inspector.py render \
+  --metadata agents/art/reviews/NB-A4-006_sprite_metadata.json \
+  --output agents/art/reviews/NB-A4-006_sprite_inspector.html
+
+python3 assets/scripts/check_bg.py assets/sprites/future/nebula_bouncer --strict
+```
+
+Required metadata fields for canonical runtime sprites:
+
+- `pivot`
+- `facing`
+- `orientation_offset_deg`
+
+`orientation_offset_deg` maps directly to runtime config in:
+
+- `specs/future/nebula_bouncer/sprite_orientation.json`
+
 ## Directory Structure
 
 ```

@@ -15,3 +15,4 @@
 - Enforce top-down orientation and reject diagonal/isometric bias.
 - Always run strict background validator before handoff.
 - Include per-sprite metadata to reduce integration churn.
+- Follow review loop: `/home/jl/git/RetroGameGame/agents/art/reviews/NB-A4-006_review_loop.md`.

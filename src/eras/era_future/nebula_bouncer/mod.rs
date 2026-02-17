@@ -41,6 +41,7 @@ impl Plugin for NebulaBouncerPlugin {
             .insert_resource(ProcgenValidatorTelemetry::default())
             .insert_resource(ChunkLibrary::default())
             .insert_resource(ProcGenState::default())
+            .insert_resource(load_sprite_orientation_config())
             .init_resource::<ActiveLoadout>()
             .init_resource::<OrbSynergyMatrix>()
             .init_resource::<CameraFeedbackSettings>()

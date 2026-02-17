@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "ticket_id": "NB-A4-006",
+  "generated_at": "2026-02-17T00:00:00Z",
+  "entries": [
+    {
+      "filename": "sprite_player_ship.png",
+      "class": "player",
+      "usage": "player ship sprite",
+      "status": "PENDING",
+      "pivot": "center",
+      "facing": "up",
+      "orientation_offset_deg": -90.0,
+      "notes": ""
+    },
+    {
+      "filename": "sprite_enemy_scout.png",
+      "class": "enemy_scout",
+      "usage": "fast/light enemy sprite",
+      "status": "PENDING",
+      "pivot": "center",
+      "facing": "up",
+      "orientation_offset_deg": -90.0,
+      "notes": ""
+    },
+    {
+      "filename": "sprite_enemy_heavy.png",
+      "class": "enemy_heavy",
+      "usage": "heavy enemy sprite",
+      "status": "PENDING",
+      "pivot": "center",
+      "facing": "up",
+      "orientation_offset_deg": -90.0,
+      "notes": ""
+    },
+    {
+      "filename": "sprite_enemy_interceptor.png",
+      "class": "enemy_interceptor",
+      "usage": "interceptor enemy sprite",
+      "status": "PENDING",
+      "pivot": "center",
+      "facing": "up",
+      "orientation_offset_deg": -90.0,
+      "notes": ""
+    },
+    {
+      "filename": "sprite_wall_tile.png",
+      "class": "wall_tile",
+      "usage": "wall tile texture",
+      "status": "PENDING",
+      "pivot": "center",
+      "facing": "up",
+      "orientation_offset_deg": 0.0,
+      "notes": ""
+    },
+    {
+      "filename": "sprite_ground_tile.png",
+      "class": "ground_tile",
+      "usage": "ground tile texture",
+      "status": "PENDING",
+      "pivot": "center",
+      "facing": "up",
+      "orientation_offset_deg": 0.0,
+      "notes": ""
+    },
+    {
+      "filename": "sprite_player_orb.png",
+      "class": "projectile_core",
+      "usage": "player projectile sprite",
+      "status": "PENDING",
+      "pivot": "center",
+      "facing": "up",
+      "orientation_offset_deg": -90.0,
+      "notes": ""
+    }
+  ]
+}

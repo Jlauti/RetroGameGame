@@ -2,8 +2,8 @@ use crate::eras::era_future::nebula_bouncer::components::*;
 use crate::eras::era_future::nebula_bouncer::procgen::*;
 use crate::eras::era_future::nebula_bouncer::resources::{
     ActiveLoadout, CameraFeedbackSettings, HitStop, KineticOrbPool, OrbSpawnStats,
-    OrbSynergyMatrix, ProcgenValidatorTelemetry, compute_hit_stop_duration, feedback_tuning,
-    next_shake_intensity, resolve_orb_spawn_stats,
+    OrbSynergyMatrix, ProcgenValidatorTelemetry, SpriteOrientationConfig,
+    compute_hit_stop_duration, feedback_tuning, next_shake_intensity, resolve_orb_spawn_stats,
 };
 use crate::shared::components::Health;
 use avian2d::prelude::*;
@@ -12,8 +12,6 @@ use bevy::prelude::*;
 use std::path::PathBuf;
 // use rand::prelude::*; // Use explicit random calls
 
-const SHIP_FORWARD_OFFSET_RADIANS: f32 = -std::f32::consts::FRAC_PI_2;
-const ORB_FORWARD_OFFSET_RADIANS: f32 = -std::f32::consts::FRAC_PI_2;
 const TELEMETRY_COOLDOWN_SECS: f32 = 0.25;
 const BASE_ORB_DAMAGE: f32 = 10.0;
 const BASE_ORB_SPEED: f32 = 500.0;
@@ -910,6 +908,7 @@ pub fn toggle_debug_asset_overlay(
 }
 
 pub fn update_debug_asset_overlay_text(
+    sprite_orientation: Res<SpriteOrientationConfig>,
     q_player: Query<&Sprite, With<PlayerShip>>,
     q_enemy: Query<&Sprite, With<Enemy>>,
     q_wall: Query<&Sprite, With<Wall>>,
@@ -967,15 +966,20 @@ player: {PLAYER_SPRITE_PATH} | size={player_size}\n\
 enemy(s): scout={ENEMY_SCOUT_SPRITE_PATH} heavy={ENEMY_HEAVY_SPRITE_PATH} interceptor={ENEMY_INTERCEPTOR_SPRITE_PATH} | sample_size={enemy_size} | count={enemy_count}\n\
 wall: {WALL_TILE_SPRITE_PATH} | sample_size={wall_size} | count={wall_count}\n\
 ground: {GROUND_TILE_SPRITE_PATH} | sample_size={ground_size} | count={ground_count}\n\
-orb: {ORB_SPRITE_PATH} | sample_size={orb_size} | count={orb_count}",
+orb: {ORB_SPRITE_PATH} | sample_size={orb_size} | count={orb_count}\n\
+orientation_offsets_deg: player={player_deg:.1} orb={orb_deg:.1} enemy={enemy_deg:.1}",
         enemy_count = q_enemy.iter().count(),
         wall_count = q_wall.iter().count(),
         ground_count = q_ground.iter().count(),
         orb_count = q_orb.iter().count(),
+        player_deg = sprite_orientation.player_forward_offset_deg,
+        orb_deg = sprite_orientation.orb_forward_offset_deg,
+        enemy_deg = sprite_orientation.enemy_forward_offset_deg,
     );
 }
 
 pub fn orient_player_to_cursor(
+    sprite_orientation: Res<SpriteOrientationConfig>,
     q_window: Query<&Window>,
     q_camera: Query<(&Camera, &GlobalTransform)>,
     mut q_player: Query<&mut Transform, With<PlayerShip>>,
@@ -995,7 +999,9 @@ pub fn orient_player_to_cursor(
 
     for mut player_transform in &mut q_player {
         let aim_dir = cursor_pos - player_transform.translation.truncate();
-        if let Some(angle) = facing_angle(aim_dir, SHIP_FORWARD_OFFSET_RADIANS) {
+        if let Some(angle) =
+            facing_angle(aim_dir, sprite_orientation.player_forward_offset_radians())
+        {
             player_transform.rotation = Quat::from_rotation_z(angle);
         }
     }
@@ -1011,6 +1017,7 @@ pub fn player_shoot(
     mut orb_pool: ResMut<KineticOrbPool>,
     loadout: Res<ActiveLoadout>,
     synergy_matrix: Res<OrbSynergyMatrix>,
+    sprite_orientation: Res<SpriteOrientationConfig>,
     q_enemies: Query<&Transform, With<Enemy>>,
 ) {
     if mouse.just_pressed(MouseButton::Left) {
@@ -1072,9 +1079,10 @@ pub fn player_shoot(
             let resolved_stats = resolve_orb_spawn_stats(base_stats, profile);
 
             // Spawn/Activate Orb
-            let orb_rotation = facing_angle(direction, ORB_FORWARD_OFFSET_RADIANS)
-                .map(Quat::from_rotation_z)
-                .unwrap_or_default();
+            let orb_rotation =
+                facing_angle(direction, sprite_orientation.orb_forward_offset_radians())
+                    .map(Quat::from_rotation_z)
+                    .unwrap_or_default();
             commands.entity(orb_entity).insert((
                 Collider::circle(resolved_stats.radius),
                 Transform::from_translation(player_transform.translation)
@@ -1115,13 +1123,18 @@ pub fn player_shoot(
     }
 }
 
-pub fn orient_orbs_to_velocity(mut query: Query<(&LinearVelocity, &mut Transform, &KineticOrb)>) {
+pub fn orient_orbs_to_velocity(
+    sprite_orientation: Res<SpriteOrientationConfig>,
+    mut query: Query<(&LinearVelocity, &mut Transform, &KineticOrb)>,
+) {
     for (velocity, mut transform, orb) in &mut query {
         if !orb.active {
             continue;
         }
 
-        if let Some(angle) = facing_angle(velocity.0, ORB_FORWARD_OFFSET_RADIANS) {
+        if let Some(angle) =
+            facing_angle(velocity.0, sprite_orientation.orb_forward_offset_radians())
+        {
             transform.rotation = Quat::from_rotation_z(angle);
         }
     }
