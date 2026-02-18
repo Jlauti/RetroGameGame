@@ -41,6 +41,8 @@ impl Plugin for NebulaBouncerPlugin {
             .insert_resource(ProcgenValidatorTelemetry::default())
             .insert_resource(ChunkLibrary::default())
             .insert_resource(ProcGenState::default())
+            .insert_resource(load_asset_manifest())
+            .insert_resource(load_chunk_assignment_profiles())
             .insert_resource(load_sprite_orientation_config())
             .init_resource::<ActiveLoadout>()
             .init_resource::<OrbSynergyMatrix>()
@@ -75,6 +77,7 @@ impl Plugin for NebulaBouncerPlugin {
                 player_shoot,
                 orient_orbs_to_velocity,
                 update_trails,
+                update_transient_vfx,
                 apply_shake,
                 update_hit_stop,
             )

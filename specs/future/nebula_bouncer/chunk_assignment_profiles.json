@@ -1,0 +1,32 @@
+{
+  "open": {
+    "enemy_weights": {
+      "scout": 0.72,
+      "interceptor": 0.2,
+      "heavy": 0.07,
+      "bulwark": 0.01
+    },
+    "terrain_theme": "standard",
+    "enemy_health_scale": 0.92
+  },
+  "transition": {
+    "enemy_weights": {
+      "scout": 0.35,
+      "interceptor": 0.45,
+      "heavy": 0.16,
+      "bulwark": 0.04
+    },
+    "terrain_theme": "cold",
+    "enemy_health_scale": 1.0
+  },
+  "dense": {
+    "enemy_weights": {
+      "scout": 0.1,
+      "interceptor": 0.28,
+      "heavy": 0.45,
+      "bulwark": 0.17
+    },
+    "terrain_theme": "hazard",
+    "enemy_health_scale": 1.2
+  }
+}

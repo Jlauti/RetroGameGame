@@ -1,9 +1,10 @@
 use crate::eras::era_future::nebula_bouncer::components::*;
 use crate::eras::era_future::nebula_bouncer::procgen::*;
 use crate::eras::era_future::nebula_bouncer::resources::{
-    ActiveLoadout, CameraFeedbackSettings, HitStop, KineticOrbPool, OrbSpawnStats,
-    OrbSynergyMatrix, ProcgenValidatorTelemetry, SpriteOrientationConfig,
-    compute_hit_stop_duration, feedback_tuning, next_shake_intensity, resolve_orb_spawn_stats,
+    ActiveLoadout, CameraFeedbackSettings, ChunkAssignmentProfiles, EnemyArchetype, HitStop,
+    KineticOrbPool, NebulaAssetManifest, OrbSpawnStats, OrbSynergyMatrix,
+    ProcgenValidatorTelemetry, SpriteOrientationConfig, TerrainTheme, compute_hit_stop_duration,
+    feedback_tuning, next_shake_intensity, resolve_orb_spawn_stats,
 };
 use crate::shared::components::Health;
 use avian2d::prelude::*;
@@ -23,28 +24,80 @@ const VOID_DOT_TICK_INTERVAL_SECS: f32 = 0.5;
 const PREFLIGHT_SUMMARY_REL_PATH: &str =
     "agents/deliverables/codex_worker2/NB-CX-006_preflight_summary.txt";
 const FEEDBACK_TELEMETRY_COOLDOWN_SECS: f32 = 0.35;
-const PLAYER_SPRITE_PATH: &str = "sprites/future/nebula_bouncer/sprite_player_ship.png";
-const WALL_TILE_SPRITE_PATH: &str = "sprites/future/nebula_bouncer/sprite_wall_tile.png";
-const GROUND_TILE_SPRITE_PATH: &str = "sprites/future/nebula_bouncer/sprite_ground_tile.png";
-const ORB_SPRITE_PATH: &str = "sprites/future/nebula_bouncer/sprite_player_orb.png";
-const ENEMY_SCOUT_SPRITE_PATH: &str = "sprites/future/nebula_bouncer/sprite_enemy_scout.png";
-const ENEMY_HEAVY_SPRITE_PATH: &str = "sprites/future/nebula_bouncer/sprite_enemy_heavy.png";
-const ENEMY_INTERCEPTOR_SPRITE_PATH: &str =
-    "sprites/future/nebula_bouncer/sprite_enemy_interceptor.png";
 const PLAYER_SPRITE_SIZE: Vec2 = Vec2::new(64.0, 64.0);
 const SCOUT_SPRITE_SIZE: Vec2 = Vec2::new(62.0, 62.0);
 const HEAVY_SPRITE_SIZE: Vec2 = Vec2::new(78.0, 78.0);
 const INTERCEPTOR_SPRITE_SIZE: Vec2 = Vec2::new(70.0, 70.0);
+const BULWARK_SPRITE_SIZE: Vec2 = Vec2::new(86.0, 86.0);
 const FLOOR_TILE_SIZE: Vec2 = Vec2::new(128.0, 128.0);
 const WALL_VISUAL_THICKNESS: f32 = 36.0;
 const WALL_SEGMENT_MAX_LENGTH: f32 = 96.0;
+const BASE_ENEMY_COLLIDER_RADIUS: f32 = 15.0;
+const ORB_VISUAL_SCALE: f32 = 5.0;
+const TRANSIENT_VFX_BASE_LIFETIME_SECS: f32 = 0.24;
+const TRANSIENT_VFX_BASE_SIZE: f32 = 70.0;
 
-fn enemy_visual_for_pacing(pacing: ChunkPacing) -> (&'static str, Vec2) {
-    match pacing {
-        ChunkPacing::Open => (ENEMY_SCOUT_SPRITE_PATH, SCOUT_SPRITE_SIZE),
-        ChunkPacing::Transition => (ENEMY_INTERCEPTOR_SPRITE_PATH, INTERCEPTOR_SPRITE_SIZE),
-        ChunkPacing::Dense => (ENEMY_HEAVY_SPRITE_PATH, HEAVY_SPRITE_SIZE),
+fn enemy_sprite_size(archetype: EnemyArchetype) -> Vec2 {
+    match archetype {
+        EnemyArchetype::Scout => SCOUT_SPRITE_SIZE,
+        EnemyArchetype::Interceptor => INTERCEPTOR_SPRITE_SIZE,
+        EnemyArchetype::Heavy => HEAVY_SPRITE_SIZE,
+        EnemyArchetype::Bulwark => BULWARK_SPRITE_SIZE,
     }
+}
+
+fn enemy_base_hp(archetype: EnemyArchetype) -> i32 {
+    match archetype {
+        EnemyArchetype::Scout => 42,
+        EnemyArchetype::Interceptor => 56,
+        EnemyArchetype::Heavy => 72,
+        EnemyArchetype::Bulwark => 95,
+    }
+}
+
+fn enemy_tint(archetype: EnemyArchetype, terrain_theme: TerrainTheme) -> Color {
+    match terrain_theme {
+        TerrainTheme::Standard => match archetype {
+            EnemyArchetype::Scout => Color::srgb(0.92, 0.98, 1.0),
+            EnemyArchetype::Interceptor => Color::srgb(1.0, 0.95, 0.84),
+            EnemyArchetype::Heavy => Color::srgb(1.0, 0.88, 0.82),
+            EnemyArchetype::Bulwark => Color::srgb(0.94, 0.92, 1.0),
+        },
+        TerrainTheme::Cold => match archetype {
+            EnemyArchetype::Scout => Color::srgb(0.82, 0.95, 1.0),
+            EnemyArchetype::Interceptor => Color::srgb(0.90, 0.96, 1.0),
+            EnemyArchetype::Heavy => Color::srgb(0.78, 0.91, 1.0),
+            EnemyArchetype::Bulwark => Color::srgb(0.75, 0.86, 1.0),
+        },
+        TerrainTheme::Hazard => match archetype {
+            EnemyArchetype::Scout => Color::srgb(1.0, 0.88, 0.82),
+            EnemyArchetype::Interceptor => Color::srgb(1.0, 0.84, 0.76),
+            EnemyArchetype::Heavy => Color::srgb(1.0, 0.76, 0.70),
+            EnemyArchetype::Bulwark => Color::srgb(1.0, 0.74, 0.66),
+        },
+    }
+}
+
+fn fold_seed(seed: u64, value: u64) -> u64 {
+    seed.wrapping_mul(0x9E37_79B9_7F4A_7C15).rotate_left(7) ^ value
+}
+
+fn assignment_seed(chunk: &ChunkSchema, spawn: &SpawnDef, chunk_y: f32, spawn_index: usize) -> u64 {
+    let pacing_tag = match chunk.pacing {
+        ChunkPacing::Open => 1u64,
+        ChunkPacing::Transition => 2u64,
+        ChunkPacing::Dense => 3u64,
+    };
+    let mut seed = fold_seed(0xCBF2_9CE4_8422_2325, spawn_index as u64);
+    seed = fold_seed(seed, chunk.height.to_bits() as u64);
+    seed = fold_seed(seed, chunk_y.to_bits() as u64);
+    seed = fold_seed(seed, spawn.position.x.to_bits() as u64);
+    seed = fold_seed(seed, spawn.position.y.to_bits() as u64);
+    seed = fold_seed(seed, pacing_tag);
+    for b in chunk.name.as_bytes() {
+        seed = fold_seed(seed, *b as u64);
+    }
+    seed
 }
 
 #[derive(Component)]
@@ -58,6 +111,12 @@ pub struct GroundVisual;
 
 #[derive(Component)]
 pub struct WallVisual;
+
+#[derive(Component)]
+pub struct TransientVfx {
+    ttl_secs: f32,
+    shrink_per_sec: f32,
+}
 
 fn facing_angle(direction: Vec2, forward_offset: f32) -> Option<f32> {
     if direction.length_squared() <= f32::EPSILON {
@@ -128,11 +187,38 @@ fn preflight_artifact_path() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(PREFLIGHT_SUMMARY_REL_PATH)
 }
 
+fn spawn_transient_vfx(
+    commands: &mut Commands,
+    asset_server: &AssetServer,
+    texture_path: &str,
+    at: Vec3,
+    color: Color,
+    size: f32,
+    ttl_secs: f32,
+) {
+    let lifetime = ttl_secs.max(0.05);
+    commands.spawn((
+        Sprite {
+            image: asset_server.load(texture_path.to_string()),
+            color,
+            custom_size: Some(Vec2::splat(size.max(4.0))),
+            ..default()
+        },
+        Transform::from_xyz(at.x, at.y, depth::PARTICLES),
+        TransientVfx {
+            ttl_secs: lifetime,
+            shrink_per_sec: (size.max(4.0) * 0.9) / lifetime,
+        },
+    ));
+}
+
 fn spawn_chunk_floor_tiles(
     commands: &mut Commands,
     asset_server: &AssetServer,
+    assets: &NebulaAssetManifest,
     chunk_center_y: f32,
     chunk_height: f32,
+    terrain_theme: TerrainTheme,
 ) {
     let tile_w = FLOOR_TILE_SIZE.x.max(8.0);
     let tile_h = FLOOR_TILE_SIZE.y.max(8.0);
@@ -149,7 +235,8 @@ fn spawn_chunk_floor_tiles(
                 ChunkMember,
                 GroundVisual,
                 Sprite {
-                    image: asset_server.load(GROUND_TILE_SPRITE_PATH),
+                    image: asset_server.load(assets.ground_tile.clone()),
+                    color: terrain_theme.floor_tint(),
                     custom_size: Some(FLOOR_TILE_SIZE),
                     ..default()
                 },
@@ -162,8 +249,10 @@ fn spawn_chunk_floor_tiles(
 fn spawn_wall_visual_segments(
     commands: &mut Commands,
     asset_server: &AssetServer,
+    assets: &NebulaAssetManifest,
     chunk_center_y: f32,
     wall: &WallDef,
+    terrain_theme: TerrainTheme,
 ) {
     let major_is_x = wall.size.x >= wall.size.y;
     let major_len = if major_is_x { wall.size.x } else { wall.size.y }.max(1.0);
@@ -192,7 +281,8 @@ fn spawn_wall_visual_segments(
             ChunkMember,
             WallVisual,
             Sprite {
-                image: asset_server.load(WALL_TILE_SPRITE_PATH),
+                image: asset_server.load(assets.wall_tile.clone()),
+                color: terrain_theme.wall_tint(),
                 custom_size: Some(sprite_size),
                 ..default()
             },
@@ -205,6 +295,8 @@ fn spawn_wall_visual_segments(
 pub fn setup_nebula_bouncer(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
+    asset_manifest: Res<NebulaAssetManifest>,
+    chunk_assignment_profiles: Res<ChunkAssignmentProfiles>,
     mut library: ResMut<ChunkLibrary>,
     mut procgen_state: ResMut<ProcGenState>,
     mut validator_telemetry: ResMut<ProcgenValidatorTelemetry>,
@@ -228,7 +320,7 @@ pub fn setup_nebula_bouncer(
         Restitution::new(0.5),
         Friction::new(0.1),
         Sprite {
-            image: asset_server.load(PLAYER_SPRITE_PATH),
+            image: asset_server.load(asset_manifest.player_ship.clone()),
             custom_size: Some(PLAYER_SPRITE_SIZE),
             ..default()
         },
@@ -449,6 +541,8 @@ pub fn setup_nebula_bouncer(
     spawn_next_chunk(
         &mut commands,
         &asset_server,
+        &asset_manifest,
+        &chunk_assignment_profiles,
         &mut procgen_state,
         &*library,
         &mut validator_telemetry,
@@ -458,6 +552,7 @@ pub fn setup_nebula_bouncer(
 pub fn spawn_orb_pool(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
+    asset_manifest: Res<NebulaAssetManifest>,
     mut orb_pool: ResMut<KineticOrbPool>,
 ) {
     let current_count = orb_pool.inactive.len() + orb_pool.active_count;
@@ -488,9 +583,9 @@ pub fn spawn_orb_pool(
                         color: element_trail_color(OrbElement::default()),
                     },
                     Sprite {
-                        image: asset_server.load(ORB_SPRITE_PATH),
+                        image: asset_server.load(asset_manifest.kinetic_orb.clone()),
                         color: element_trail_color(OrbElement::default()),
-                        custom_size: Some(Vec2::splat(BASE_ORB_RADIUS * 5.0)),
+                        custom_size: Some(Vec2::splat(BASE_ORB_RADIUS * ORB_VISUAL_SCALE)),
                         ..default()
                     },
                 ))
@@ -511,6 +606,7 @@ pub fn cleanup_orb_pool(
     q_orbs: Query<Entity, With<KineticOrb>>,
     q_player: Query<Entity, With<PlayerShip>>,
     q_overlay: Query<Entity, With<NebulaDebugOverlayRoot>>,
+    q_vfx: Query<Entity, With<TransientVfx>>,
 ) {
     // Optional: Despawn all orbs on exit to clean up memory
     for entity in q_orbs.iter() {
@@ -521,6 +617,9 @@ pub fn cleanup_orb_pool(
     }
     for entity in q_overlay.iter() {
         commands.entity(entity).despawn_children();
+        commands.entity(entity).despawn();
+    }
+    for entity in q_vfx.iter() {
         commands.entity(entity).despawn();
     }
     orb_pool.inactive.clear();
@@ -552,7 +651,9 @@ pub fn attach_screen_shake_to_cameras(
 pub fn handle_orb_collisions(
     mut commands: Commands,
     mut collision_events: MessageReader<CollisionStart>,
-    mut orbs: Query<(Entity, &mut KineticOrb)>,
+    asset_server: Res<AssetServer>,
+    asset_manifest: Res<NebulaAssetManifest>,
+    mut orbs: Query<(Entity, &mut KineticOrb, &Transform)>,
     mut orb_pool: ResMut<KineticOrbPool>,
     feedback_settings: Res<CameraFeedbackSettings>,
     mut shake: Query<&mut ScreenShake>,
@@ -574,7 +675,7 @@ pub fn handle_orb_collisions(
         };
 
         if let Some(entity) = orb_entity {
-            if let Ok((e, mut orb)) = orbs.get_mut(entity) {
+            if let Ok((e, mut orb, orb_transform)) = orbs.get_mut(entity) {
                 // Determine what we hit
                 let other = if entity == e1 { e2 } else { e1 };
 
@@ -582,6 +683,24 @@ pub fn handle_orb_collisions(
                 if let Ok((enemy_entity, mut hp, mut status_effects)) = enemies.get_mut(other) {
                     hp.damage(orb.damage as i32);
                     apply_enemy_status_effects(&mut status_effects, &orb);
+                    spawn_transient_vfx(
+                        &mut commands,
+                        &asset_server,
+                        &asset_manifest.vfx_impact_flash,
+                        orb_transform.translation,
+                        element_trail_color(orb.element),
+                        TRANSIENT_VFX_BASE_SIZE,
+                        TRANSIENT_VFX_BASE_LIFETIME_SECS,
+                    );
+                    spawn_transient_vfx(
+                        &mut commands,
+                        &asset_server,
+                        &asset_manifest.vfx_hit_ring,
+                        orb_transform.translation,
+                        Color::srgba(1.0, 1.0, 1.0, 0.82),
+                        TRANSIENT_VFX_BASE_SIZE * 1.2,
+                        TRANSIENT_VFX_BASE_LIFETIME_SECS * 1.15,
+                    );
 
                     // Trigger Hit Feedback
                     hit_stop.timer =
@@ -618,6 +737,15 @@ pub fn handle_orb_collisions(
                         );
                         s.decay = profile_tuning.shake_decay;
                     }
+                    spawn_transient_vfx(
+                        &mut commands,
+                        &asset_server,
+                        &asset_manifest.vfx_hit_ring,
+                        orb_transform.translation,
+                        Color::srgba(0.94, 0.98, 1.0, 0.7),
+                        TRANSIENT_VFX_BASE_SIZE * 0.9,
+                        TRANSIENT_VFX_BASE_LIFETIME_SECS * 0.85,
+                    );
                 }
 
                 if orb.bounces_remaining > 0 {
@@ -643,6 +771,8 @@ pub fn update_level_scrolling(
     time: Res<Time>,
     mut commands: Commands,
     asset_server: Res<AssetServer>,
+    asset_manifest: Res<NebulaAssetManifest>,
+    chunk_assignment_profiles: Res<ChunkAssignmentProfiles>,
     mut procgen_state: ResMut<ProcGenState>,
     library: Res<ChunkLibrary>,
     mut validator_telemetry: ResMut<ProcgenValidatorTelemetry>,
@@ -676,6 +806,8 @@ pub fn update_level_scrolling(
         spawn_next_chunk(
             &mut commands,
             &asset_server,
+            &asset_manifest,
+            &chunk_assignment_profiles,
             &mut procgen_state,
             &*library,
             &mut validator_telemetry,
@@ -686,6 +818,8 @@ pub fn update_level_scrolling(
 pub fn spawn_next_chunk(
     commands: &mut Commands,
     asset_server: &AssetServer,
+    asset_manifest: &NebulaAssetManifest,
+    assignment_profiles: &ChunkAssignmentProfiles,
     state: &mut ProcGenState,
     library: &ChunkLibrary,
     telemetry: &mut ProcgenValidatorTelemetry,
@@ -747,9 +881,18 @@ pub fn spawn_next_chunk(
 
     // Spawn the chunk
     let chunk_y = state.next_spawn_y + selected.height / 2.0;
+    let terrain_theme = assignment_profiles.terrain_theme_for(selected.pacing);
+    let health_scale = assignment_profiles.enemy_health_scale_for(selected.pacing);
 
     // Spawn floor as modular tiles instead of one stretched sprite.
-    spawn_chunk_floor_tiles(commands, asset_server, chunk_y, selected.height);
+    spawn_chunk_floor_tiles(
+        commands,
+        asset_server,
+        asset_manifest,
+        chunk_y,
+        selected.height,
+        terrain_theme,
+    );
 
     // Spawn walls
     for wall in &selected.walls {
@@ -765,30 +908,44 @@ pub fn spawn_next_chunk(
             CollisionLayers::new(GameLayer::Wall, [GameLayer::Projectile, GameLayer::Player]),
         ));
 
-        spawn_wall_visual_segments(commands, asset_server, chunk_y, wall);
+        spawn_wall_visual_segments(
+            commands,
+            asset_server,
+            asset_manifest,
+            chunk_y,
+            wall,
+            terrain_theme,
+        );
     }
 
     // Spawn ORE
-    for spawn in &selected.spawns {
+    for (spawn_index, spawn) in selected.spawns.iter().enumerate() {
         match spawn.spawn_type {
             SpawnType::Enemy => {
-                let (enemy_sprite_path, enemy_size) = enemy_visual_for_pacing(selected.pacing);
+                let seed = assignment_seed(selected, spawn, chunk_y, spawn_index);
+                let archetype = assignment_profiles.enemy_archetype_for(selected.pacing, seed);
+                let enemy_size = enemy_sprite_size(archetype);
+                let enemy_hp = ((enemy_base_hp(archetype) as f32) * health_scale)
+                    .round()
+                    .max(1.0) as i32;
                 commands.spawn((
                     Enemy,
                     ChunkMember,
                     Sprite {
-                        image: asset_server.load(enemy_sprite_path),
+                        image: asset_server
+                            .load(asset_manifest.enemy_sprite_for(archetype).to_string()),
+                        color: enemy_tint(archetype, terrain_theme),
                         custom_size: Some(enemy_size),
                         ..default()
                     },
                     Transform::from_xyz(spawn.position.x, chunk_y + spawn.position.y, depth::ENEMY),
                     RigidBody::Dynamic,
-                    Collider::circle(15.0),
+                    Collider::circle(BASE_ENEMY_COLLIDER_RADIUS),
                     CollisionLayers::new(
                         GameLayer::Enemy,
                         [GameLayer::Projectile, GameLayer::Player],
                     ),
-                    Health::new(50), // Enemy HP
+                    Health::new(enemy_hp),
                     EnemyStatusEffects::default(),
                 ));
             }
@@ -989,6 +1146,8 @@ pub fn toggle_debug_asset_overlay(
 }
 
 pub fn update_debug_asset_overlay_text(
+    asset_manifest: Res<NebulaAssetManifest>,
+    chunk_profiles: Res<ChunkAssignmentProfiles>,
     sprite_orientation: Res<SpriteOrientationConfig>,
     q_player: Query<&Sprite, With<PlayerShip>>,
     q_enemy: Query<&Sprite, With<Enemy>>,
@@ -1034,12 +1193,45 @@ pub fn update_debug_asset_overlay_text(
 
     **text = format!(
         "Nebula Asset Overlay (F12)\n\
-player: {PLAYER_SPRITE_PATH} | size={player_size}\n\
-enemy(s): scout={ENEMY_SCOUT_SPRITE_PATH} heavy={ENEMY_HEAVY_SPRITE_PATH} interceptor={ENEMY_INTERCEPTOR_SPRITE_PATH} | sample_size={enemy_size} | count={enemy_count}\n\
-wall: {WALL_TILE_SPRITE_PATH} | sample_size={wall_size} | count={wall_count}\n\
-ground: {GROUND_TILE_SPRITE_PATH} | sample_size={ground_size} | count={ground_count}\n\
-orb: {ORB_SPRITE_PATH} | sample_size={orb_size} | count={orb_count}\n\
+player: {player_path} | size={player_size}\n\
+enemy(s): scout={enemy_scout} interceptor={enemy_interceptor} heavy={enemy_heavy} bulwark={enemy_bulwark} | sample_size={enemy_size} | count={enemy_count}\n\
+wall: {wall_path} | sample_size={wall_size} | count={wall_count}\n\
+ground: {ground_path} | sample_size={ground_size} | count={ground_count}\n\
+orb: {orb_path} | sample_size={orb_size} | count={orb_count}\n\
+vfx: impact={vfx_impact} ring={vfx_ring}\n\
+assignment(open/tr/dense): {open_weights} / {transition_weights} / {dense_weights}\n\
 orientation_offsets_deg: player={player_deg:.1} orb={orb_deg:.1} enemy={enemy_deg:.1}",
+        player_path = asset_manifest.player_ship.as_str(),
+        enemy_scout = asset_manifest.enemy_scout.as_str(),
+        enemy_interceptor = asset_manifest.enemy_interceptor.as_str(),
+        enemy_heavy = asset_manifest.enemy_heavy.as_str(),
+        enemy_bulwark = asset_manifest.enemy_bulwark.as_str(),
+        wall_path = asset_manifest.wall_tile.as_str(),
+        ground_path = asset_manifest.ground_tile.as_str(),
+        orb_path = asset_manifest.kinetic_orb.as_str(),
+        vfx_impact = asset_manifest.vfx_impact_flash.as_str(),
+        vfx_ring = asset_manifest.vfx_hit_ring.as_str(),
+        open_weights = format!(
+            "s:{:.2} i:{:.2} h:{:.2} b:{:.2}",
+            chunk_profiles.open.enemy_weights.scout,
+            chunk_profiles.open.enemy_weights.interceptor,
+            chunk_profiles.open.enemy_weights.heavy,
+            chunk_profiles.open.enemy_weights.bulwark,
+        ),
+        transition_weights = format!(
+            "s:{:.2} i:{:.2} h:{:.2} b:{:.2}",
+            chunk_profiles.transition.enemy_weights.scout,
+            chunk_profiles.transition.enemy_weights.interceptor,
+            chunk_profiles.transition.enemy_weights.heavy,
+            chunk_profiles.transition.enemy_weights.bulwark,
+        ),
+        dense_weights = format!(
+            "s:{:.2} i:{:.2} h:{:.2} b:{:.2}",
+            chunk_profiles.dense.enemy_weights.scout,
+            chunk_profiles.dense.enemy_weights.interceptor,
+            chunk_profiles.dense.enemy_weights.heavy,
+            chunk_profiles.dense.enemy_weights.bulwark,
+        ),
         enemy_count = q_enemy.iter().count(),
         wall_count = q_wall.iter().count(),
         ground_count = q_ground.iter().count(),
@@ -1082,6 +1274,7 @@ pub fn orient_player_to_cursor(
 pub fn player_shoot(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
+    asset_manifest: Res<NebulaAssetManifest>,
     mouse: Res<ButtonInput<MouseButton>>,
     q_window: Query<&Window>,
     q_camera: Query<(&Camera, &GlobalTransform)>,
@@ -1163,9 +1356,11 @@ pub fn player_shoot(
                 Visibility::Visible,
                 RigidBody::Dynamic,
                 Sprite {
-                    image: asset_server.load(ORB_SPRITE_PATH),
+                    image: asset_server.load(asset_manifest.kinetic_orb.clone()),
                     color: element_trail_color(loadout.element),
-                    custom_size: Some(Vec2::splat((resolved_stats.radius * 5.0).max(12.0))),
+                    custom_size: Some(Vec2::splat(
+                        (resolved_stats.radius * ORB_VISUAL_SCALE).max(12.0),
+                    )),
                     ..default()
                 },
                 KineticOrb {
@@ -1235,6 +1430,30 @@ pub fn update_trails(
                     trail.color.with_alpha(i as f32 / trail.points.len() as f32),
                 );
             }
+        }
+    }
+}
+
+pub fn update_transient_vfx(
+    time: Res<Time>,
+    mut commands: Commands,
+    mut q_vfx: Query<(Entity, &mut TransientVfx, &mut Sprite)>,
+) {
+    let dt = time.delta_secs();
+    if dt <= 0.0 {
+        return;
+    }
+
+    for (entity, mut vfx, mut sprite) in &mut q_vfx {
+        vfx.ttl_secs -= dt;
+        if let Some(size) = sprite.custom_size.as_mut() {
+            let next = (size.x - vfx.shrink_per_sec * dt).max(2.0);
+            *size = Vec2::splat(next);
+        }
+        let alpha = (vfx.ttl_secs / TRANSIENT_VFX_BASE_LIFETIME_SECS).clamp(0.0, 1.0);
+        sprite.color = sprite.color.with_alpha(alpha);
+        if vfx.ttl_secs <= 0.0 {
+            commands.entity(entity).despawn();
         }
     }
 }

@@ -860,7 +860,7 @@ mod tests {
         ];
         match validate_softlock_constraints(&walls) {
             ValidationResult::Pass => assert!(false, "Should have failed due to sharp angle"),
-            ValidationResult::Fail(msg) => assert!(msg.contains("sharp angle")),
+            ValidationResult::Fail(msg) => assert!(msg.contains("Exit angle fail")),
         }
     }
 

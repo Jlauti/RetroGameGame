@@ -10,3 +10,5 @@ and rollout checklists tied to the Nebula Bouncer scaffolding.
 Runtime integration configs:
 
 - `/home/jl/git/RetroGameGame/specs/future/nebula_bouncer/sprite_orientation.json`
+- `/home/jl/git/RetroGameGame/specs/future/nebula_bouncer/asset_manifest.json`
+- `/home/jl/git/RetroGameGame/specs/future/nebula_bouncer/chunk_assignment_profiles.json`

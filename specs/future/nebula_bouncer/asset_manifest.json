@@ -2,5 +2,14 @@
   "player_ship": "sprites/future/nebula_bouncer/sprite_player_ship.png",
   "kinetic_orb": "sprites/future/nebula_bouncer/sprite_player_orb.png",
   "enemy_default": "sprites/future/nebula_bouncer/sprite_enemy_scout.png",
-  "wall_tile": "sprites/future/nebula_bouncer/sprite_wall_tile.png"
+  "enemy_scout": "sprites/future/nebula_bouncer/sprite_enemy_scout.png",
+  "enemy_interceptor": "sprites/future/nebula_bouncer/sprite_enemy_interceptor.png",
+  "enemy_heavy": "sprites/future/nebula_bouncer/sprite_enemy_heavy.png",
+  "enemy_bulwark": "sprites/future/nebula_bouncer/sprite_enemy_bulwark.png",
+  "wall_tile": "sprites/future/nebula_bouncer/sprite_wall_tile.png",
+  "ground_tile": "sprites/future/nebula_bouncer/sprite_ground_tile.png",
+  "vfx_impact_flash": "sprites/future/nebula_bouncer/vfx_impact_flash.png",
+  "vfx_hit_ring": "sprites/future/nebula_bouncer/vfx_hit_ring.png",
+  "vfx_projectile_core": "sprites/future/nebula_bouncer/vfx_projectile_core.png",
+  "vfx_ribbon_trail": "sprites/future/nebula_bouncer/vfx_ribbon_trail.png"
 }

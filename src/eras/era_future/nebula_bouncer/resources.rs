@@ -5,11 +5,336 @@ use std::path::PathBuf;
 
 use crate::eras::era_future::nebula_bouncer::components::{OrbElement, OrbModifier};
 use crate::eras::era_future::nebula_bouncer::procgen::{
-    ProcgenPreflightSummary, ValidationCounters,
+    ChunkPacing, ProcgenPreflightSummary, ValidationCounters,
 };
 
 const SPRITE_ORIENTATION_CONFIG_REL_PATH: &str =
     "specs/future/nebula_bouncer/sprite_orientation.json";
+const ASSET_MANIFEST_REL_PATH: &str = "specs/future/nebula_bouncer/asset_manifest.json";
+const CHUNK_ASSIGNMENT_PROFILES_REL_PATH: &str =
+    "specs/future/nebula_bouncer/chunk_assignment_profiles.json";
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum EnemyArchetype {
+    Scout,
+    Interceptor,
+    Heavy,
+    Bulwark,
+}
+
+impl Default for EnemyArchetype {
+    fn default() -> Self {
+        Self::Scout
+    }
+}
+
+impl EnemyArchetype {
+    pub const ALL: [Self; 4] = [Self::Scout, Self::Interceptor, Self::Heavy, Self::Bulwark];
+
+    pub const fn index(self) -> usize {
+        match self {
+            Self::Scout => 0,
+            Self::Interceptor => 1,
+            Self::Heavy => 2,
+            Self::Bulwark => 3,
+        }
+    }
+
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Scout => "scout",
+            Self::Interceptor => "interceptor",
+            Self::Heavy => "heavy",
+            Self::Bulwark => "bulwark",
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TerrainTheme {
+    Standard,
+    Cold,
+    Hazard,
+}
+
+impl Default for TerrainTheme {
+    fn default() -> Self {
+        Self::Standard
+    }
+}
+
+impl TerrainTheme {
+    pub fn floor_tint(self) -> Color {
+        match self {
+            Self::Standard => Color::WHITE,
+            Self::Cold => Color::srgb(0.82, 0.90, 1.0),
+            Self::Hazard => Color::srgb(1.0, 0.84, 0.82),
+        }
+    }
+
+    pub fn wall_tint(self) -> Color {
+        match self {
+            Self::Standard => Color::WHITE,
+            Self::Cold => Color::srgb(0.76, 0.86, 1.0),
+            Self::Hazard => Color::srgb(1.0, 0.78, 0.75),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[serde(default)]
+pub struct EnemyWeightProfile {
+    pub scout: f32,
+    pub interceptor: f32,
+    pub heavy: f32,
+    pub bulwark: f32,
+}
+
+impl Default for EnemyWeightProfile {
+    fn default() -> Self {
+        Self {
+            scout: 1.0,
+            interceptor: 0.0,
+            heavy: 0.0,
+            bulwark: 0.0,
+        }
+    }
+}
+
+impl EnemyWeightProfile {
+    fn normalized(self) -> [f32; 4] {
+        let mut values = [
+            self.scout.max(0.0),
+            self.interceptor.max(0.0),
+            self.heavy.max(0.0),
+            self.bulwark.max(0.0),
+        ];
+        let sum: f32 = values.iter().sum();
+        if sum <= f32::EPSILON {
+            return [1.0, 0.0, 0.0, 0.0];
+        }
+        for v in &mut values {
+            *v /= sum;
+        }
+        values
+    }
+
+    fn sample_unit(seed: u64) -> f32 {
+        // splitmix64 to deterministic [0,1) scalar.
+        let mut x = seed.wrapping_add(0x9E37_79B9_7F4A_7C15);
+        x = (x ^ (x >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+        x = (x ^ (x >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+        x ^= x >> 31;
+        (x as f64 / u64::MAX as f64) as f32
+    }
+
+    pub fn select(self, seed: u64) -> EnemyArchetype {
+        let normalized = self.normalized();
+        let r = Self::sample_unit(seed);
+        let mut cumulative = 0.0f32;
+        for archetype in EnemyArchetype::ALL {
+            cumulative += normalized[archetype.index()];
+            if r <= cumulative {
+                return archetype;
+            }
+        }
+        EnemyArchetype::Scout
+    }
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[serde(default)]
+pub struct PacingAssignmentProfile {
+    pub enemy_weights: EnemyWeightProfile,
+    pub terrain_theme: TerrainTheme,
+    pub enemy_health_scale: f32,
+}
+
+impl Default for PacingAssignmentProfile {
+    fn default() -> Self {
+        Self {
+            enemy_weights: EnemyWeightProfile::default(),
+            terrain_theme: TerrainTheme::default(),
+            enemy_health_scale: 1.0,
+        }
+    }
+}
+
+#[derive(Resource, Clone, Debug, Serialize, Deserialize)]
+#[serde(default)]
+pub struct ChunkAssignmentProfiles {
+    pub open: PacingAssignmentProfile,
+    pub transition: PacingAssignmentProfile,
+    pub dense: PacingAssignmentProfile,
+}
+
+impl Default for ChunkAssignmentProfiles {
+    fn default() -> Self {
+        Self {
+            open: PacingAssignmentProfile {
+                enemy_weights: EnemyWeightProfile {
+                    scout: 0.72,
+                    interceptor: 0.20,
+                    heavy: 0.07,
+                    bulwark: 0.01,
+                },
+                terrain_theme: TerrainTheme::Standard,
+                enemy_health_scale: 0.92,
+            },
+            transition: PacingAssignmentProfile {
+                enemy_weights: EnemyWeightProfile {
+                    scout: 0.35,
+                    interceptor: 0.45,
+                    heavy: 0.16,
+                    bulwark: 0.04,
+                },
+                terrain_theme: TerrainTheme::Cold,
+                enemy_health_scale: 1.0,
+            },
+            dense: PacingAssignmentProfile {
+                enemy_weights: EnemyWeightProfile {
+                    scout: 0.10,
+                    interceptor: 0.28,
+                    heavy: 0.45,
+                    bulwark: 0.17,
+                },
+                terrain_theme: TerrainTheme::Hazard,
+                enemy_health_scale: 1.20,
+            },
+        }
+    }
+}
+
+impl ChunkAssignmentProfiles {
+    pub fn for_pacing(&self, pacing: ChunkPacing) -> &PacingAssignmentProfile {
+        match pacing {
+            ChunkPacing::Open => &self.open,
+            ChunkPacing::Transition => &self.transition,
+            ChunkPacing::Dense => &self.dense,
+        }
+    }
+
+    pub fn enemy_archetype_for(&self, pacing: ChunkPacing, seed: u64) -> EnemyArchetype {
+        self.for_pacing(pacing).enemy_weights.select(seed)
+    }
+
+    pub fn terrain_theme_for(&self, pacing: ChunkPacing) -> TerrainTheme {
+        self.for_pacing(pacing).terrain_theme
+    }
+
+    pub fn enemy_health_scale_for(&self, pacing: ChunkPacing) -> f32 {
+        self.for_pacing(pacing).enemy_health_scale.max(0.25)
+    }
+}
+
+pub fn load_chunk_assignment_profiles() -> ChunkAssignmentProfiles {
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(CHUNK_ASSIGNMENT_PROFILES_REL_PATH);
+    let fallback = ChunkAssignmentProfiles::default();
+    let raw = match fs::read_to_string(&path) {
+        Ok(raw) => raw,
+        Err(err) => {
+            warn!(
+                "Chunk assignment profile missing at {:?} ({err}); using defaults",
+                path
+            );
+            return fallback;
+        }
+    };
+    match serde_json::from_str::<ChunkAssignmentProfiles>(&raw) {
+        Ok(config) => {
+            info!("Loaded chunk assignment profiles from {:?}", path);
+            config
+        }
+        Err(err) => {
+            warn!(
+                "Failed to parse chunk assignment profile at {:?} ({err}); using defaults",
+                path
+            );
+            fallback
+        }
+    }
+}
+
+#[derive(Resource, Clone, Debug, Serialize, Deserialize)]
+#[serde(default)]
+pub struct NebulaAssetManifest {
+    pub player_ship: String,
+    pub kinetic_orb: String,
+    pub enemy_default: String,
+    pub enemy_scout: String,
+    pub enemy_interceptor: String,
+    pub enemy_heavy: String,
+    pub enemy_bulwark: String,
+    pub wall_tile: String,
+    pub ground_tile: String,
+    pub vfx_impact_flash: String,
+    pub vfx_hit_ring: String,
+    pub vfx_projectile_core: String,
+    pub vfx_ribbon_trail: String,
+}
+
+impl Default for NebulaAssetManifest {
+    fn default() -> Self {
+        Self {
+            player_ship: "sprites/future/nebula_bouncer/sprite_player_ship.png".to_string(),
+            kinetic_orb: "sprites/future/nebula_bouncer/sprite_player_orb.png".to_string(),
+            enemy_default: "sprites/future/nebula_bouncer/sprite_enemy_scout.png".to_string(),
+            enemy_scout: "sprites/future/nebula_bouncer/sprite_enemy_scout.png".to_string(),
+            enemy_interceptor: "sprites/future/nebula_bouncer/sprite_enemy_interceptor.png"
+                .to_string(),
+            enemy_heavy: "sprites/future/nebula_bouncer/sprite_enemy_heavy.png".to_string(),
+            enemy_bulwark: "sprites/future/nebula_bouncer/sprite_enemy_bulwark.png".to_string(),
+            wall_tile: "sprites/future/nebula_bouncer/sprite_wall_tile.png".to_string(),
+            ground_tile: "sprites/future/nebula_bouncer/sprite_ground_tile.png".to_string(),
+            vfx_impact_flash: "sprites/future/nebula_bouncer/vfx_impact_flash.png".to_string(),
+            vfx_hit_ring: "sprites/future/nebula_bouncer/vfx_hit_ring.png".to_string(),
+            vfx_projectile_core: "sprites/future/nebula_bouncer/vfx_projectile_core.png"
+                .to_string(),
+            vfx_ribbon_trail: "sprites/future/nebula_bouncer/vfx_ribbon_trail.png".to_string(),
+        }
+    }
+}
+
+impl NebulaAssetManifest {
+    pub fn enemy_sprite_for(&self, archetype: EnemyArchetype) -> &str {
+        match archetype {
+            EnemyArchetype::Scout => &self.enemy_scout,
+            EnemyArchetype::Interceptor => &self.enemy_interceptor,
+            EnemyArchetype::Heavy => &self.enemy_heavy,
+            EnemyArchetype::Bulwark => &self.enemy_bulwark,
+        }
+    }
+}
+
+pub fn load_asset_manifest() -> NebulaAssetManifest {
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(ASSET_MANIFEST_REL_PATH);
+    let fallback = NebulaAssetManifest::default();
+    let raw = match fs::read_to_string(&path) {
+        Ok(raw) => raw,
+        Err(err) => {
+            warn!(
+                "Asset manifest missing at {:?} ({err}); using defaults",
+                path
+            );
+            return fallback;
+        }
+    };
+    match serde_json::from_str::<NebulaAssetManifest>(&raw) {
+        Ok(config) => {
+            info!("Loaded asset manifest from {:?}", path);
+            config
+        }
+        Err(err) => {
+            warn!(
+                "Failed to parse asset manifest at {:?} ({err}); using defaults",
+                path
+            );
+            fallback
+        }
+    }
+}
 
 #[derive(Resource, Clone, Copy, Debug, Serialize, Deserialize)]
 #[serde(default)]
