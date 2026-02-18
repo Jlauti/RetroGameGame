@@ -253,7 +253,9 @@ RetroGameGame/
 │   ├── worm_wars.md
 │   ├── ice_blitz.md
 │   └── depths_of_doom.md
-└── DESIGN.md                 # This file
+└── docs/
+    └── architecture/
+        └── DESIGN.md         # This file
 ```
 
 ---

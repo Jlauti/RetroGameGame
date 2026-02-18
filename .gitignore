@@ -1,4 +1,5 @@
 target/
+target_shared/
 **/*.exe
 **/*.pdb
 .idea/
@@ -6,6 +7,8 @@ target/
 *.log
 *.pyc
 **/__pycache__/
+.agent_compile.lock
 .agent_gate_queue*.lock
 agents/status/gates/queue/pending.jsonl
 agents/status/gates/queue/running.json
+agents/status/gates/*.meta

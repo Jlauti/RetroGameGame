@@ -1,6 +1,6 @@
 # Policy Test Scenarios
 
-These scenarios map directly to the Nebula Agent Loop v3 requirements.
+These scenarios map to the project agent-loop rules.
 
 ## Automated Policy Smoke Test
 
@@ -18,7 +18,7 @@ It validates:
 4. Local ticket shape passes validation.
 5. QA signoff gate blocks non-`PASS` results.
 
-## Release Readiness Tests
+## Python Unit Tests
 
 Run:
 
@@ -30,3 +30,4 @@ It validates:
 
 1. Ticket state reconciliation scenarios (`READY_FOR_QA`, `READY_FOR_MERGE`, `MERGED`, `BLOCKED`, `STALE_METADATA`).
 2. Release board ordering policy (critical-path first, then oldest completed, then non-critical).
+3. Loop contract validation and non-trivial value rules.

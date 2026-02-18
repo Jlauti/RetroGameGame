@@ -76,4 +76,97 @@ if python3 "$ROOT/agents/scripts/check_qa_signoff.py" --ticket-id TMP-001 --qa-f
   exit 1
 fi
 
+# Scenario 6: docs-only non-throughput loop is rejected.
+cat > "$TMP_DIR/loop_docs_only.md" <<TXT
+# Loop
+
+## Metadata
+
+- Loop ID: LOOP-TEST-001
+- Name: Docs Loop
+- Owner: principal_engineer
+- Status: ACTIVE
+- Value Hypothesis: Improve docs.
+- Value Class: GAMEPLAY
+
+## Scope In
+
+- docs/agentic/
+- agents/status/
+
+## Scope Out
+
+- src/
+
+## Tickets Included
+
+- NB-CX-011
+
+## Worker Plan
+
+- principal_engineer: orchestration
+
+## Acceptance Commands
+
+- cargo-safe fmt -- --check
+
+## Acceptance Evidence Required
+
+- docs updated
+
+## Completion Gate
+
+- docs shipped
+TXT
+
+if python3 "$ROOT/agents/scripts/validate_loop.py" --loop "$TMP_DIR/loop_docs_only.md"; then
+  echo "FAILED: docs-only non-throughput loop should be rejected" >&2
+  exit 1
+fi
+
+# Scenario 7: gameplay loop with runtime scope is accepted.
+cat > "$TMP_DIR/loop_gameplay_ok.md" <<TXT
+# Loop
+
+## Metadata
+
+- Loop ID: LOOP-TEST-002
+- Name: Gameplay Loop
+- Owner: principal_engineer
+- Status: ACTIVE
+- Value Hypothesis: Improve gameplay.
+- Value Class: GAMEPLAY
+
+## Scope In
+
+- src/eras/era_future/nebula_bouncer/
+
+## Scope Out
+
+- docs/
+
+## Tickets Included
+
+- NB-CX-011
+
+## Worker Plan
+
+- principal_engineer: orchestration
+- agent2: implementation
+
+## Acceptance Commands
+
+- cargo-safe check --bin retro-game-game
+
+## Acceptance Evidence Required
+
+- QA PASS
+
+## Completion Gate
+
+- QA PASS
+TXT
+
+python3 "$ROOT/agents/scripts/validate_loop.py" --loop "$TMP_DIR/loop_gameplay_ok.md"
+
 echo "Policy smoke test passed."
