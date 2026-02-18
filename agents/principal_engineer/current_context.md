@@ -1,55 +1,34 @@
-# Principal Engineer Handoff - 2026-02-18
+# Principal Engineer Current Context
 
-## Canonical Working Copy
+- Generated: 2026-02-18 23:58
+- Current Milestone: M7 (Vertical Slice Integration Sprint)
+- Milestone Status: IN_PROGRESS
+- Milestone Owner: principal_engineer
+- Latest Daily Digest: /home/jl/git/RetroGameGame/agents/status/daily/2026-02-16.md
 
-- Repository: `/home/jl/git/RetroGameGame_integration_hitl`
-- Branch: `develop`
-- Commit: `b9e0a82`
-- Remote sync: `origin/develop` matches local HEAD.
+## Active Tickets
 
-## Latest Delivered Technical Changes
+- NB-A1-003 | owner=agent1 | status=IN_PROGRESS | lane=LOCAL
+- NB-A3-001 | owner=agent3 | status=READY_FOR_QA | lane=LOCAL
+- NB-A3-002 | owner=agent3 | status=IN_PROGRESS | lane=LOCAL
+- NB-A4-003 | owner=agent4 | status=READY_FOR_QA | lane=LOCAL
+- NB-A4-004 | owner=agent4 | status=IN_PROGRESS | lane=LOCAL
+- NB-A4-006 | owner=agent4 | status=IN_PROGRESS | lane=LOCAL
+- NB-A5-001 | owner=agent5 | status=READY_FOR_QA | lane=LOCAL
+- NB-A5-002 | owner=agent5 | status=READY_FOR_QA | lane=LOCAL
+- NB-CX-011 | owner=codex_worker1 | status=READY_FOR_QA | lane=LOCAL
 
-1. `a573b6a` - Added Nebula sprite pack into `assets/sprites/future/nebula_bouncer`.
-2. `aa0fee1` - Reworked floor/wall visuals:
-   - floor uses tiled rendering (not one giant stretched sprite),
-   - wall visuals use segmented sprites.
-3. `b9e0a82` - Mitigated Avian panic during cleanup by delaying despawn of offscreen physics bodies.
+## Session Resume Checklist
 
-## Current User-Observed State
+1. Read principal `memory.md`.
+2. Read latest daily digest.
+3. Confirm blocker owners and next dispatches.
+4. Regenerate agent workspaces if ticket status changed.
 
-- User confirmed floor and wall visuals are improved.
-- User previously hit panic:
-  - Avian solver index out of bounds (`plugin.rs:398`).
-- Panic mitigation patch is now on `develop` and needs HITL confirmation.
+## Useful Commands
 
-## Immediate Next Actions (Ordered)
-
-1. User runs HITL retest on `develop`:
-   - `git checkout develop`
-   - `git pull --ff-only`
-   - `cargo run --bin retro-game-game`
-2. If panic recurs, collect exact backtrace:
-   - `RUST_BACKTRACE=1 cargo run --bin retro-game-game`
-3. If stable, proceed with graphics polish tickets (tile variation, wall visual quality), not engine-stability hotfixes.
-
-## Agent Loop Status Notes
-
-- Control-plane artifacts in this branch are partially stale/incomplete versus local operational workspace.
-- Known examples:
-  - `NB-CX-012` backlog ticket is missing in this branch,
-  - some report folders are incomplete.
-- Treat current source of truth as:
-  1. code on `develop`,
-  2. user HITL feedback,
-  3. then reconcile ticket metadata.
-
-## Recommended Principal Engineer Policy for Next Session
-
-1. Keep local-first execution.
-2. Prefer small, testable graphics/runtime increments.
-3. Require each worker report to include:
-   - exact commands run,
-   - exit codes,
-   - changed file list.
-4. Run one integration/HITL checkpoint after each graphics pass before stacking more changes.
-
+```bash
+python3 /home/jl/git/RetroGameGame/agents/scripts/sync_agent_workspaces.py
+python3 /home/jl/git/RetroGameGame/agents/scripts/generate_daily_status.py --root /home/jl/git/RetroGameGame
+python3 /home/jl/git/RetroGameGame/agents/scripts/check_wip.py --backlog /home/jl/git/RetroGameGame/agents/backlog
+```

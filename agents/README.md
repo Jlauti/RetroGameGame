@@ -105,6 +105,7 @@ Starter prompts for local agent launches:
 - `/home/jl/git/RetroGameGame/agents/prompts/agent4_start_prompt.md`
 - `/home/jl/git/RetroGameGame/agents/prompts/agent5_start_prompt.md`
 - `/home/jl/git/RetroGameGame/agents/prompts/qa_start_prompt.md`
+- `/home/jl/git/RetroGameGame/agents/principal_engineer/launch_prompt.md`
 
 Validation:
 
@@ -116,6 +117,8 @@ Validation:
 - `/home/jl/git/RetroGameGame/agents/scripts/sync_agent_workspaces.py`
 - `/home/jl/git/RetroGameGame/agents/scripts/add_agent_memory.py`
 - `/home/jl/git/RetroGameGame/agents/scripts/update_principal_context.py`
+- `/home/jl/git/RetroGameGame/agents/scripts/queue_merge_ready.py`
+- `/home/jl/git/RetroGameGame/agents/scripts/cleanup_workspace_dirs.py`
 
 ## Per-Agent Folder Workflow
 
@@ -154,4 +157,16 @@ Refresh principal context snapshot:
 
 ```bash
 python3 /home/jl/git/RetroGameGame/agents/scripts/update_principal_context.py
+```
+
+Queue all current merge-ready tickets:
+
+```bash
+python3 /home/jl/git/RetroGameGame/agents/scripts/queue_merge_ready.py --root /home/jl/git/RetroGameGame --date $(date +%F)
+```
+
+Run gate queue loop with lock waiting:
+
+```bash
+python3 /home/jl/git/RetroGameGame/agents/scripts/gate_queue.py run-loop --wait-lock
 ```

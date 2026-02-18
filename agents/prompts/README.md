@@ -25,6 +25,7 @@ Personal workspace shortcuts (recommended launch surface):
 - Agent 5 (hit-stop tuning active): `/home/jl/git/RetroGameGame/agents/prompts/agent5_kickoff_nb-a5-002.md`
 - QA: `/home/jl/git/RetroGameGame/agents/prompts/qa_start_prompt.md`
 - QA (art gate signoff active): `/home/jl/git/RetroGameGame/agents/prompts/qa_kickoff_nb-qa-010.md`
+- Principal Engineer: `/home/jl/git/RetroGameGame/agents/principal_engineer/launch_prompt.md`
 
 Shared constraints for all agents:
 

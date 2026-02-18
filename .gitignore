@@ -4,3 +4,8 @@ target/
 .idea/
 .vscode/
 *.log
+*.pyc
+**/__pycache__/
+.agent_gate_queue*.lock
+agents/status/gates/queue/pending.jsonl
+agents/status/gates/queue/running.json

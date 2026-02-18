@@ -24,13 +24,19 @@ On any new session, read in this order:
 1. `/home/jl/git/RetroGameGame/agents/principal_engineer/memory.md`
 2. `/home/jl/git/RetroGameGame/agents/principal_engineer/current_context.md`
 3. `/home/jl/git/RetroGameGame/agents/status/current_milestone.md`
-4. `/home/jl/git/RetroGameGame/agents/master_plan.md`
-5. `/home/jl/git/RetroGameGame/agents/status/daily/<latest>.md`
+4. `/home/jl/git/RetroGameGame/agents/status/release/release_board_<latest>.md`
+5. `/home/jl/git/RetroGameGame/agents/status/next_assignments.md`
 
 Then refresh context:
 
 ```bash
 python3 /home/jl/git/RetroGameGame/agents/scripts/update_principal_context.py
+```
+
+Then refresh merge queue inputs:
+
+```bash
+python3 /home/jl/git/RetroGameGame/agents/scripts/queue_merge_ready.py --root /home/jl/git/RetroGameGame --date $(date +%F)
 ```
 
 ## Delegation Model
@@ -81,6 +87,21 @@ Use:
 ```bash
 bash /home/jl/git/RetroGameGame/agents/scripts/verify_merge_gate.sh <TICKET_ID>
 ```
+
+## Aggressive Merge + Cleanup Routine
+
+Run this continuously during integration windows:
+
+1. Queue merge-ready tickets after each ticket reaches readiness:
+   - `python3 /home/jl/git/RetroGameGame/agents/scripts/queue_merge_ready.py --root /home/jl/git/RetroGameGame --date $(date +%F)`
+2. Keep one gate runner live:
+   - `python3 /home/jl/git/RetroGameGame/agents/scripts/gate_queue.py run-loop --wait-lock`
+3. Regenerate status artifacts after merges:
+   - `python3 /home/jl/git/RetroGameGame/agents/scripts/update_principal_context.py`
+4. Audit stale sibling workspaces daily:
+   - `python3 /home/jl/git/RetroGameGame/agents/scripts/cleanup_workspace_dirs.py --root /home/jl/git/RetroGameGame`
+5. Prune only when explicitly approved:
+   - `python3 /home/jl/git/RetroGameGame/agents/scripts/cleanup_workspace_dirs.py --root /home/jl/git/RetroGameGame --prune-safe`
 
 Cargo execution default:
 
