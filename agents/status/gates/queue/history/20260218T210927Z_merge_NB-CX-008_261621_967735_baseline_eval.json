@@ -1,0 +1,14 @@
+{
+  "evaluated_at": "2026-02-18T21:13:37+00:00",
+  "log_file": "/home/jl/git/RetroGameGame/agents/status/gates/20260218T211335Z_20260218T210927Z_merge_NB-CX-008_261621_967735_test.log",
+  "baseline_file": "/home/jl/git/RetroGameGame/agents/status/gates/baseline_failures.json",
+  "failure_count": 1,
+  "failures": [
+    "eras::era_future::nebula_bouncer::procgen::tests::test_softlock_validation_fail_angle"
+  ],
+  "known_failures": [
+    "eras::era_future::nebula_bouncer::procgen::tests::test_softlock_validation_fail_angle"
+  ],
+  "new_failures": [],
+  "only_known_failures": true
+}

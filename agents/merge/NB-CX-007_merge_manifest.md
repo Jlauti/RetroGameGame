@@ -44,16 +44,20 @@
 ## Merge Gate
 
 - Merge-mode gate required before merge to main: YES
-- verify_merge_gate.sh run: PASS
-- Merge Gate Mode: MERGE (combined staging branch)
-- Merge Gate Job ID: 20260216T212034Z_merge_NB-CX-007_684278_834637
-- Merge Gate Artifact Path: /home/jl/git/RetroGameGame/agents/status/gates/queue/history/20260216T212034Z_merge_NB-CX-007_684278_834637.json
-- Staging Branch: codex/merge-cx007-cx008
+- verify_merge_gate.sh run: WAIVED_BASELINE
+- Merge Gate Mode: MERGE (develop consolidation queue)
+- Merge Gate Job ID: 20260218T210927Z_merge_NB-CX-007_261620_967634
+- Merge Gate Artifact Path: /home/jl/git/RetroGameGame/agents/status/gates/queue/history/20260218T210927Z_merge_NB-CX-007_261620_967634.json
+- Baseline Waiver Artifact Path: /home/jl/git/RetroGameGame/agents/status/gates/queue/history/20260218T210927Z_merge_NB-CX-007_261620_967634_baseline_eval.json
+- Baseline Waiver Result: only known failures
+- Historical Staging Gate Job ID: 20260216T212034Z_merge_NB-CX-007_684278_834637
+- Historical Staging Branch: codex/merge-cx007-cx008
 
 ## Ready Decision
 
 - Ready for PR creation: YES
-- Ready for merge to main now: YES (via staging branch PR)
+- Ready for merge to main now: YES (pending develop->main promotion)
+- Merge Decision: PENDING_MAIN_PROMOTION
 
 ## PR Link
 

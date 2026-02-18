@@ -1,0 +1,138 @@
+{
+  "job_id": "20260218T210927Z_merge_NB-CX-007_261620_967634",
+  "ticket_id": "NB-CX-007",
+  "mode": "MERGE",
+  "workdir": "/tmp/RetroGameGame_merge_20260218_225931",
+  "branch": "codex/merge-clear-nonconflicting",
+  "submitted_by": "jl",
+  "submitted_at": "2026-02-18T21:09:27+00:00",
+  "scoped_test_command": "",
+  "status": "WAIVED_BASELINE",
+  "steps": [
+    {
+      "name": "check",
+      "command": "bash /home/jl/git/RetroGameGame/agents/scripts/cargo_gate.sh check",
+      "started_at": "2026-02-18T21:09:37+00:00",
+      "finished_at": "2026-02-18T21:09:42+00:00",
+      "status": "PASS",
+      "interrupted": false,
+      "signal": null,
+      "exit_code": 0,
+      "effective_exit_code": 0,
+      "artifacts": {
+        "run_id": "20260218T210937Z_20260218T210927Z_merge_NB-CX-007_261620_967634_check",
+        "meta_file": "/home/jl/git/RetroGameGame/agents/status/gates/20260218T210937Z_20260218T210927Z_merge_NB-CX-007_261620_967634_check.meta",
+        "log_file": "/home/jl/git/RetroGameGame/agents/status/gates/20260218T210937Z_20260218T210927Z_merge_NB-CX-007_261620_967634_check.log",
+        "meta": {
+          "mode": "single",
+          "run_id": "20260218T210937Z_20260218T210927Z_merge_NB-CX-007_261620_967634_check",
+          "script": "/home/jl/git/RetroGameGame/agents/scripts/cargo_gate.sh",
+          "root": "/home/jl/git/RetroGameGame",
+          "caller_cwd": "/tmp/RetroGameGame_merge_20260218_225931",
+          "lock_file": "/home/jl/git/RetroGameGame/.agent_compile.lock",
+          "cargo_args": "check",
+          "log_file": "/home/jl/git/RetroGameGame/agents/status/gates/20260218T210937Z_20260218T210927Z_merge_NB-CX-007_261620_967634_check.log",
+          "meta_file": "/home/jl/git/RetroGameGame/agents/status/gates/20260218T210937Z_20260218T210927Z_merge_NB-CX-007_261620_967634_check.meta",
+          "start_epoch": "1771448977",
+          "started_at": "2026-02-18T23:09:37+02:00",
+          "finished_at": "2026-02-18T23:09:42+02:00",
+          "duration_sec": "5",
+          "interrupted": "0",
+          "exit_code": "0"
+        }
+      }
+    },
+    {
+      "name": "test",
+      "command": "bash /home/jl/git/RetroGameGame/agents/scripts/cargo_gate.sh test",
+      "started_at": "2026-02-18T21:09:42+00:00",
+      "finished_at": "2026-02-18T21:13:32+00:00",
+      "status": "WAIVED_BASELINE",
+      "interrupted": false,
+      "signal": null,
+      "exit_code": 101,
+      "effective_exit_code": 0,
+      "artifacts": {
+        "run_id": "20260218T210942Z_20260218T210927Z_merge_NB-CX-007_261620_967634_test",
+        "meta_file": "/home/jl/git/RetroGameGame/agents/status/gates/20260218T210942Z_20260218T210927Z_merge_NB-CX-007_261620_967634_test.meta",
+        "log_file": "/home/jl/git/RetroGameGame/agents/status/gates/20260218T210942Z_20260218T210927Z_merge_NB-CX-007_261620_967634_test.log",
+        "meta": {
+          "mode": "single",
+          "run_id": "20260218T210942Z_20260218T210927Z_merge_NB-CX-007_261620_967634_test",
+          "script": "/home/jl/git/RetroGameGame/agents/scripts/cargo_gate.sh",
+          "root": "/home/jl/git/RetroGameGame",
+          "caller_cwd": "/tmp/RetroGameGame_merge_20260218_225931",
+          "lock_file": "/home/jl/git/RetroGameGame/.agent_compile.lock",
+          "cargo_args": "test",
+          "log_file": "/home/jl/git/RetroGameGame/agents/status/gates/20260218T210942Z_20260218T210927Z_merge_NB-CX-007_261620_967634_test.log",
+          "meta_file": "/home/jl/git/RetroGameGame/agents/status/gates/20260218T210942Z_20260218T210927Z_merge_NB-CX-007_261620_967634_test.meta",
+          "start_epoch": "1771448982",
+          "started_at": "2026-02-18T23:09:42+02:00",
+          "finished_at": "2026-02-18T23:13:32+02:00",
+          "duration_sec": "230",
+          "interrupted": "0",
+          "exit_code": "101"
+        }
+      },
+      "baseline_waiver": {
+        "command": "python3 /home/jl/git/RetroGameGame/agents/scripts/evaluate_full_test_failures.py --log /home/jl/git/RetroGameGame/agents/status/gates/20260218T210942Z_20260218T210927Z_merge_NB-CX-007_261620_967634_test.log --baseline /home/jl/git/RetroGameGame/agents/status/gates/baseline_failures.json --out /home/jl/git/RetroGameGame/agents/status/gates/queue/history/20260218T210927Z_merge_NB-CX-007_261620_967634_baseline_eval.json",
+        "exit_code": 0,
+        "artifact": "/home/jl/git/RetroGameGame/agents/status/gates/queue/history/20260218T210927Z_merge_NB-CX-007_261620_967634_baseline_eval.json",
+        "stdout": "{\n  \"evaluated_at\": \"2026-02-18T21:13:32+00:00\",\n  \"log_file\": \"/home/jl/git/RetroGameGame/agents/status/gates/20260218T210942Z_20260218T210927Z_merge_NB-CX-007_261620_967634_test.log\",\n  \"baseline_file\": \"/home/jl/git/RetroGameGame/agents/status/gates/baseline_failures.json\",\n  \"failure_count\": 1,\n  \"failures\": [\n    \"eras::era_future::nebula_bouncer::procgen::tests::test_softlock_validation_fail_angle\"\n  ],\n  \"known_failures\": [\n    \"eras::era_future::nebula_bouncer::procgen::tests::test_softlock_validation_fail_angle\"\n  ],\n  \"new_failures\": [],\n  \"only_known_failures\": true\n}",
+        "stderr": "",
+        "result": {
+          "evaluated_at": "2026-02-18T21:13:32+00:00",
+          "log_file": "/home/jl/git/RetroGameGame/agents/status/gates/20260218T210942Z_20260218T210927Z_merge_NB-CX-007_261620_967634_test.log",
+          "baseline_file": "/home/jl/git/RetroGameGame/agents/status/gates/baseline_failures.json",
+          "failure_count": 1,
+          "failures": [
+            "eras::era_future::nebula_bouncer::procgen::tests::test_softlock_validation_fail_angle"
+          ],
+          "known_failures": [
+            "eras::era_future::nebula_bouncer::procgen::tests::test_softlock_validation_fail_angle"
+          ],
+          "new_failures": [],
+          "only_known_failures": true
+        }
+      }
+    },
+    {
+      "name": "fmt",
+      "command": "bash /home/jl/git/RetroGameGame/agents/scripts/cargo_gate.sh fmt -- --check",
+      "started_at": "2026-02-18T21:13:32+00:00",
+      "finished_at": "2026-02-18T21:13:33+00:00",
+      "status": "PASS",
+      "interrupted": false,
+      "signal": null,
+      "exit_code": 0,
+      "effective_exit_code": 0,
+      "artifacts": {
+        "run_id": "20260218T211332Z_20260218T210927Z_merge_NB-CX-007_261620_967634_fmt",
+        "meta_file": "/home/jl/git/RetroGameGame/agents/status/gates/20260218T211332Z_20260218T210927Z_merge_NB-CX-007_261620_967634_fmt.meta",
+        "log_file": "/home/jl/git/RetroGameGame/agents/status/gates/20260218T211332Z_20260218T210927Z_merge_NB-CX-007_261620_967634_fmt.log",
+        "meta": {
+          "mode": "single",
+          "run_id": "20260218T211332Z_20260218T210927Z_merge_NB-CX-007_261620_967634_fmt",
+          "script": "/home/jl/git/RetroGameGame/agents/scripts/cargo_gate.sh",
+          "root": "/home/jl/git/RetroGameGame",
+          "caller_cwd": "/tmp/RetroGameGame_merge_20260218_225931",
+          "lock_file": "/home/jl/git/RetroGameGame/.agent_compile.lock",
+          "cargo_args": "fmt -- --check",
+          "log_file": "/home/jl/git/RetroGameGame/agents/status/gates/20260218T211332Z_20260218T210927Z_merge_NB-CX-007_261620_967634_fmt.log",
+          "meta_file": "/home/jl/git/RetroGameGame/agents/status/gates/20260218T211332Z_20260218T210927Z_merge_NB-CX-007_261620_967634_fmt.meta",
+          "start_epoch": "1771449212",
+          "started_at": "2026-02-18T23:13:32+02:00",
+          "finished_at": "2026-02-18T23:13:33+02:00",
+          "duration_sec": "1",
+          "interrupted": "0",
+          "exit_code": "0"
+        }
+      }
+    }
+  ],
+  "artifacts": {
+    "history_file": "/home/jl/git/RetroGameGame/agents/status/gates/queue/history/20260218T210927Z_merge_NB-CX-007_261620_967634.json"
+  },
+  "started_at": "2026-02-18T21:09:37+00:00",
+  "finished_at": "2026-02-18T21:13:33+00:00"
+}
