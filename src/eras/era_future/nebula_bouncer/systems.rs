@@ -646,16 +646,25 @@ pub fn update_level_scrolling(
     mut procgen_state: ResMut<ProcGenState>,
     library: Res<ChunkLibrary>,
     mut validator_telemetry: ResMut<ProcgenValidatorTelemetry>,
-    mut q_chunks: Query<(Entity, &mut Transform), With<ChunkMember>>,
+    mut q_chunks: Query<(Entity, &mut Transform, Option<&RigidBody>), With<ChunkMember>>,
 ) {
     const SCROLL_SPEED: f32 = 150.0;
+    const VISUAL_DESPAWN_Y: f32 = -1200.0;
+    // Delay despawn for physics bodies so we don't remove colliders near active contacts.
+    // This mitigates rare Avian solver panics from stale manifold handles during cleanup.
+    const PHYSICS_DESPAWN_Y: f32 = -5000.0;
     let dt = time.delta_secs();
     let delta_y = SCROLL_SPEED * dt;
 
     // Movement
-    for (entity, mut transform) in &mut q_chunks {
+    for (entity, mut transform, rigid_body) in &mut q_chunks {
         transform.translation.y -= delta_y;
-        if transform.translation.y < -1200.0 {
+        let despawn_y = if rigid_body.is_some() {
+            PHYSICS_DESPAWN_Y
+        } else {
+            VISUAL_DESPAWN_Y
+        };
+        if transform.translation.y < despawn_y {
             commands.entity(entity).despawn();
         }
     }
