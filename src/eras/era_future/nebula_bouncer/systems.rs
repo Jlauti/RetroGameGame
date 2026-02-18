@@ -35,6 +35,9 @@ const PLAYER_SPRITE_SIZE: Vec2 = Vec2::new(64.0, 64.0);
 const SCOUT_SPRITE_SIZE: Vec2 = Vec2::new(62.0, 62.0);
 const HEAVY_SPRITE_SIZE: Vec2 = Vec2::new(78.0, 78.0);
 const INTERCEPTOR_SPRITE_SIZE: Vec2 = Vec2::new(70.0, 70.0);
+const FLOOR_TILE_SIZE: Vec2 = Vec2::new(128.0, 128.0);
+const WALL_VISUAL_THICKNESS: f32 = 36.0;
+const WALL_SEGMENT_MAX_LENGTH: f32 = 96.0;
 
 fn enemy_visual_for_pacing(pacing: ChunkPacing) -> (&'static str, Vec2) {
     match pacing {
@@ -49,6 +52,12 @@ pub struct NebulaDebugOverlayRoot;
 
 #[derive(Component)]
 pub struct NebulaDebugOverlayText;
+
+#[derive(Component)]
+pub struct GroundVisual;
+
+#[derive(Component)]
+pub struct WallVisual;
 
 fn facing_angle(direction: Vec2, forward_offset: f32) -> Option<f32> {
     if direction.length_squared() <= f32::EPSILON {
@@ -117,6 +126,80 @@ fn advance_enemy_status_effects(status: &mut EnemyStatusEffects, health: &mut He
 
 fn preflight_artifact_path() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(PREFLIGHT_SUMMARY_REL_PATH)
+}
+
+fn spawn_chunk_floor_tiles(
+    commands: &mut Commands,
+    asset_server: &AssetServer,
+    chunk_center_y: f32,
+    chunk_height: f32,
+) {
+    let tile_w = FLOOR_TILE_SIZE.x.max(8.0);
+    let tile_h = FLOOR_TILE_SIZE.y.max(8.0);
+    let cols = (GROUND_CHUNK_WIDTH / tile_w).ceil().max(1.0) as i32;
+    let rows = (chunk_height / tile_h).ceil().max(1.0) as i32;
+    let start_x = -GROUND_CHUNK_WIDTH * 0.5 + tile_w * 0.5;
+    let start_y = chunk_center_y - chunk_height * 0.5 + tile_h * 0.5;
+
+    for row in 0..rows {
+        for col in 0..cols {
+            let x = start_x + col as f32 * tile_w;
+            let y = start_y + row as f32 * tile_h;
+            commands.spawn((
+                ChunkMember,
+                GroundVisual,
+                Sprite {
+                    image: asset_server.load(GROUND_TILE_SPRITE_PATH),
+                    custom_size: Some(FLOOR_TILE_SIZE),
+                    ..default()
+                },
+                Transform::from_xyz(x, y, depth::BACKGROUND),
+            ));
+        }
+    }
+}
+
+fn spawn_wall_visual_segments(
+    commands: &mut Commands,
+    asset_server: &AssetServer,
+    chunk_center_y: f32,
+    wall: &WallDef,
+) {
+    let major_is_x = wall.size.x >= wall.size.y;
+    let major_len = if major_is_x { wall.size.x } else { wall.size.y }.max(1.0);
+    let segment_target = WALL_SEGMENT_MAX_LENGTH.max(8.0);
+    let segment_count = (major_len / segment_target).ceil().max(1.0) as usize;
+    let segment_len = major_len / segment_count as f32;
+    let wall_center = Vec2::new(wall.position.x, chunk_center_y + wall.position.y);
+    let rotation = Mat2::from_angle(wall.rotation);
+    let visual_thickness = WALL_VISUAL_THICKNESS.max(1.0);
+
+    for idx in 0..segment_count {
+        let offset = -major_len * 0.5 + segment_len * (idx as f32 + 0.5);
+        let local_offset = if major_is_x {
+            Vec2::new(offset, 0.0)
+        } else {
+            Vec2::new(0.0, offset)
+        };
+        let world_pos = wall_center + rotation * local_offset;
+        let sprite_size = if major_is_x {
+            Vec2::new(segment_len, visual_thickness)
+        } else {
+            Vec2::new(visual_thickness, segment_len)
+        };
+
+        commands.spawn((
+            ChunkMember,
+            WallVisual,
+            Sprite {
+                image: asset_server.load(WALL_TILE_SPRITE_PATH),
+                custom_size: Some(sprite_size),
+                ..default()
+            },
+            Transform::from_xyz(world_pos.x, world_pos.y, depth::WALL)
+                .with_rotation(Quat::from_rotation_z(wall.rotation)),
+        ));
+    }
 }
 
 pub fn setup_nebula_bouncer(
@@ -656,27 +739,14 @@ pub fn spawn_next_chunk(
     // Spawn the chunk
     let chunk_y = state.next_spawn_y + selected.height / 2.0;
 
-    // Spawn floor backdrop so gameplay pieces render over real art, not only flat clear color.
-    commands.spawn((
-        ChunkMember,
-        Sprite {
-            image: asset_server.load(GROUND_TILE_SPRITE_PATH),
-            custom_size: Some(Vec2::new(GROUND_CHUNK_WIDTH, selected.height)),
-            ..default()
-        },
-        Transform::from_xyz(0.0, chunk_y, depth::BACKGROUND),
-    ));
+    // Spawn floor as modular tiles instead of one stretched sprite.
+    spawn_chunk_floor_tiles(commands, asset_server, chunk_y, selected.height);
 
     // Spawn walls
     for wall in &selected.walls {
         commands.spawn((
             Wall,
             ChunkMember,
-            Sprite {
-                image: asset_server.load(WALL_TILE_SPRITE_PATH),
-                custom_size: Some(wall.size),
-                ..default()
-            },
             Transform::from_xyz(wall.position.x, chunk_y + wall.position.y, depth::WALL)
                 .with_rotation(Quat::from_rotation_z(wall.rotation)),
             RigidBody::Static,
@@ -685,6 +755,8 @@ pub fn spawn_next_chunk(
             Restitution::new(1.0).with_combine_rule(CoefficientCombine::Max),
             CollisionLayers::new(GameLayer::Wall, [GameLayer::Projectile, GameLayer::Player]),
         ));
+
+        spawn_wall_visual_segments(commands, asset_server, chunk_y, wall);
     }
 
     // Spawn ORE
@@ -911,17 +983,8 @@ pub fn update_debug_asset_overlay_text(
     sprite_orientation: Res<SpriteOrientationConfig>,
     q_player: Query<&Sprite, With<PlayerShip>>,
     q_enemy: Query<&Sprite, With<Enemy>>,
-    q_wall: Query<&Sprite, With<Wall>>,
-    q_ground: Query<
-        &Sprite,
-        (
-            With<ChunkMember>,
-            Without<Wall>,
-            Without<Enemy>,
-            Without<PlayerShip>,
-            Without<KineticOrb>,
-        ),
-    >,
+    q_wall: Query<&Sprite, With<WallVisual>>,
+    q_ground: Query<&Sprite, With<GroundVisual>>,
     q_orb: Query<&Sprite, With<KineticOrb>>,
     mut q_text: Query<&mut Text, With<NebulaDebugOverlayText>>,
 ) {
