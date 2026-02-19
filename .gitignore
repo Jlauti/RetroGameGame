@@ -12,3 +12,10 @@ target_shared/
 agents/status/gates/queue/pending.jsonl
 agents/status/gates/queue/running.json
 agents/status/gates/*.meta
+agents/team_roster.md
+agents/team/*/README.md
+agents/team/*/backlog.md
+agents/team/*/context.md
+agents/team/*/memory.md
+agents/team/*/nudge.md
+agents/team/*/inbox/

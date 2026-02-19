@@ -8,7 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List
 
-from agent_io import markdown_files, parse_metadata
+from agent_io import markdown_files, parse_metadata, parse_section_bullets
 
 
 @dataclass(frozen=True)
@@ -111,6 +111,12 @@ def read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
+def extract_objective(ticket_text: str) -> str:
+    if "## Objective" not in ticket_text:
+        return "Objective not found."
+    return ticket_text.split("## Objective", 1)[1].split("##", 1)[0].strip()
+
+
 def latest_report_for_agent(reports_root: Path, agent_id: str) -> tuple[Path | None, Dict[str, str]]:
     report_dir = reports_root / agent_id
     if not report_dir.exists():
@@ -201,12 +207,10 @@ def main() -> int:
             "",
             "## Start Here",
             "",
-            "1. Read `memory.md` first (persistent context).",
-            "2. Read `context.md` (latest snapshot).",
-            "3. Read `backlog.md`.",
-            "4. Open the top-priority ticket from `inbox/`.",
-            "5. Use `launch_prompt.md` as your kickoff prompt.",
-            "6. Write reports to the canonical path under `/agents/reports/...`.",
+            "1. Read `nudge.md` (single-document identity + task packet).",
+            "2. Use `launch_prompt.md` if you need full role constraints.",
+            "3. Write reports to the canonical path under `/agents/reports/...`.",
+            "4. If blocked, report with concrete unblock request.",
         ]
         (home / "README.md").write_text("\n".join(readme_lines) + "\n", encoding="utf-8")
 
@@ -275,6 +279,93 @@ def main() -> int:
                 "/home/jl/git/RetroGameGame/agents/prompts/README.md\n"
             )
         (home / "launch_prompt.md").write_text(launch_text, encoding="utf-8")
+
+        active_ticket_meta = owned[0] if owned else None
+        nudge_lines = [
+            f"# {profile.finnish_name} - Nudge Packet",
+            "",
+            "Read this file only. It contains who you are and what to do next.",
+            "",
+            "## Identity",
+            "",
+            f"- Agent ID: {profile.agent_id}",
+            f"- Name: {profile.finnish_name}",
+            f"- Role: {profile.role}",
+            f"- Workspace Anchor: /home/jl/git/RetroGameGame/agents/team/{profile.codename}",
+            f"- Launch Prompt: /home/jl/git/RetroGameGame/agents/prompts/{launch_prompt_name}",
+            "",
+            "## Current Task",
+            "",
+        ]
+
+        if active_ticket_meta:
+            ticket_id = active_ticket_meta.get("ticket_id", "unknown")
+            ticket_path = backlog_dir / f"{ticket_id}.md"
+            delegation_path = delegation_root / profile.agent_id / f"{ticket_id}_task.md"
+            report_path = reports_root / profile.agent_id / f"{ticket_id}_task_report.md"
+            ticket_text = read_text(ticket_path)
+            objective = extract_objective(ticket_text)
+            acceptance_commands = parse_section_bullets(ticket_text, "Acceptance Commands")
+            scoped_test = active_ticket_meta.get("scoped_test_command", "").strip()
+
+            nudge_lines.extend(
+                [
+                    f"- Ticket: {ticket_id}",
+                    f"- Status: {active_ticket_meta.get('status', 'UNKNOWN')}",
+                    f"- Execution Lane: {active_ticket_meta.get('execution_lane', 'LOCAL')}",
+                    f"- Critical Path: {active_ticket_meta.get('critical_path', 'NO')}",
+                    "",
+                    "### Canonical Files",
+                    "",
+                    f"- Ticket: `{ticket_path}`",
+                    f"- Delegation: `{delegation_path}`",
+                    f"- Report Target: `{report_path}`",
+                    "",
+                    "### Objective",
+                    "",
+                    objective,
+                    "",
+                ]
+            )
+            if scoped_test:
+                nudge_lines.extend(
+                    [
+                        "### Scoped Test Command",
+                        "",
+                        f"- `{scoped_test}`",
+                        "",
+                    ]
+                )
+            if acceptance_commands:
+                nudge_lines.extend(
+                    [
+                        "### Acceptance Commands",
+                        "",
+                    ]
+                )
+                for cmd in acceptance_commands:
+                    nudge_lines.append(f"- `{cmd}`")
+                nudge_lines.append("")
+            nudge_lines.extend(
+                [
+                    "## Action",
+                    "",
+                    "Execute the current task and write the report to the canonical report target.",
+                    "",
+                ]
+            )
+        else:
+            nudge_lines.extend(
+                [
+                    "- No active ticket assigned.",
+                    "",
+                    "## Action",
+                    "",
+                    "Wait for principal engineer assignment. Keep this folder open as your identity anchor.",
+                    "",
+                ]
+            )
+        (home / "nudge.md").write_text("\n".join(nudge_lines), encoding="utf-8")
 
         ensure_memory_file(home / "memory.md", profile)
 
