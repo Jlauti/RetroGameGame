@@ -117,6 +117,42 @@ def extract_objective(ticket_text: str) -> str:
     return ticket_text.split("## Objective", 1)[1].split("##", 1)[0].strip()
 
 
+def parse_next_assignments(path: Path) -> Dict[str, str]:
+    if not path.exists():
+        return {}
+
+    lines = path.read_text(encoding="utf-8").splitlines()
+    rows = [line for line in lines if line.strip().startswith("|")]
+    if len(rows) < 3:
+        return {}
+
+    def parse_row(row: str) -> list[str]:
+        return [cell.strip() for cell in row.strip().strip("|").split("|")]
+
+    header = parse_row(rows[0])
+    idx_agent = header.index("Agent ID") if "Agent ID" in header else -1
+    idx_next = header.index("Next Ticket") if "Next Ticket" in header else -1
+    if idx_agent < 0 or idx_next < 0:
+        return {}
+
+    out: Dict[str, str] = {}
+    for row in rows[2:]:
+        cells = parse_row(row)
+        if len(cells) <= max(idx_agent, idx_next):
+            continue
+        agent_id = cells[idx_agent].strip()
+        next_ticket_raw = cells[idx_next].strip()
+        if not agent_id:
+            continue
+        if next_ticket_raw.upper().startswith("NONE"):
+            out[agent_id] = ""
+            continue
+        # Allow values like "NB-CX-011 (merge-prep closeout)".
+        next_ticket = next_ticket_raw.split(" ", 1)[0].strip()
+        out[agent_id] = next_ticket
+    return out
+
+
 def latest_report_for_agent(reports_root: Path, agent_id: str) -> tuple[Path | None, Dict[str, str]]:
     report_dir = reports_root / agent_id
     if not report_dir.exists():
@@ -172,8 +208,10 @@ def main() -> int:
     deliverables_root = agents_root / "deliverables"
     prompts_dir = agents_root / "prompts"
     team_root = agents_root / "team"
+    next_assignments = parse_next_assignments(agents_root / "status" / "next_assignments.md")
 
     tickets = load_backlog(backlog_dir)
+    tickets_by_id = {t.get("ticket_id", ""): t for t in tickets if t.get("ticket_id")}
 
     roster_lines = [
         "# Agent Team Roster",
@@ -192,6 +230,9 @@ def main() -> int:
 
         owned = [t for t in tickets if t.get("owner_agent") == profile.agent_id]
         owned.sort(key=lambda t: (STATUS_ORDER.get(t.get("status", "TODO"), 99), t.get("ticket_id", "")))
+
+        assigned_ticket_id = next_assignments.get(profile.agent_id, "").strip()
+        assigned_ticket = tickets_by_id.get(assigned_ticket_id) if assigned_ticket_id else None
 
         roster_lines.append(
             f"- {profile.finnish_name} (`{profile.agent_id}`): "
@@ -233,14 +274,16 @@ def main() -> int:
         for old in inbox.glob("*.md"):
             old.unlink()
 
+        active_meta = assigned_ticket if assigned_ticket else (owned[0] if owned else None)
+
         launch_prompt_name = profile.default_prompt
-        if owned:
-            active = owned[0]
-            active_ticket = active.get("ticket_id", "")
+        if active_meta:
+            active_ticket = active_meta.get("ticket_id", "")
             kickoff = find_prompt_for_ticket(prompts_dir, profile.agent_id, active_ticket)
             if kickoff:
                 launch_prompt_name = kickoff
 
+        if owned:
             for t in owned:
                 ticket_id = t.get("ticket_id", "")
                 if not ticket_id:
@@ -280,7 +323,7 @@ def main() -> int:
             )
         (home / "launch_prompt.md").write_text(launch_text, encoding="utf-8")
 
-        active_ticket_meta = owned[0] if owned else None
+        active_ticket_meta = active_meta
         nudge_lines = [
             f"# {profile.finnish_name} - Nudge Packet",
             "",
@@ -378,7 +421,7 @@ def main() -> int:
             if deliverables_dir.exists()
             else []
         )
-        active_ticket = owned[0].get("ticket_id", "none") if owned else "none"
+        active_ticket = active_meta.get("ticket_id", "none") if active_meta else "none"
         latest_report_status = latest_report_meta.get("status", "none")
         latest_report_date = report_date(latest_report_meta) or "n/a"
 

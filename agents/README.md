@@ -56,6 +56,7 @@ python3 /home/jl/git/RetroGameGame/agents/scripts/sync_agent_workspaces.py
 ```
 
 `nudge.md` includes both identity (who the agent is) and current task (ticket, delegation, report target, objective, acceptance commands).
+Task selection is prioritized from `agents/status/next_assignments.md`, then falls back to owned-ticket priority.
 
 ## Key Automation
 
