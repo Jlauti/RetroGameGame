@@ -145,7 +145,7 @@ def parse_next_assignments(path: Path) -> Dict[str, str]:
         if not agent_id:
             continue
         if next_ticket_raw.upper().startswith("NONE"):
-            out[agent_id] = ""
+            out[agent_id] = "__NONE__"
             continue
         # Allow values like "NB-CX-011 (merge-prep closeout)".
         next_ticket = next_ticket_raw.split(" ", 1)[0].strip()
@@ -231,7 +231,9 @@ def main() -> int:
         owned = [t for t in tickets if t.get("owner_agent") == profile.agent_id]
         owned.sort(key=lambda t: (STATUS_ORDER.get(t.get("status", "TODO"), 99), t.get("ticket_id", "")))
 
-        assigned_ticket_id = next_assignments.get(profile.agent_id, "").strip()
+        assigned_marker = next_assignments.get(profile.agent_id)
+        assigned_none = assigned_marker == "__NONE__"
+        assigned_ticket_id = assigned_marker.strip() if assigned_marker and not assigned_none else ""
         assigned_ticket = tickets_by_id.get(assigned_ticket_id) if assigned_ticket_id else None
 
         roster_lines.append(
@@ -274,7 +276,10 @@ def main() -> int:
         for old in inbox.glob("*.md"):
             old.unlink()
 
-        active_meta = assigned_ticket if assigned_ticket else (owned[0] if owned else None)
+        if assigned_none:
+            active_meta = None
+        else:
+            active_meta = assigned_ticket if assigned_ticket else (owned[0] if owned else None)
 
         launch_prompt_name = profile.default_prompt
         if active_meta:
