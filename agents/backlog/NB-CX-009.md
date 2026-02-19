@@ -4,7 +4,7 @@
 
 - Ticket ID: NB-CX-009
 - Owner Agent: codex_worker1
-- Status: TODO
+- Status: READY_TO_MERGE
 - Execution Lane: LOCAL
 - Critical Path: YES
 - Jules Eligible: NO

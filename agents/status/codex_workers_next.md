@@ -1,25 +1,25 @@
 # Codex Workers - Next Dispatch
 
-Updated: 2026-02-16
+Updated: 2026-02-19
 Owner: principal_engineer
 
 ## Status Check
 
-- `codex_worker1` last report: `NB-CX-005` -> `PASS`
-- `codex_worker2` last report: `NB-CX-006` -> `PASS`
-- Gate queue currently has no running/pending jobs.
+- `codex_worker1` latest active ticket: `NB-CX-011` (READY_FOR_QA; loop closeout needed)
+- `codex_worker2` status: idle
+- Gate queue: no pending/running jobs after NB-CX-009 merge gate PASS
 
-## Worker 1
+## Worker 1 Dispatch
 
-- Ticket: `NB-CX-007`
-- Prompt: `/home/jl/git/RetroGameGame/agents/prompts/codex_worker_session_1_nb-cx-007.md`
-- Report target: `/home/jl/git/RetroGameGame/agents/reports/codex_worker1/NB-CX-007_task_report.md`
+- Ticket: `NB-CX-011`
+- Prompt: `/home/jl/git/RetroGameGame/agents/prompts/codex_worker1_kickoff_nb-cx-011.md`
+- Report target: `/home/jl/git/RetroGameGame/agents/reports/codex_worker1/NB-CX-011_task_report.md`
+- Objective: confirm all evidence and gate artifacts are aligned so ticket can be promoted to merge-ready state without stale metadata.
 
-## Worker 2
+## Worker 2 Dispatch
 
-- Ticket: `NB-CX-008`
-- Prompt: `/home/jl/git/RetroGameGame/agents/prompts/codex_worker_session_2_nb-cx-008.md`
-- Report target: `/home/jl/git/RetroGameGame/agents/reports/codex_worker2/NB-CX-008_task_report.md`
+- Ticket: NONE (standby)
+- Trigger to activate: if loop round 1 opens another parallel Nebula technical ticket requiring code implementation.
 
 ## Gate Rule
 

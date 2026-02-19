@@ -44,14 +44,14 @@
 ## Merge Gate
 
 - Merge-mode gate required before merge to main: YES
-- verify_merge_gate.sh run: PENDING
+- verify_merge_gate.sh run: PASS
 - Merge Gate Mode: MERGE
-- Merge Gate Job ID: PENDING
-- Merge Gate Artifact Path: PENDING
+- Merge Gate Job ID: 20260218T215758Z_merge_NB-CX-009_295213_878499
+- Merge Gate Artifact Path: /home/jl/git/RetroGameGame/agents/status/gates/queue/history/20260218T215758Z_merge_NB-CX-009_295213_878499.json
+- Merge Gate Status: PASS
 
 ## Ready Decision
 
 - Ready for PR creation: YES
 - Ready for merge to main now: NO
-- Merge Decision: PENDING
-
+- Merge Decision: READY_FOR_MERGE

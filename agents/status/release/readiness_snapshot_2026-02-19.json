@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-02-19T05:31:12.310624+00:00",
+  "generated_at": "2026-02-19T06:38:28.274181+00:00",
   "source_root": "/home/jl/git/RetroGameGame",
   "tickets": [
     {
@@ -299,7 +299,7 @@
       "ticket_id": "NB-CX-009",
       "owner_agent": "codex_worker1",
       "critical_path": "YES",
-      "declared_status": "TODO",
+      "declared_status": "READY_TO_MERGE",
       "effective_status": "READY_FOR_MERGE",
       "base_effective_status": "READY_FOR_MERGE",
       "lane": "LOCAL",
@@ -308,14 +308,14 @@
       "merge_manifest_path": "/home/jl/git/RetroGameGame/agents/merge/NB-CX-009_merge_manifest.md",
       "latest_gate_job_id": "20260218T215758Z_merge_NB-CX-009_295213_878499",
       "evidence": [
-        "declared_status=TODO",
+        "declared_status=READY_TO_MERGE",
         "qa_result=PASS",
         "merge_manifest_present=YES",
-        "merge_decision=PENDING",
+        "merge_decision=READY_FOR_MERGE",
         "manifest_gate_status=PASS"
       ],
       "conflicts": [],
-      "last_activity_date": "2026-02-18T23:54:53+00:00"
+      "last_activity_date": "2026-02-19T06:37:00.132215+00:00"
     },
     {
       "ticket_id": "NB-CX-011",

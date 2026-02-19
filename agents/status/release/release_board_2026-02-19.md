@@ -3,7 +3,7 @@
 ## Source
 
 - snapshot: /home/jl/git/RetroGameGame/agents/status/release/readiness_snapshot_2026-02-19.json
-- generated_at: 2026-02-19T05:31:28.678030+00:00
+- generated_at: 2026-02-19T06:38:28.334143+00:00
 
 ## Effective Status Counts
 
@@ -14,7 +14,7 @@
 
 ## Ordered Merge Candidates
 
-- NB-CX-009: owner=codex_worker1, effective=READY_FOR_MERGE, declared=TODO, critical=YES, last_activity=2026-02-18T23:54:53+00:00
+- NB-CX-009: owner=codex_worker1, effective=READY_FOR_MERGE, declared=READY_TO_MERGE, critical=YES, last_activity=2026-02-19T06:37:00.132215+00:00
 
 ## Ordered QA Queue
 
