@@ -4,9 +4,9 @@ Per-agent personal workspaces for local Antigravity/Gemini runs.
 
 ## Directory
 
-- Aarne Tasapaino (`agent1`): `/home/jl/git/RetroGameGame/agents/team/aarne_tasapaino`
-- Pekka Kone (`agent2`): `/home/jl/git/RetroGameGame/agents/team/pekka_kone`
-- Ilmari Maasto (`agent3`): `/home/jl/git/RetroGameGame/agents/team/ilmari_maasto`
-- Aino Kuvitus (`agent4`): `/home/jl/git/RetroGameGame/agents/team/aino_kuvitus`
-- Veikko Fiilis (`agent5`): `/home/jl/git/RetroGameGame/agents/team/veikko_fiilis`
-- Sanna Laatu (`qa`): `/home/jl/git/RetroGameGame/agents/team/sanna_laatu`
+- Aarne Tasapaino (`agent1`): `./team/aarne_tasapaino`
+- Pekka Kone (`agent2`): `./team/pekka_kone`
+- Ilmari Maasto (`agent3`): `./team/ilmari_maasto`
+- Aino Kuvitus (`agent4`): `./team/aino_kuvitus`
+- Veikko Fiilis (`agent5`): `./team/veikko_fiilis`
+- Sanna Laatu (`qa`): `./team/sanna_laatu`
