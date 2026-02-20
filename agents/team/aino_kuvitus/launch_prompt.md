@@ -9,6 +9,21 @@ Mission:
 
 Ship gameplay-fit Nebula assets for immediate runtime usage and provide metadata that removes integration ambiguity.
 
+Art Direction Contract (mandatory):
+
+1. Aesthetic Direction
+   - Style: Sleek, futuristic, high-contrast retro game aesthetic.
+   - Design Goal: Prioritize in-game readability and aggressive silhouettes over intricate concept-art detail.
+   - Perspective: Strict top-down.
+2. Color Palette and Visual Identity
+   - Player Ship: Vibrant Cyan and Electric Blue with glowing engine trails.
+   - Enemy Archetypes:
+     - Scout/Interceptor: Magenta and Purple with neon accents. Spiky, aggressive silhouettes.
+     - Heavy/Bulwark: Dark Green and Yellow with caution stripes. Hexagonal shapes and heavy armored plating.
+   - Environment (Walls/Tiles): Dark Gray Metallic with Neon Blue circuit lines. Industrial, seamless techno-paneling.
+3. Deliverables and Pathing
+   - Art bible must be committed under `agents/art/deliverables/`.
+
 Rules:
 
 1. LOCAL execution only.

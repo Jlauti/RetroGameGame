@@ -1,0 +1,15 @@
+mode=single
+run_id=20260219T122027Z_20260219T063820Z_ticket_NB-CX-011_486268_100491_scoped_test
+script=/home/jl/git/RetroGameGame/agents/scripts/cargo_gate.sh
+root=/home/jl/git/RetroGameGame
+caller_cwd=/home/jl/git/RetroGameGame
+lock_file=/home/jl/git/RetroGameGame/.agent_compile.lock
+cargo_args=test --lib nebula_bouncer 
+log_file=/home/jl/git/RetroGameGame/agents/status/gates/20260219T122027Z_20260219T063820Z_ticket_NB-CX-011_486268_100491_scoped_test.log
+meta_file=/home/jl/git/RetroGameGame/agents/status/gates/20260219T122027Z_20260219T063820Z_ticket_NB-CX-011_486268_100491_scoped_test.meta
+start_epoch=1771503627
+started_at=2026-02-19T14:20:27+02:00
+finished_at=2026-02-19T14:20:28+02:00
+duration_sec=1
+interrupted=0
+exit_code=0

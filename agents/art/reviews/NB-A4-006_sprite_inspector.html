@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NB-A4-006 Candidate Inspector</title>
+  <style>
+    body {
+      margin: 0;
+      background: #11161f;
+      color: #d5def0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif;
+    }
+    header {
+      position: sticky;
+      top: 0;
+      background: #0c1118;
+      border-bottom: 1px solid #1f2a3a;
+      padding: 14px 20px;
+      z-index: 100;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 20px;
+    }
+    header h1 { margin: 0; font-size: 18px; }
+    header p { margin: 6px 0 0; font-size: 13px; color: #93a5c2; }
+    
+    .controls {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+    }
+    textarea.report {
+        width: 300px;
+        height: 60px;
+        background: #000;
+        color: #0f0;
+        font-family: monospace;
+        font-size: 10px;
+        border: 1px solid #333;
+    }
+    
+    main {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 14px;
+      padding: 14px;
+    }
+    .card {
+      background: #161e2a;
+      border: 2px solid #253247;
+      border-radius: 8px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .status-approved { border-color: #2a7f5f; }
+    .status-rejected { border-color: #8d3f3f; }
+    .status-pending { border-color: #6c5e32; }
+    
+    .thumb {
+      background: #0f141d;
+      min-height: 200px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-bottom: 1px solid #253247;
+      padding: 10px;
+    }
+    .thumb img {
+      max-width: 100%;
+      max-height: 200px;
+      object-fit: contain;
+      image-rendering: pixelated;
+    }
+    .missing { color: #d67777; font-weight: bold; }
+    
+    .meta {
+      padding: 10px;
+      font-size: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      flex: 1;
+    }
+    .row { margin-bottom: 2px; }
+    code { color: #a8c8ff; word-break: break-all; }
+    
+    .actions {
+        margin-top: 10px;
+        display: flex;
+        gap: 5px;
+    }
+    button {
+        cursor: pointer;
+        background: #253247;
+        color: #fff;
+        border: none;
+        padding: 4px 8px;
+        border-radius: 4px;
+    }
+    button:hover { background: #354a6b; }
+    
+    textarea {
+        background: #0f141d;
+        color: #ccc;
+        border: 1px solid #253247;
+        margin-top: 5px;
+        width: 95%;
+        height: 40px;
+        padding: 4px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>NB-A4-006 Candidate Inspector</h1>
+      <p>Generated at 2026-02-19T12:30:33+00:00. Entries: 5</p>
+    </div>
+    <div class="controls">
+       <button onclick="copyReport()">Copy Report JSON</button>
+       <textarea id="report-out" class="report" readonly>Make changes to generate report...</textarea>
+    </div>
+  </header>
+  <main>
+<article class="card status-pending" data-path="assets/sprites/future/nebula_bouncer/candidates/decal_blood_01.png" data-status="PENDING">
+  <div class="thumb"><img loading="lazy" src="../../../assets/sprites/future/nebula_bouncer/candidates/decal_blood_01.png" alt="assets/sprites/future/nebula_bouncer/candidates/decal_blood_01.png" /></div>
+  <div class="meta">
+    <div class="row"><strong>File:</strong> <code>assets/sprites/future/nebula_bouncer/candidates/decal_blood_01.png</code></div>
+    <div class="row"><strong>Class:</strong> unknown</div>
+    <div class="row"><strong>Size:</strong> 640x640</div>
+    <div class="row"><strong>Status:</strong> <span class="status-text">PENDING</span></div>
+    
+    <div class="actions">
+      <button onclick="setStatus(this, 'APPROVED')">Approve</button>
+      <button onclick="setStatus(this, 'REJECTED')">Reject</button>
+      <button onclick="setStatus(this, 'PENDING')">Reset</button>
+    </div>
+    
+    <textarea placeholder="Notes..." oninput="updateNote(this)"></textarea>
+  </div>
+</article>
+
+
+<article class="card status-pending" data-path="assets/sprites/future/nebula_bouncer/candidates/decal_burn_01.png" data-status="PENDING">
+  <div class="thumb"><img loading="lazy" src="../../../assets/sprites/future/nebula_bouncer/candidates/decal_burn_01.png" alt="assets/sprites/future/nebula_bouncer/candidates/decal_burn_01.png" /></div>
+  <div class="meta">
+    <div class="row"><strong>File:</strong> <code>assets/sprites/future/nebula_bouncer/candidates/decal_burn_01.png</code></div>
+    <div class="row"><strong>Class:</strong> unknown</div>
+    <div class="row"><strong>Size:</strong> 640x640</div>
+    <div class="row"><strong>Status:</strong> <span class="status-text">PENDING</span></div>
+    
+    <div class="actions">
+      <button onclick="setStatus(this, 'APPROVED')">Approve</button>
+      <button onclick="setStatus(this, 'REJECTED')">Reject</button>
+      <button onclick="setStatus(this, 'PENDING')">Reset</button>
+    </div>
+    
+    <textarea placeholder="Notes..." oninput="updateNote(this)"></textarea>
+  </div>
+</article>
+
+
+<article class="card status-pending" data-path="assets/sprites/future/nebula_bouncer/candidates/elite_cand_01.png" data-status="PENDING">
+  <div class="thumb"><img loading="lazy" src="../../../assets/sprites/future/nebula_bouncer/candidates/elite_cand_01.png" alt="assets/sprites/future/nebula_bouncer/candidates/elite_cand_01.png" /></div>
+  <div class="meta">
+    <div class="row"><strong>File:</strong> <code>assets/sprites/future/nebula_bouncer/candidates/elite_cand_01.png</code></div>
+    <div class="row"><strong>Class:</strong> unknown</div>
+    <div class="row"><strong>Size:</strong> 640x640</div>
+    <div class="row"><strong>Status:</strong> <span class="status-text">PENDING</span></div>
+    
+    <div class="actions">
+      <button onclick="setStatus(this, 'APPROVED')">Approve</button>
+      <button onclick="setStatus(this, 'REJECTED')">Reject</button>
+      <button onclick="setStatus(this, 'PENDING')">Reset</button>
+    </div>
+    
+    <textarea placeholder="Notes..." oninput="updateNote(this)"></textarea>
+  </div>
+</article>
+
+
+<article class="card status-pending" data-path="assets/sprites/future/nebula_bouncer/candidates/tank_cand_01.png" data-status="PENDING">
+  <div class="thumb"><img loading="lazy" src="../../../assets/sprites/future/nebula_bouncer/candidates/tank_cand_01.png" alt="assets/sprites/future/nebula_bouncer/candidates/tank_cand_01.png" /></div>
+  <div class="meta">
+    <div class="row"><strong>File:</strong> <code>assets/sprites/future/nebula_bouncer/candidates/tank_cand_01.png</code></div>
+    <div class="row"><strong>Class:</strong> unknown</div>
+    <div class="row"><strong>Size:</strong> 640x640</div>
+    <div class="row"><strong>Status:</strong> <span class="status-text">PENDING</span></div>
+    
+    <div class="actions">
+      <button onclick="setStatus(this, 'APPROVED')">Approve</button>
+      <button onclick="setStatus(this, 'REJECTED')">Reject</button>
+      <button onclick="setStatus(this, 'PENDING')">Reset</button>
+    </div>
+    
+    <textarea placeholder="Notes..." oninput="updateNote(this)"></textarea>
+  </div>
+</article>
+
+
+<article class="card status-pending" data-path="assets/sprites/future/nebula_bouncer/candidates/tank_cand_02.png" data-status="PENDING">
+  <div class="thumb"><img loading="lazy" src="../../../assets/sprites/future/nebula_bouncer/candidates/tank_cand_02.png" alt="assets/sprites/future/nebula_bouncer/candidates/tank_cand_02.png" /></div>
+  <div class="meta">
+    <div class="row"><strong>File:</strong> <code>assets/sprites/future/nebula_bouncer/candidates/tank_cand_02.png</code></div>
+    <div class="row"><strong>Class:</strong> unknown</div>
+    <div class="row"><strong>Size:</strong> 640x640</div>
+    <div class="row"><strong>Status:</strong> <span class="status-text">PENDING</span></div>
+    
+    <div class="actions">
+      <button onclick="setStatus(this, 'APPROVED')">Approve</button>
+      <button onclick="setStatus(this, 'REJECTED')">Reject</button>
+      <button onclick="setStatus(this, 'PENDING')">Reset</button>
+    </div>
+    
+    <textarea placeholder="Notes..." oninput="updateNote(this)"></textarea>
+  </div>
+</article>
+</main>
+  
+    <script>
+      const state = {};
+
+      function setStatus(btn, newStatus) {
+        const card = btn.closest('.card');
+        const path = card.getAttribute('data-path');
+        
+        // Update visual
+        card.classList.remove('status-pending', 'status-approved', 'status-rejected');
+        card.classList.add('status-' + newStatus.toLowerCase());
+        card.querySelector('.status-text').innerText = newStatus;
+        card.setAttribute('data-status', newStatus);
+        
+        updateState(path, { status: newStatus });
+      }
+
+      function updateNote(area) {
+        const card = area.closest('.card');
+        const path = card.getAttribute('data-path');
+        updateState(path, { notes: area.value });
+      }
+
+      function updateState(path, changes) {
+        if (!state[path]) state[path] = {};
+        Object.assign(state[path], changes);
+        generateReport();
+      }
+
+      function generateReport() {
+        // Collect all changes from the DOM state
+        const lines = [];
+        document.querySelectorAll('.card').forEach(card => {
+            const path = card.getAttribute('data-path');
+            const status = card.getAttribute('data-status');
+            const note = card.querySelector('textarea').value;
+            
+            // Only report interesting things (approved/rejected or notes)
+            // Or just report everything? Let's report changed items or items with status
+            if (status !== 'PENDING' || note.trim().length > 0) {
+                lines.push({ path, status, notes: note });
+            }
+        });
+        
+        const jsonStr = JSON.stringify(lines, null, 2);
+        document.getElementById('report-out').value = jsonStr;
+      }
+      
+      function copyReport() {
+        const el = document.getElementById('report-out');
+        el.select();
+        document.execCommand('copy');
+        alert('Copied JSON report to clipboard!');
+      }
+    </script>
+    
+</body>
+</html>

@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "generated_at": "2026-02-19T12:30:32+00:00",
+  "root": "assets/sprites/future/nebula_bouncer/candidates",
+  "entries": [
+    {
+      "path": "assets/sprites/future/nebula_bouncer/candidates/decal_blood_01.png",
+      "filename": "decal_blood_01.png",
+      "class": "unknown",
+      "usage": "TODO",
+      "status": "PENDING",
+      "pivot": "center",
+      "facing": "up",
+      "orientation_offset_deg": -90.0,
+      "notes": "",
+      "tags": [],
+      "width": 640,
+      "height": 640
+    },
+    {
+      "path": "assets/sprites/future/nebula_bouncer/candidates/decal_burn_01.png",
+      "filename": "decal_burn_01.png",
+      "class": "unknown",
+      "usage": "TODO",
+      "status": "PENDING",
+      "pivot": "center",
+      "facing": "up",
+      "orientation_offset_deg": -90.0,
+      "notes": "",
+      "tags": [],
+      "width": 640,
+      "height": 640
+    },
+    {
+      "path": "assets/sprites/future/nebula_bouncer/candidates/elite_cand_01.png",
+      "filename": "elite_cand_01.png",
+      "class": "unknown",
+      "usage": "TODO",
+      "status": "PENDING",
+      "pivot": "center",
+      "facing": "up",
+      "orientation_offset_deg": -90.0,
+      "notes": "",
+      "tags": [],
+      "width": 640,
+      "height": 640
+    },
+    {
+      "path": "assets/sprites/future/nebula_bouncer/candidates/tank_cand_01.png",
+      "filename": "tank_cand_01.png",
+      "class": "unknown",
+      "usage": "TODO",
+      "status": "PENDING",
+      "pivot": "center",
+      "facing": "up",
+      "orientation_offset_deg": -90.0,
+      "notes": "",
+      "tags": [],
+      "width": 640,
+      "height": 640
+    },
+    {
+      "path": "assets/sprites/future/nebula_bouncer/candidates/tank_cand_02.png",
+      "filename": "tank_cand_02.png",
+      "class": "unknown",
+      "usage": "TODO",
+      "status": "PENDING",
+      "pivot": "center",
+      "facing": "up",
+      "orientation_offset_deg": -90.0,
+      "notes": "",
+      "tags": [],
+      "width": 640,
+      "height": 640
+    }
+  ]
+}

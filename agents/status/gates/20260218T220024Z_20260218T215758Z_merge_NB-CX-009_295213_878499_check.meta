@@ -1,0 +1,15 @@
+mode=single
+run_id=20260218T220024Z_20260218T215758Z_merge_NB-CX-009_295213_878499_check
+script=/home/jl/git/RetroGameGame/agents/scripts/cargo_gate.sh
+root=/home/jl/git/RetroGameGame
+caller_cwd=/home/jl/git/RetroGameGame
+lock_file=/home/jl/git/RetroGameGame/.agent_compile.lock
+cargo_args=check 
+log_file=/home/jl/git/RetroGameGame/agents/status/gates/20260218T220024Z_20260218T215758Z_merge_NB-CX-009_295213_878499_check.log
+meta_file=/home/jl/git/RetroGameGame/agents/status/gates/20260218T220024Z_20260218T215758Z_merge_NB-CX-009_295213_878499_check.meta
+start_epoch=1771452024
+started_at=2026-02-19T00:00:24+02:00
+finished_at=2026-02-19T00:13:13+02:00
+duration_sec=769
+interrupted=0
+exit_code=0

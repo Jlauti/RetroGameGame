@@ -18,3 +18,18 @@ Execution rules:
    `source /home/jl/git/RetroGameGame/.venv/bin/activate && python /home/jl/git/RetroGameGame/assets/scripts/check_bg.py /home/jl/git/RetroGameGame/assets/sprites/future/nebula_bouncer --strict`
 7. Include validator outcome summary in the report.
 8. If any Cargo command is needed, use `cargo-safe` by default.
+
+Art Direction Contract (mandatory):
+
+1. Aesthetic Direction
+   - Style: Sleek, futuristic, high-contrast retro game aesthetic.
+   - Design Goal: Prioritize in-game readability and aggressive silhouettes over intricate concept-art detail.
+   - Perspective: Strict top-down.
+2. Color Palette and Visual Identity
+   - Player Ship: Vibrant Cyan and Electric Blue with glowing engine trails.
+   - Enemy Archetypes:
+     - Scout/Interceptor: Magenta and Purple with neon accents. Spiky, aggressive silhouettes.
+     - Heavy/Bulwark: Dark Green and Yellow with caution stripes. Hexagonal shapes and heavy armored plating.
+   - Environment (Walls/Tiles): Dark Gray Metallic with Neon Blue circuit lines. Industrial, seamless techno-paneling.
+3. Deliverables and Pathing
+   - Art bible must be committed under `agents/art/deliverables/`.
