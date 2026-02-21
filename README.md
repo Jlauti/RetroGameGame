@@ -44,6 +44,7 @@ Loop contract details: `docs/agentic/AGENTIC_LOOP.md`.
 - Build/runtime guardrails: `AGENTS.md`
 - Agent control plane: `agents/README.md`
 - Agentic docs index: `docs/agentic/README.md`
+- Machine switch protocol: `docs/agentic/MACHINE_SWITCH.md`
 - Principal launch prompt: `agents/principal_engineer/launch_prompt.md`
 
 ## Build Quickstart

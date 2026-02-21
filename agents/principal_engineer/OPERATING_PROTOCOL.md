@@ -119,3 +119,7 @@ At session end, update:
 2. active loop artifact status and next actions
 3. `agents/status/current_milestone.md` (if changed)
 4. daily status artifact if part of current workflow
+5. asset sync audit before handoff:
+   - `git status --short -- assets agents/art specs/future/nebula_bouncer`
+   - `git ls-files --others --exclude-standard assets agents/art specs/future/nebula_bouncer`
+6. follow `docs/agentic/MACHINE_SWITCH.md` before switching PCs

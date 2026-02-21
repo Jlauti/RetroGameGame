@@ -26,6 +26,7 @@ Stable explanatory process docs are in `docs/agentic/`.
 - Activation matrix: `docs/agentic/WORKER_ACTIVATION_MATRIX.md`
 - Control-plane map: `docs/agentic/CONTROL_PLANE_MAP.md`
 - Principal runbook: `docs/agentic/RUNBOOK.md`
+- Machine switch protocol: `docs/agentic/MACHINE_SWITCH.md`
 
 ## Principal Engineer Files
 
