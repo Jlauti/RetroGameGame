@@ -9,6 +9,7 @@ use crate::eras::era_future::nebula_bouncer::resources::{
 use crate::eras::era_future::nebula_bouncer::topography::spawn_chunk_topography;
 use crate::shared::components::Health;
 use avian2d::prelude::*;
+use bevy::camera::ScalingMode;
 use bevy::ecs::message::MessageReader;
 use bevy::prelude::*;
 use std::path::PathBuf;
@@ -420,7 +421,12 @@ pub fn setup_nebula_bouncer(
     commands.spawn((
         Camera3d::default(),
         Projection::Orthographic(OrthographicProjection {
-            scale: 15.0, // 15 units vertical visibility
+            // 15 design-units * 128 world-pixels per unit = 1920 world-pixels vertically.
+            // Avoid combining default_2d window scaling with scale=15.0 (that shrinks gameplay to a tiny center patch).
+            scaling_mode: ScalingMode::FixedVertical {
+                viewport_height: 15.0 * 128.0,
+            },
+            scale: 1.0,
             ..OrthographicProjection::default_2d()
         }),
         Camera {
