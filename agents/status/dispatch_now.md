@@ -1,35 +1,55 @@
 # Dispatch Now
 
-Generated: 2026-02-19
+Generated: 2026-02-25
 Owner: principal_engineer
+
+## Immediate Hotfix Wave
+
+1. Agent 2 (Pekka Kone)
+- Ticket: `NB-A2-009`
+- Delegation: `agents/delegations/agent2/NB-A2-009_task.md`
+- Scope: runtime topography visibility/readability hotfix + ship visibility integrity.
+
+2. Agent 4 (Aino Kuvitus)
+- Ticket: `NB-A4-012`
+- Delegation: `agents/delegations/agent4/NB-A4-012_task.md`
+- Scope: neon-hex overlay intensity/contrast hotfix pack for 16:9 readability.
+
+## Wave Closure
+
+- Runtime integration checkpoint commit: `0a8a369`
+- Camera projection scaling fix: `721bda5`
+- Camera projection clip-range fix: `de7a371`
+- Formatting cleanup for Nebula modules: `2995ec0`
+- Current verdict: wave is stable enough to proceed to next graphics polish round.
 
 ## Agent Status Snapshot
 
-1. Aarne Tasapaino (`agent1`): idle; no active local ticket.
-2. Pekka Kone (`agent2`): assigned `NB-A2-003` for runtime asset integration follow-up.
-3. Ilmari Maasto (`agent3`): idle; no active local ticket.
-4. Aino Kuvitus (`agent4`): assigned `NB-A4-006` art production batch 2.
+1. Aarne Tasapaino (`agent1`): assigned `NB-A1-006`.
+2. Pekka Kone (`agent2`): assigned `NB-A2-008`.
+3. Ilmari Maasto (`agent3`): assigned `NB-A3-003`.
+4. Aino Kuvitus (`agent4`): assigned `NB-A4-011`.
 5. Veikko Fiilis (`agent5`): idle; no active local ticket.
-6. Codex Worker 1: `NB-CX-011` closeout/merge-prep lane.
-7. Codex Worker 2: idle standby.
-8. QA (`sanna_laatu`): idle; prior `NB-QA-016` complete.
+6. QA (`sanna_laatu`): queued `NB-QA-020` (blocked on dev completion).
 
-## Loop Round 1 Dispatch
+## Nebula Graphics Wave Dispatch
 
-1. Principal Engineer
-- Finalize metadata alignment for `NB-CX-009` and include in merge-ready wave.
-- Keep gate queue running continuously.
+1. Agent 1 (Aarne Tasapaino)
+- Ticket: `NB-A1-006`
+- Scope: lock camera-behind-ship and neon-hex topography contract with concrete values.
 
-2. Codex Worker 1
-- Ticket: `NB-CX-011`
-- Prompt: `/home/jl/git/RetroGameGame/agents/prompts/codex_worker1_kickoff_nb-cx-011.md`
-- Scope: closeout evidence + gate alignment to move ticket toward merge-ready.
+2. Agent 3 (Ilmari Maasto)
+- Ticket: `NB-A3-003`
+- Scope: implement deterministic topography data layer in Nebula procgen.
 
-3. Agent 2 (Pekka Kone)
-- Ticket: `NB-A2-003`
-- Delegation: `/home/jl/git/RetroGameGame/agents/delegations/agent2/NB-A2-003_task.md`
-- Scope: runtime asset integration hardening in `era_future`.
+3. Agent 4 (Aino Kuvitus)
+- Ticket: `NB-A4-011`
+- Scope: define neon-hex visual baseline and readability guardrails.
 
-## Universal Gate Command
+4. Agent 2 (Pekka Kone)
+- Ticket: `NB-A2-008`
+- Scope: implement camera framing + neon-hex topography runtime rendering.
 
-`python3 /home/jl/git/RetroGameGame/agents/scripts/gate_queue.py run-loop --wait-lock`
+5. QA (Sanna Laatu)
+- Ticket: `NB-QA-020`
+- Scope: command + HITL validation for camera/topography wave.
