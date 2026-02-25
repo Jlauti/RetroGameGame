@@ -351,29 +351,31 @@ pub fn setup_nebula_bouncer(
             alpha_mode: AlphaMode::Blend,
             ..default()
         }),
+        // NB-A2-010 pass3: Bright neon wireframe hex edges via outline texture.
+        // Texture = white edges on transparent bg; base_color tints the edge glow.
         hex_material_t0: materials.add(StandardMaterial {
-            base_color: crate::eras::era_future::nebula_bouncer::topography::TIER_COLORS[0],
+            base_color: Color::srgba(0.0, 0.6, 1.0, 0.85),
             base_color_texture: Some(hex_texture.clone()),
             unlit: true,
             alpha_mode: AlphaMode::Blend,
             ..default()
         }),
         hex_material_t1: materials.add(StandardMaterial {
-            base_color: crate::eras::era_future::nebula_bouncer::topography::TIER_COLORS[1],
+            base_color: Color::srgba(0.55, 0.0, 1.0, 0.90),
             base_color_texture: Some(hex_texture.clone()),
             unlit: true,
             alpha_mode: AlphaMode::Blend,
             ..default()
         }),
         hex_material_t2: materials.add(StandardMaterial {
-            base_color: crate::eras::era_future::nebula_bouncer::topography::TIER_COLORS[2],
+            base_color: Color::srgba(0.0, 1.0, 0.5, 0.90),
             base_color_texture: Some(hex_texture.clone()),
             unlit: true,
             alpha_mode: AlphaMode::Blend,
             ..default()
         }),
         hex_material_t3: materials.add(StandardMaterial {
-            base_color: crate::eras::era_future::nebula_bouncer::topography::TIER_COLORS[3],
+            base_color: Color::srgba(1.0, 0.0, 0.85, 0.95),
             base_color_texture: Some(hex_texture.clone()),
             unlit: true,
             alpha_mode: AlphaMode::Blend,
@@ -423,39 +425,27 @@ pub fn setup_nebula_bouncer(
         });
 
     // Spawn 3D camera and lighting for the glTF models
-    // NB-A2-010: Closer chase framing — tighter viewport, steeper pitch, reduced forward offset.
-    let cam_distance = 8.0 * 128.0;
-    let cam_pitch = -35.0f32.to_radians();
-    let cam_yaw = 0.0f32.to_radians();
-    let horizontal_forward = Vec3::new(cam_yaw.sin(), cam_yaw.cos(), 0.0).normalize();
-    let camera_target = horizontal_forward * (2.0 * 128.0);
-    let camera_forward = Vec3::new(
-        cam_yaw.sin() * cam_pitch.cos(),
-        cam_yaw.cos() * cam_pitch.cos(),
-        cam_pitch.sin(),
-    )
-    .normalize();
-    let camera_position = camera_target - camera_forward * cam_distance;
+    // NB-A2-010 pass4: Perspective projection for true depth foreshortening.
+    // Camera sits behind and above the ship, looking forward.
+    let cam_height = 280.0; // height above the Z=0 gameplay plane
+    let cam_behind = -420.0; // behind the player on Y axis
+    let look_ahead = 600.0; // how far ahead of player to aim camera
 
     commands.spawn((
         Camera3d::default(),
-        Projection::Orthographic(OrthographicProjection {
-            // NB-A2-010: Tighter viewport for closer ship-ground framing.
-            scaling_mode: ScalingMode::FixedVertical {
-                viewport_height: 8.0 * 128.0,
-            },
-            scale: 1.0,
-            // Camera sits far from the gameplay plane for the chase framing; widen clip range accordingly.
-            near: -5000.0,
-            far: 5000.0,
-            ..OrthographicProjection::default_2d()
+        Projection::Perspective(PerspectiveProjection {
+            fov: 60.0f32.to_radians(),
+            near: 1.0,
+            far: 10000.0,
+            ..default()
         }),
         Camera {
             order: 1,
             clear_color: ClearColorConfig::None,
             ..default()
         },
-        Transform::from_translation(camera_position).looking_at(camera_target, Vec3::Z),
+        Transform::from_xyz(0.0, cam_behind, cam_height)
+            .looking_at(Vec3::new(0.0, look_ahead, 0.0), Vec3::Z),
         NebulaBouncerContext,
         NebulaGameplayCamera,
     ));

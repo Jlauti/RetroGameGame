@@ -16,12 +16,12 @@ pub const HEX_HEIGHT: f32 = HEX_RADIUS * 2.0;
 pub const HEX_OUTLINE_TEXTURE: &str = "sprites/future/nebula_bouncer/hex_outline.png";
 
 /// Tier colors for neon topography. Tier 0 is the lowest basin, Tier 3 the highest mound.
-/// NB-A2-010: Boosted alpha for clearer multi-color neon tier differentiation.
+/// NB-A2-010 pass3: Bright saturated neon wireframe edges. Texture provides outline shape.
 pub const TIER_COLORS: [Color; 4] = [
-    Color::srgba(0.18, 0.42, 1.0, 0.14),  // Tier 0: Deep blue basin
-    Color::srgba(0.58, 0.28, 0.96, 0.22), // Tier 1: Electric purple
-    Color::srgba(0.0, 1.0, 0.90, 0.32),   // Tier 2: Neon cyan
-    Color::srgba(1.0, 0.18, 0.80, 0.42),  // Tier 3: Hot fuchsia crest
+    Color::srgba(0.0, 0.6, 1.0, 0.85),  // Tier 0: Neon cyan
+    Color::srgba(0.55, 0.0, 1.0, 0.90), // Tier 1: Neon purple
+    Color::srgba(0.0, 1.0, 0.5, 0.90),  // Tier 2: Neon green
+    Color::srgba(1.0, 0.0, 0.85, 0.95), // Tier 3: Neon magenta
 ];
 
 /// Topography height quantization tiers
@@ -106,9 +106,10 @@ pub fn spawn_chunk_topography(
             };
             let tier = (tier_u8 as usize).min(TIER_COLORS.len() - 1);
             let normalized_height = smoothed_height(topography, cols, rows, c, r);
-            // NB-A2-010: Gentler relief — reduced amplitude, less footprint variation.
-            let elevation = (normalized_height - 0.35) * 0.30;
-            let footprint = (0.90 + normalized_height * 0.08).clamp(0.88, 0.98);
+            // NB-A2-010 pass2: Visible relief with slightly overlapping footprint.
+            let elevation = (normalized_height - 0.35) * 0.45;
+            // footprint > 1.0 so hexes overlap slightly → continuous terrain with no gaps.
+            let footprint = 1.04;
 
             let material = match tier {
                 0 => nebula_mats.hex_material_t0.clone(),
