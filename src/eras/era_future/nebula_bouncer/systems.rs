@@ -336,9 +336,10 @@ pub fn setup_nebula_bouncer(
 
     let quad_mesh = meshes.add(Rectangle::new(1.0, 1.0));
 
-    // Build a flat-top regular hexagon mesh using Bevy's built-in primitive.
+    // Build a true 3D hexagonal pillar mesh using Bevy's Extrusion primitive.
     // Radius=0.5 so scale=hex_size gives the correct footprint.
-    let hex_mesh = meshes.add(RegularPolygon::new(0.5, 6));
+    // Extrude by a large depth (e.g. 50.0) so they extend deep into the floor.
+    let hex_mesh = meshes.add(Extrusion::new(RegularPolygon::new(0.5, 6), 50.0));
 
     let hex_texture: Handle<Image> =
         asset_server.load(crate::eras::era_future::nebula_bouncer::topography::HEX_OUTLINE_TEXTURE);
@@ -351,33 +352,33 @@ pub fn setup_nebula_bouncer(
             alpha_mode: AlphaMode::Blend,
             ..default()
         }),
-        // NB-A2-010 pass3: Bright neon wireframe hex edges via outline texture.
-        // Texture = white edges on transparent bg; base_color tints the edge glow.
+        // NB-A2-010 pass6: Solid-color materials for 3D hex prisms.
+        // No texture — the Extrusion side faces show as lit terrain walls.
         hex_material_t0: materials.add(StandardMaterial {
-            base_color: Color::srgba(0.0, 0.6, 1.0, 0.85),
-            base_color_texture: Some(hex_texture.clone()),
-            unlit: true,
+            base_color: Color::srgba(0.02, 0.06, 0.18, 0.90),
+            emissive: bevy::color::palettes::css::DARK_CYAN.into(),
+            unlit: false,
             alpha_mode: AlphaMode::Blend,
             ..default()
         }),
         hex_material_t1: materials.add(StandardMaterial {
-            base_color: Color::srgba(0.55, 0.0, 1.0, 0.90),
-            base_color_texture: Some(hex_texture.clone()),
-            unlit: true,
+            base_color: Color::srgba(0.10, 0.02, 0.22, 0.90),
+            emissive: bevy::color::palettes::css::DARK_VIOLET.into(),
+            unlit: false,
             alpha_mode: AlphaMode::Blend,
             ..default()
         }),
         hex_material_t2: materials.add(StandardMaterial {
-            base_color: Color::srgba(0.0, 1.0, 0.5, 0.90),
-            base_color_texture: Some(hex_texture.clone()),
-            unlit: true,
+            base_color: Color::srgba(0.02, 0.18, 0.10, 0.90),
+            emissive: bevy::color::palettes::css::DARK_GREEN.into(),
+            unlit: false,
             alpha_mode: AlphaMode::Blend,
             ..default()
         }),
         hex_material_t3: materials.add(StandardMaterial {
-            base_color: Color::srgba(1.0, 0.0, 0.85, 0.95),
-            base_color_texture: Some(hex_texture.clone()),
-            unlit: true,
+            base_color: Color::srgba(0.20, 0.02, 0.16, 0.90),
+            emissive: bevy::color::palettes::css::DEEP_PINK.into(),
+            unlit: false,
             alpha_mode: AlphaMode::Blend,
             ..default()
         }),

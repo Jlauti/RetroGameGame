@@ -119,14 +119,23 @@ pub fn spawn_chunk_topography(
                 _ => nebula_mats.hex_material_t0.clone(),
             };
 
-            // NB-A2-010: True hex mesh for authentic hexagonal tile silhouettes.
+            // NB-A2-010 pass6: Tier-dependent height for 3D terrain relief.
+            // Each tier sits at a different Z level; Z-scale stretches the prism vertically.
+            let tier_height = match tier {
+                0 => 0.0,
+                1 => 12.0,
+                2 => 28.0,
+                3 => 48.0,
+                _ => 0.0,
+            };
+            let z_scale = 1.0 + tier as f32 * 0.3; // taller prisms for higher tiers
             commands.spawn((
                 ChunkMember,
                 TopographyHex,
                 Mesh3d(nebula_mats.hex_mesh.clone()),
                 MeshMaterial3d(material),
-                Transform::from_xyz(x, y, depth::BACKGROUND + 0.18 + elevation).with_scale(
-                    Vec3::new(hex_width * footprint, hex_height * footprint, 1.0),
+                Transform::from_xyz(x, y, depth::BACKGROUND + tier_height - 25.0).with_scale(
+                    Vec3::new(hex_width * footprint, hex_height * footprint, z_scale),
                 ),
             ));
         }
