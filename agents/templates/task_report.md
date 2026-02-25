@@ -22,9 +22,9 @@ Summarize concrete outputs.
 
 ## Validation Run
 
-- cargo-safe check: PASS
-- cargo-safe test: PASS
-- cargo-safe fmt -- --check: PASS
+- cargo check: PASS
+- cargo test: PASS
+- cargo fmt -- --check: PASS
 
 ## Risks
 

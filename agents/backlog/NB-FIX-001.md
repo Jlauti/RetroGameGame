@@ -17,7 +17,7 @@
 
 ## Objective
 
-Restore full merge-gate health (`cargo-safe check`, `cargo-safe test`, `cargo-safe fmt -- --check`) for `era_future/nebula_bouncer` while preserving the intended ECS + Avian scaffolding direction.
+Restore full merge-gate health (`cargo check`, `cargo test`, `cargo fmt -- --check`) for `era_future/nebula_bouncer` while preserving the intended ECS + Avian scaffolding direction.
 
 ## Allowed Paths
 
@@ -32,9 +32,9 @@ Restore full merge-gate health (`cargo-safe check`, `cargo-safe test`, `cargo-sa
 
 ## Acceptance Commands
 
-- cargo-safe check
-- cargo-safe test
-- cargo-safe fmt -- --check
+- cargo check
+- cargo test
+- cargo fmt -- --check
 
 ## Dependencies
 
@@ -43,6 +43,6 @@ Restore full merge-gate health (`cargo-safe check`, `cargo-safe test`, `cargo-sa
 ## Definition of Done
 
 - Compile/format gate failures in `era_future/nebula_bouncer` resolved.
-- `cargo-safe check`, `cargo-safe test`, and `cargo-safe fmt -- --check` pass.
+- `cargo check`, `cargo test`, and `cargo fmt -- --check` pass.
 - Report includes exact fixes and integration notes.
 - QA signoff `PASS`.

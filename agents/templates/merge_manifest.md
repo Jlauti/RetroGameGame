@@ -16,6 +16,6 @@
 
 ## Post-Merge Verification
 
-- cargo-safe check
-- cargo-safe test
+- cargo check
+- cargo test
 - smoke run notes

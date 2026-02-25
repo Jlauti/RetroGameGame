@@ -30,9 +30,9 @@ Run final QA gate for `NB-A3-001` and produce canonical signoff artifact.
 
 ## Acceptance Commands
 
-- cargo-safe check
-- cargo-safe test
-- cargo-safe fmt -- --check
+- cargo check
+- cargo test
+- cargo fmt -- --check
 
 ## Dependencies
 
@@ -40,6 +40,6 @@ Run final QA gate for `NB-A3-001` and produce canonical signoff artifact.
 
 ## Definition of Done
 
-- Signoff file exists at `/home/jl/git/RetroGameGame/agents/qa/NB-A3-001_qa_signoff.md`.
+- Signoff file exists at `c:\Users\jlaut\git\RetroGameGame/agents/qa/NB-A3-001_qa_signoff.md`.
 - `Gate Result` is set with evidence-backed rationale.
 - QA report submitted for this ticket.

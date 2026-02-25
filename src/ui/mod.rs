@@ -4,6 +4,7 @@ pub mod menu;
 pub mod music;
 pub mod particles;
 pub mod results;
+pub mod settings;
 pub mod timeline;
 
 use bevy::prelude::*;
@@ -15,6 +16,7 @@ impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((
             music::MusicPlugin,
+            settings::SettingsUiPlugin,
             menu::MenuPlugin,
             carousel::CarouselPlugin,
             particles::ParticlesPlugin,

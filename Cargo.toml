@@ -8,6 +8,7 @@ description = "A love letter to gaming history — journey through decades of cl
 avian2d = "0.5.0"
 bevy = { version = "0.18", features = ["mp3"] }
 rand = "0.10.0"
+ron = "0.8"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 

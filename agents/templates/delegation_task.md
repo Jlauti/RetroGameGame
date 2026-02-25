@@ -32,4 +32,4 @@ Provide game/system context and constraints.
 
 Return report at:
 
-`/home/jl/git/RetroGameGame/agents/reports/<agent_id>/<ticket_id>_task_report.md`
+`c:\Users\jlaut\git\RetroGameGame/agents/reports/<agent_id>/<ticket_id>_task_report.md`

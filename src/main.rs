@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use retro_game_game::RetroGameGamePlugin;
+use retro_game_game::core;
 
 fn configure_wsl_winit_backend() {
     let is_wsl = cfg!(target_os = "linux") && std::env::var_os("WSL_DISTRO_NAME").is_some();
@@ -27,13 +28,16 @@ fn main() {
     println!("Starting RetroGameGame...");
     println!("Asset root: {}", asset_root);
 
+    let initial_settings = core::settings::load_settings();
+
     App::new()
         .add_plugins(
             DefaultPlugins
                 .set(WindowPlugin {
                     primary_window: Some(Window {
                         title: "RetroGameGame".into(),
-                        resolution: (1024, 768).into(),
+                        resolution: initial_settings.resolution.into(),
+                        mode: initial_settings.display_mode.to_bevy_mode(),
                         resizable: true,
                         ..default()
                     }),

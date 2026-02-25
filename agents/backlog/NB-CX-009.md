@@ -13,7 +13,7 @@
 - Session Health: HEALTHY
 - Work Category: ENGINE_INTEGRATION
 - Start Date: 2026-02-17
-- Scoped Test Command: cargo-safe check --bin retro-game-game
+- Scoped Test Command: cargo check --bin retro-game-game
 
 ## Objective
 
@@ -36,12 +36,12 @@ Wire Aino's approved sprite metadata into runtime orientation behavior so misrot
 
 ## Acceptance Commands
 
-- cargo-safe check --bin retro-game-game
-- cargo-safe fmt -- --check
+- cargo check --bin retro-game-game
+- cargo fmt -- --check
 
 ## Definition of Done
 
 - Runtime orientation uses config-backed offsets for player and orb.
 - Overlay/debug output shows active orientation offsets.
 - `sprite_orientation.json` exists and is documented.
-- Ticket report submitted at `/home/jl/git/RetroGameGame/agents/reports/codex_worker1/NB-CX-009_task_report.md`.
+- Ticket report submitted at `c:\Users\jlaut\git\RetroGameGame/agents/reports/codex_worker1/NB-CX-009_task_report.md`.

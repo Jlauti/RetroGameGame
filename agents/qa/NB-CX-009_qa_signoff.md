@@ -11,8 +11,8 @@
 ### 1. Build Health
 - **Status**: PASSED
 - **Evidence**:
-  - `cargo-safe check --bin retro-game-game`: PASS (exit=0)
-  - `cargo-safe fmt -- --check`: PASS (exit=0)
+  - `cargo check --bin retro-game-game`: PASS (exit=0)
+  - `cargo fmt -- --check`: PASS (exit=0)
 
 ### 2. Deliverables Audit
 - **Config**: `specs/future/nebula_bouncer/sprite_orientation.json` exists with valid schema (player:-90.0, orb:-90.0).

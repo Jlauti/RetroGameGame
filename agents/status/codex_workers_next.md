@@ -12,8 +12,8 @@ Owner: principal_engineer
 ## Worker 1 Dispatch
 
 - Ticket: `NB-CX-011`
-- Prompt: `/home/jl/git/RetroGameGame/agents/prompts/codex_worker1_kickoff_nb-cx-011.md`
-- Report target: `/home/jl/git/RetroGameGame/agents/reports/codex_worker1/NB-CX-011_task_report.md`
+- Prompt: `c:\Users\jlaut\git\RetroGameGame/agents/prompts/codex_worker1_kickoff_nb-cx-011.md`
+- Report target: `c:\Users\jlaut\git\RetroGameGame/agents/reports/codex_worker1/NB-CX-011_task_report.md`
 - Objective: confirm all evidence and gate artifacts are aligned so ticket can be promoted to merge-ready state without stale metadata.
 
 ## Worker 2 Dispatch
@@ -25,4 +25,4 @@ Owner: principal_engineer
 
 - Implementation first.
 - Enqueue one `TICKET` gate job at ticket end:
-  `python3 /home/jl/git/RetroGameGame/agents/scripts/gate_queue.py enqueue --ticket <TICKET_ID> --mode TICKET --workdir <worktree_path> --scoped-test "<scoped command>"`
+  `py c:\Users\jlaut\git\RetroGameGame/agents/scripts/gate_queue.py enqueue --ticket <TICKET_ID> --mode TICKET --workdir <worktree_path> --scoped-test "<scoped command>"`

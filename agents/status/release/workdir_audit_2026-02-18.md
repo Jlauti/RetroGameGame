@@ -5,7 +5,7 @@
 
 ## Workspaces
 
-- /home/jl/git/RetroGameGame: branch=develop dirty=True ahead_of_origin_develop=2 stash_count=2 prune_safe=False reason=canonical workspace
+- c:\Users\jlaut\git\RetroGameGame: branch=develop dirty=True ahead_of_origin_develop=2 stash_count=2 prune_safe=False reason=canonical workspace
 
 ## Pruned
 

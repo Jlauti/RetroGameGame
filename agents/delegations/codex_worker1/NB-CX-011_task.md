@@ -15,7 +15,7 @@ Nebula gameplay loop is currently functional, but visuals are still heavily debu
 ## Concrete Steps
 
 1. Add a config-driven Nebula asset manifest at:
-   - `/home/jl/git/RetroGameGame/specs/future/nebula_bouncer/asset_manifest.json`
+   - `c:\Users\jlaut\git\RetroGameGame/specs/future/nebula_bouncer/asset_manifest.json`
 2. Implement manifest/resource loading in Nebula runtime (`resources.rs`), including safe defaults when files are missing or malformed.
 3. Replace debug primitive render usage with sprite-based rendering for:
    - player ship,
@@ -25,8 +25,8 @@ Nebula gameplay loop is currently functional, but visuals are still heavily debu
 5. Preserve fallback behavior:
    - if sprite handle/path is invalid, entity still renders with current primitive visual and log entry.
 6. Ensure orientation integration remains correct with:
-   - `/home/jl/git/RetroGameGame/specs/future/nebula_bouncer/sprite_orientation.json`
-7. Update `/home/jl/git/RetroGameGame/specs/future/nebula_bouncer/README.md` with manifest format and tuning guidance.
+   - `c:\Users\jlaut\git\RetroGameGame/specs/future/nebula_bouncer/sprite_orientation.json`
+7. Update `c:\Users\jlaut\git\RetroGameGame/specs/future/nebula_bouncer/README.md` with manifest format and tuning guidance.
 8. Run acceptance commands and record exact exits.
 9. Produce final report with:
    - changed files,
@@ -42,14 +42,14 @@ Nebula gameplay loop is currently functional, but visuals are still heavily debu
 
 ## Acceptance
 
-- `cargo-safe check --bin retro-game-game` passes.
-- `cargo-safe test --lib nebula_bouncer` passes.
-- `cargo-safe fmt -- --check` passes.
+- `cargo check --bin retro-game-game` passes.
+- `cargo test --lib nebula_bouncer` passes.
+- `cargo fmt -- --check` passes.
 - Sprite manifest and runtime wiring are in place with graceful fallbacks.
 
 ## Report Format
 
 Return report at:
 
-`/home/jl/git/RetroGameGame/agents/reports/codex_worker1/NB-CX-011_task_report.md`
+`c:\Users\jlaut\git\RetroGameGame/agents/reports/codex_worker1/NB-CX-011_task_report.md`
 

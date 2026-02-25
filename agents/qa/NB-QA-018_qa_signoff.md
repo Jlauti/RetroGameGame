@@ -1,0 +1,12 @@
+# QA Signoff — NB-QA-018
+- Date: 2026-02-25
+- Verdict: FAIL
+- Acceptance Commands Run:
+  - cargo build --bin retro-game-game (exit 0)
+  - cargo test --lib nebula_bouncer (exit 0)
+  - cargo fmt -- --check (exit 0)
+- Scope Boundary Check: PASS
+- Notes:
+  - Acceptance gates passed locally; compiler warnings were present but non-blocking.
+  - Dependency tickets are not completed: NB-A1-004, NB-A2-006, NB-A4-009 are all Status: TODO.
+  - Required HITL checks were not completed in this run: camera angle/readability, aiming fidelity vs cursor position, and movement/collision/projectile regression in isometric view.

@@ -31,9 +31,9 @@ Prepare QA gate artifacts/checklists for NB-A1-001 and NB-A4-001, and stage draf
 
 ## Acceptance Commands
 
-- cargo-safe check
-- cargo-safe test
-- cargo-safe fmt -- --check
+- cargo check
+- cargo test
+- cargo fmt -- --check
 
 ## Dependencies
 

@@ -15,13 +15,13 @@ pub const HEX_HEIGHT: f32 = HEX_RADIUS * 2.0;
 /// Hex outline texture path (generated procedural asset).
 pub const HEX_OUTLINE_TEXTURE: &str = "sprites/future/nebula_bouncer/hex_outline.png";
 
-/// Tier colors — Tier 0 is skipped (renders nothing).
-/// Tiers 1-3 render as subtle hex outlines with increasing intensity.
+/// Tier colors for neon topography. Tier 0 is the lowest basin, Tier 3 the highest mound.
+/// NB-A2-010: Boosted alpha for clearer multi-color neon tier differentiation.
 pub const TIER_COLORS: [Color; 4] = [
-    Color::srgba(0.0, 0.0, 0.0, 0.0),     // Tier 0: invisible (skipped)
-    Color::srgba(0.61, 0.35, 0.94, 0.10), // Tier 1: Electric Purple (subtle)
-    Color::srgba(0.0, 1.0, 1.0, 0.18),    // Tier 2: Neon Cyan
-    Color::srgba(1.0, 0.0, 1.0, 0.28),    // Tier 3: Hot Magenta
+    Color::srgba(0.18, 0.42, 1.0, 0.14),  // Tier 0: Deep blue basin
+    Color::srgba(0.58, 0.28, 0.96, 0.22), // Tier 1: Electric purple
+    Color::srgba(0.0, 1.0, 0.90, 0.32),   // Tier 2: Neon cyan
+    Color::srgba(1.0, 0.18, 0.80, 0.42),  // Tier 3: Hot fuchsia crest
 ];
 
 /// Topography height quantization tiers
@@ -39,6 +39,43 @@ pub fn quantize_height(height: f32) -> usize {
 
 pub fn fold_hash(seed: u64, value: u64) -> u64 {
     seed.wrapping_mul(0x9E37_79B9_7F4A_7C15).rotate_left(7) ^ value
+}
+
+fn tier_at(topography: &ChunkTopography, cols: i32, rows: i32, c: i32, r: i32) -> Option<f32> {
+    if c < 0 || c >= cols || r < 0 || r >= rows {
+        return None;
+    }
+    let idx = (r * cols + c) as usize;
+    topography
+        .tiers
+        .get(idx)
+        .copied()
+        .map(|v| (v.min(3)) as f32)
+}
+
+fn smoothed_height(topography: &ChunkTopography, cols: i32, rows: i32, c: i32, r: i32) -> f32 {
+    let center = tier_at(topography, cols, rows, c, r).unwrap_or(0.0);
+    let mut total = center * 2.0;
+    let mut weight = 2.0;
+
+    // Offset-coordinates hex neighbors with row parity.
+    let neighbor_deltas_even: [(i32, i32); 6] =
+        [(-1, 0), (1, 0), (0, -1), (-1, -1), (0, 1), (-1, 1)];
+    let neighbor_deltas_odd: [(i32, i32); 6] = [(-1, 0), (1, 0), (1, -1), (0, -1), (1, 1), (0, 1)];
+    let deltas = if r % 2 == 0 {
+        &neighbor_deltas_even
+    } else {
+        &neighbor_deltas_odd
+    };
+
+    for (dc, dr) in deltas {
+        if let Some(value) = tier_at(topography, cols, rows, c + dc, r + dr) {
+            total += value;
+            weight += 1.0;
+        }
+    }
+
+    (total / weight) / 3.0
 }
 
 pub fn spawn_chunk_topography(
@@ -68,29 +105,28 @@ pub fn spawn_chunk_topography(
                 continue;
             };
             let tier = (tier_u8 as usize).min(TIER_COLORS.len() - 1);
-
-            // Skip Tier 0 — no visual for lowest elevation
-            if tier == 0 {
-                continue;
-            }
+            let normalized_height = smoothed_height(topography, cols, rows, c, r);
+            // NB-A2-010: Gentler relief — reduced amplitude, less footprint variation.
+            let elevation = (normalized_height - 0.35) * 0.30;
+            let footprint = (0.90 + normalized_height * 0.08).clamp(0.88, 0.98);
 
             let material = match tier {
+                0 => nebula_mats.hex_material_t0.clone(),
                 1 => nebula_mats.hex_material_t1.clone(),
                 2 => nebula_mats.hex_material_t2.clone(),
                 3 => nebula_mats.hex_material_t3.clone(),
-                _ => nebula_mats.hex_material_t1.clone(),
+                _ => nebula_mats.hex_material_t0.clone(),
             };
 
+            // NB-A2-010: True hex mesh for authentic hexagonal tile silhouettes.
             commands.spawn((
                 ChunkMember,
                 TopographyHex,
-                Mesh3d(nebula_mats.quad_mesh.clone()),
+                Mesh3d(nebula_mats.hex_mesh.clone()),
                 MeshMaterial3d(material),
-                Transform::from_xyz(x, y, depth::BACKGROUND + 0.25).with_scale(Vec3::new(
-                    hex_width * 0.88,
-                    hex_height * 0.88,
-                    1.0,
-                )),
+                Transform::from_xyz(x, y, depth::BACKGROUND + 0.18 + elevation).with_scale(
+                    Vec3::new(hex_width * footprint, hex_height * footprint, 1.0),
+                ),
             ));
         }
     }

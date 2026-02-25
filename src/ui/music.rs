@@ -2,6 +2,7 @@ use bevy::asset::LoadState;
 use bevy::audio::{AudioSink, AudioSinkPlayback, Volume};
 use bevy::prelude::*;
 
+use crate::core::settings::GameSettings;
 use crate::core::states::GameState;
 
 /// Global music controller for hub screens.
@@ -32,12 +33,21 @@ struct HubMusicController {
 const HUB_MUSIC_PRIMARY: &str = "music/pixel_pathways.mp3";
 const HUB_MUSIC_FALLBACK: &str = "music/Pixel Pathways.mp3";
 const HUB_MUSIC_KNOWN_GOOD: &str = "music/Pixel Popcorn Rush.mp3";
-const HUB_MUSIC_VOLUME: f32 = 1.25;
 
-fn setup_hub_music(mut commands: Commands, asset_server: Res<AssetServer>) {
+/// Conversion policy: Map UI 0.0-1.0 to linear volume.
+/// Original mix used 1.25 for this track.
+fn get_volume_for_setting(setting: f32) -> Volume {
+    Volume::Linear(setting * 1.25)
+}
+
+fn setup_hub_music(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    settings: Res<GameSettings>,
+) {
     let music_path = choose_music_path();
     let handle: Handle<AudioSource> = asset_server.load(music_path);
-    let entity = spawn_hub_music_entity(&mut commands, handle.clone());
+    let entity = spawn_hub_music_entity(&mut commands, handle.clone(), settings.music_volume);
 
     info!(
         "Hub music controller initialized with track '{}'",
@@ -60,6 +70,7 @@ fn control_hub_music(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     state: Res<State<GameState>>,
+    settings: Res<GameSettings>,
     controller: Option<ResMut<HubMusicController>>,
     music_entity_query: Query<(), With<HubMusicEntity>>,
     mut sink_query: Query<&mut AudioSink, With<HubMusicEntity>>,
@@ -69,7 +80,11 @@ fn control_hub_music(
     };
 
     if music_entity_query.get(controller.entity).is_err() {
-        controller.entity = spawn_hub_music_entity(&mut commands, controller.handle.clone());
+        controller.entity = spawn_hub_music_entity(
+            &mut commands,
+            controller.handle.clone(),
+            settings.music_volume,
+        );
     }
 
     let current_state = state.get();
@@ -99,7 +114,11 @@ fn control_hub_music(
             );
             controller.handle = asset_server.load(HUB_MUSIC_KNOWN_GOOD);
             commands.entity(controller.entity).despawn();
-            controller.entity = spawn_hub_music_entity(&mut commands, controller.handle.clone());
+            controller.entity = spawn_hub_music_entity(
+                &mut commands,
+                controller.handle.clone(),
+                settings.music_volume,
+            );
             controller.load_wait_frames = 0;
             controller.missing_sink_frames = 0;
             controller.warned_missing_sink = false;
@@ -126,13 +145,16 @@ fn control_hub_music(
                 sink.play();
             }
             sink.unmute();
-            sink.set_volume(Volume::Linear(HUB_MUSIC_VOLUME));
+            sink.set_volume(get_volume_for_setting(settings.music_volume));
 
             if sink.empty() {
                 warn!("Hub music sink is empty, respawning music entity");
                 commands.entity(controller.entity).despawn();
-                controller.entity =
-                    spawn_hub_music_entity(&mut commands, controller.handle.clone());
+                controller.entity = spawn_hub_music_entity(
+                    &mut commands,
+                    controller.handle.clone(),
+                    settings.music_volume,
+                );
                 controller.logged_sink_ready = false;
             }
         } else if !sink.is_paused() {
@@ -150,13 +172,17 @@ fn control_hub_music(
     }
 }
 
-fn spawn_hub_music_entity(commands: &mut Commands, handle: Handle<AudioSource>) -> Entity {
+fn spawn_hub_music_entity(
+    commands: &mut Commands,
+    handle: Handle<AudioSource>,
+    volume_setting: f32,
+) -> Entity {
     commands
         .spawn((
             HubMusicEntity,
             AudioPlayer::new(handle),
             PlaybackSettings::LOOP
-                .with_volume(Volume::Linear(HUB_MUSIC_VOLUME))
+                .with_volume(get_volume_for_setting(volume_setting))
                 .paused(),
         ))
         .id()

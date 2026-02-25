@@ -58,11 +58,11 @@ No additional runtime code edits were required in this pass because the expected
 
 ## Acceptance Command Results
 
-Executed from repo root (`/home/jl/git/RetroGameGame`):
+Executed from repo root (`c:\Users\jlaut\git\RetroGameGame`):
 
-- `cargo-safe check` -> PASS
-- `cargo-safe test` -> PASS
-- `cargo-safe fmt -- --check` -> PASS
+- `cargo check` -> PASS
+- `cargo test` -> PASS
+- `cargo fmt -- --check` -> PASS
 
 Notes:
 - Existing unrelated compiler warnings are present in legacy era modules, but no gate failures occurred.

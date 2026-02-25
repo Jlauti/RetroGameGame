@@ -39,7 +39,7 @@
 
 ## QA
 
-- QA Signoff File: /home/jl/git/RetroGameGame/agents/qa/NB-CX-010_qa_signoff.md
+- QA Signoff File: c:\Users\jlaut\git\RetroGameGame/agents/qa/NB-CX-010_qa_signoff.md
 - QA Status: PASS
 
 ## Merge Gate

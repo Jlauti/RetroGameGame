@@ -27,7 +27,7 @@ Consolidated merge-prep wave after QA completion, focused on codex tickets now m
 ## Preconditions
 
 1. TICKET-level evidence present in manifest.
-2. QA signoff `PASS` present in `/home/jl/git/RetroGameGame/agents/qa/`.
+2. QA signoff `PASS` present in `c:\Users\jlaut\git\RetroGameGame/agents/qa/`.
 3. One MERGE-mode gate run on the final combined staging branch before main promotion.
 
 ## Required Finalization

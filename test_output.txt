@@ -1,0 +1,131 @@
+   Compiling retro-game-game v0.1.0 (C:\Users\jlaut\git\RetroGameGame)
+warning: unused import: `Score`
+ --> src\eras\era_80s\cosmic_captain.rs:2:49
+  |
+2 | use crate::shared::components::{Health, Player, Score, Velocity};
+  |                                                 ^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `Score`
+ --> src\eras\era_90s\depths_of_doom.rs:2:63
+  |
+2 | use crate::shared::components::{GridPosition, Health, Player, Score};
+  |                                                               ^^^^^
+
+warning: unused import: `Score`
+ --> src\eras\era_90s\ice_blitz.rs:2:41
+  |
+2 | use crate::shared::components::{Player, Score, Velocity};
+  |                                         ^^^^^
+
+warning: unused imports: `Player` and `Score`
+ --> src\eras\era_90s\worm_wars.rs:2:41
+  |
+2 | use crate::shared::components::{Health, Player, Score, Velocity};
+  |                                         ^^^^^^  ^^^^^
+
+error[E0599]: no method named `despawn_recursive` found for struct `EntityCommands<'a>` in the current scope
+   --> src\eras\era_future\nebula_bouncer\systems.rs:648:33
+    |
+648 |         commands.entity(entity).despawn_recursive();
+    |                                 ^^^^^^^^^^^^^^^^^ method not found in `EntityCommands<'_>`
+
+warning: unused variable: `app`
+ --> src\effects\transitions.rs:7:21
+  |
+7 |     fn build(&self, app: &mut App) {
+  |                     ^^^ help: if this is intentional, prefix it with an underscore: `_app`
+  |
+  = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+   --> src\eras\era_80s\tunnel_miner.rs:540:9
+    |
+540 |     let mut bag_positions: std::collections::HashSet<(i32, i32)> = other_queries
+    |         ----^^^^^^^^^^^^^
+    |         |
+    |         help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: value assigned to `target_anim` is never read
+   --> src\eras\era_80s\tunnel_miner.rs:551:31
+    |
+551 |         let mut target_anim = anim_state.current_animation;
+    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+    = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `origin_x`
+   --> src\eras\era_80s\tunnel_miner.rs:992:25
+    |
+992 |                     let origin_x = -(GRID_WIDTH as f32 * TILE_SIZE) / 2.0;
+    |                         ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_origin_x`
+
+warning: unused variable: `i`
+   --> src\eras\era_90s\depths_of_doom.rs:129:9
+    |
+129 |     for i in 0..5 {
+    |         ^ help: if this is intentional, prefix it with an underscore: `_i`
+
+warning: variable does not need to be mutable
+   --> src\eras\era_90s\depths_of_doom.rs:253:5
+    |
+253 |     mut monster_query: Query<(&mut GridPosition, &mut Transform), (With<Monster>, Without<Player>)>,
+    |     ----^^^^^^^^^^^^^
+    |     |
+    |     help: remove this `mut`
+
+warning: unused variable: `player_query`
+   --> src\eras\era_90s\depths_of_doom.rs:252:5
+    |
+252 |     player_query: Query<&GridPosition, (With<Player>, Without<Monster>)>,
+    |     ^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_player_query`
+
+warning: unused variable: `monster_query`
+   --> src\eras\era_90s\depths_of_doom.rs:253:5
+    |
+253 |     mut monster_query: Query<(&mut GridPosition, &mut Transform), (With<Monster>, Without<Player>)>,
+    |     ^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_monster_query`
+
+warning: unused variable: `map`
+   --> src\eras\era_90s\depths_of_doom.rs:254:5
+    |
+254 |     map: Res<DungeonMap>,
+    |     ^^^ help: if this is intentional, prefix it with an underscore: `_map`
+
+warning: variable does not need to be mutable
+   --> src\eras\era_90s\ice_blitz.rs:327:24
+    |
+327 |     let (mut puck_vel, mut puck_transform) = match puck_query.single_mut() {
+    |                        ----^^^^^^^^^^^^^^
+    |                        |
+    |                        help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> src\eras\era_90s\ice_blitz.rs:332:28
+    |
+332 |     for (player_transform, mut player, player_vel) in &mut players_query {
+    |                            ----^^^^^^
+    |                            |
+    |                            help: remove this `mut`
+
+warning: unused variable: `player`
+   --> src\eras\era_90s\ice_blitz.rs:332:28
+    |
+332 |     for (player_transform, mut player, player_vel) in &mut players_query {
+    |                            ^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_player`
+
+warning: variable does not need to be mutable
+   --> src\eras\era_90s\worm_wars.rs:322:18
+    |
+322 |     for (entity, mut transform, mut vel, _proj) in &mut projectile_query {
+    |                  ----^^^^^^^^^
+    |                  |
+    |                  help: remove this `mut`
+
+For more information about this error, try `rustc --explain E0599`.
+warning: `retro-game-game` (lib test) generated 17 warnings
+error: could not compile `retro-game-game` (lib test) due to 1 previous error; 17 warnings emitted

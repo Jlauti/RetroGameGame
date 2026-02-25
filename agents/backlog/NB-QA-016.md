@@ -12,7 +12,7 @@
 - Retry Count: 0
 - Session Health: HEALTHY
 - Work Category: QA_GATE
-- Scoped Test Command: cargo-safe test --lib nebula_bouncer
+- Scoped Test Command: cargo test --lib nebula_bouncer
 
 ## Objective
 
@@ -31,19 +31,19 @@ Run final QA gate for `NB-CX-011` and produce canonical signoff artifact for Neb
 
 ## Acceptance Commands
 
-- cargo-safe check --bin retro-game-game
-- cargo-safe test --lib nebula_bouncer
-- cargo-safe fmt -- --check
+- cargo check --bin retro-game-game
+- cargo test --lib nebula_bouncer
+- cargo fmt -- --check
 
 ## Dependencies
 
 - NB-CX-011 report and runtime files.
-- `/home/jl/git/RetroGameGame/specs/future/nebula_bouncer/asset_manifest.json`.
-- `/home/jl/git/RetroGameGame/specs/future/nebula_bouncer/sprite_orientation.json`.
+- `c:\Users\jlaut\git\RetroGameGame/specs/future/nebula_bouncer/asset_manifest.json`.
+- `c:\Users\jlaut\git\RetroGameGame/specs/future/nebula_bouncer/sprite_orientation.json`.
 
 ## Definition of Done
 
-- Signoff file exists at `/home/jl/git/RetroGameGame/agents/qa/NB-CX-011_qa_signoff.md`.
+- Signoff file exists at `c:\Users\jlaut\git\RetroGameGame/agents/qa/NB-CX-011_qa_signoff.md`.
 - `Gate Result` is set with evidence-backed rationale.
-- QA report submitted at `/home/jl/git/RetroGameGame/agents/reports/qa/NB-QA-016_task_report.md`.
+- QA report submitted at `c:\Users\jlaut\git\RetroGameGame/agents/reports/qa/NB-QA-016_task_report.md`.
 

@@ -19,4 +19,4 @@ Persistent context and reviewed lessons for this agent.
 
 ## Review Notes
 
-- Append short dated notes after each major review cycle.
+- 2026-02-25: Completed NB-A1-005. Emphasized concrete RON schemas and state transition flows in deliverables.

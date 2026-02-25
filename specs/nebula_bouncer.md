@@ -6,17 +6,32 @@ A **Top-Down Scrolling Roguelite Shooter** that blends the terrain-navigation of
 **Core Hook**: Your bullets don't just disappear—they **bounce**. Mastery of angles and geometry is as important as reflexes.
 
 ## Aesthetic & Era
-- **Proposed Era**: Era 3 (2000s) or Era 4 (2010s) — "The Indie Renaissance"
+- **Proposed Era**: Era 4 (Future) — "Dark Synthwave"
+- **Tone**: Grimmer and more intense than the cheerful original Star Goose.
+- **Music**: Dark synthwave — driving basslines, analog synth arpeggios, cinematic pads.
 - **Visual Style**:
-    - Neon/Vector graphics (Geometry Wars style) or crisp 32-bit pixel art.
-    - High contrast to make projectiles and bounce trajectories visible.
-    - **Juice**: Screen shake on heavy impacts, particle trails for bouncing bullets.
+    - **Rendering**: 3D `.glb` models rendered with an orthographic "Chase-Camera" (Pitch -30°, Yaw 15°). Viewport scaled to 15 world units vertically. Ship sits in the lower screen third. See [Camera/Topography Contract](file:///c:/Users/jlaut/git/RetroGameGame/agents/deliverables/agent1/NB-A1-006_camera_topography_contract.md).
+    - **Gameplay Plane**: All physics and logic occur strictly on the XZ plane (Y = 0). +X is Right, -Z is Forward.
+    - **Cursor Mapping**: Raycast from camera to the Y=0 plane to establish the world target for aiming.
+    - **Depth Policy**: Floor at Y < 0.0, Entities at Y = 0.0, Projectiles at Y = 0.5, VFX at Y = 1.0+.
+    - **Palette**:
+        - Deep space black (`#0a0a12`) — background
+        - Neon cyan (`#00ffff`) — player, friendly elements, UI highlights
+        - Hot magenta (`#ff00ff`) — enemies, danger, hostile elements
+        - Electric purple (`#9b59f0`) — terrain accents, special items
+        - Hazard orange (`#ff6600`) — warnings, heavy enemies, explosions
+    - **Terrain**: Tiered "Neon-Hex" topography. Elevation is mapped to 4 discrete tiers (Floor, Platform, High, Wall) with neon edge glows. Topography conveys tiered hazards and movement zones inspired by *Star Goose*.
+    - **Ships/Enemies**: Silhouette-readable at game scale with neon edge glow. Each archetype must be instantly distinguishable by shape alone.
+    - **VFX**: Additive-blend neon trails, bounce sparks, status-effect auras. Screen shake on heavy impacts, particle trails for bouncing orbs.
+    - **Asset Pipeline**: Models created as `.glb` (glTF binary), placed in `assets/models/era_2010s/nebula_bouncer/`. Materials embedded. Y-up, facing +Z. 1 unit = 1 game tile.
+    - **Animation**: Code-driven (rotation, pulsing, color shifts) rather than frame-by-frame. Thruster glow, idle bob, impact squash handled in shaders/systems.
 
 ## Controls
 - **Movement**: `WASD` / `Arrow Keys` — Control ship position relative to the scrolling screen.
 - **Aiming**: `Mouse` — Controls a targeting reticle.
 - **Fire**: `Left Click` — Launch Kinetic Orbs (bullets).
 - **Skill**: `Right Click` / `Space` — Active ship skill (Dash, Shield, etc.).
+- **Settings/Pause**: `Esc` — Opens Global Settings (see [Settings Contract](file:///c:/Users/jlaut/git/RetroGameGame/agents/deliverables/agent1/NB-A1-005_settings_contract.md)).
 
 ## Core Mechanics
 

@@ -37,9 +37,9 @@
 
 ## Acceptance Commands
 
-- cargo-safe check --bin retro-game-game
-- cargo-safe test --lib nebula_bouncer
-- cargo-safe fmt -- --check
+- cargo check --bin retro-game-game
+- cargo test --lib nebula_bouncer
+- cargo fmt -- --check
 
 ## Acceptance Evidence Required
 

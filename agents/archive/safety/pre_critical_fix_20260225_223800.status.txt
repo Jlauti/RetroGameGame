@@ -1,0 +1,310 @@
+ M AGENTS.md
+ M Cargo.lock
+ M Cargo.toml
+ M agents/README.md
+ D agents/art/reviews/NB-A4-006_canonical_inspector.html
+ D agents/art/reviews/NB-A4-006_canonical_metadata.json
+ D agents/art/reviews/NB-A4-006_review_loop.md
+ D agents/art/reviews/NB-A4-006_sprite_inspector.html
+ D agents/art/reviews/NB-A4-006_sprite_metadata.json
+ D agents/art/reviews/NB-A4-006_sprite_metadata.template.json
+ M agents/backlog/NB-A1-001.md
+ M agents/backlog/NB-A1-002.md
+ M agents/backlog/NB-A1-003.md
+ M agents/backlog/NB-A2-001.md
+ M agents/backlog/NB-A2-002.md
+ M agents/backlog/NB-A2-003.md
+ M agents/backlog/NB-A3-001.md
+ M agents/backlog/NB-A3-002.md
+ M agents/backlog/NB-A4-001.md
+ M agents/backlog/NB-A4-002.md
+ M agents/backlog/NB-A4-003.md
+ M agents/backlog/NB-A4-004.md
+ M agents/backlog/NB-A4-006.md
+ M agents/backlog/NB-A5-001.md
+ M agents/backlog/NB-A5-002.md
+ M agents/backlog/NB-CX-009.md
+ M agents/backlog/NB-CX-011.md
+ M agents/backlog/NB-FIX-001.md
+ M agents/backlog/NB-QA-001.md
+ M agents/backlog/NB-QA-002.md
+ M agents/backlog/NB-QA-003.md
+ M agents/backlog/NB-QA-004.md
+ M agents/backlog/NB-QA-005.md
+ M agents/backlog/NB-QA-006.md
+ M agents/backlog/NB-QA-007.md
+ M agents/backlog/NB-QA-008.md
+ M agents/backlog/NB-QA-009.md
+ M agents/backlog/NB-QA-010.md
+ M agents/backlog/NB-QA-016.md
+ M agents/backlog/README.md
+ M agents/delegations/agent1/NB-A1-001_task.md
+ M agents/delegations/agent1/NB-A1-002_task.md
+ M agents/delegations/agent1/NB-A1-003_task.md
+ M agents/delegations/agent2/NB-A2-001_task.md
+ M agents/delegations/agent2/NB-A2-002_task.md
+ M agents/delegations/agent2/NB-A2-003_task.md
+ M agents/delegations/agent2/NB-FIX-001_task.md
+ M agents/delegations/agent3/NB-A3-001_task.md
+ M agents/delegations/agent3/NB-A3-002_task.md
+ D agents/delegations/agent4/NB-A4-001_task.md
+ D agents/delegations/agent4/NB-A4-002_task.md
+ D agents/delegations/agent4/NB-A4-003_task.md
+ D agents/delegations/agent4/NB-A4-004_task.md
+ D agents/delegations/agent4/NB-A4-006_task.md
+ M agents/delegations/agent5/NB-A5-001_task.md
+ M agents/delegations/agent5/NB-A5-002_task.md
+ M agents/delegations/codex_worker1/NB-CX-009_task.md
+ M agents/delegations/codex_worker1/NB-CX-011_task.md
+ D agents/delegations/qa/NB-QA-001_task.md
+ D agents/delegations/qa/NB-QA-002_task.md
+ D agents/delegations/qa/NB-QA-003_task.md
+ D agents/delegations/qa/NB-QA-004_task.md
+ D agents/delegations/qa/NB-QA-005_task.md
+ D agents/delegations/qa/NB-QA-006_task.md
+ D agents/delegations/qa/NB-QA-007_task.md
+ D agents/delegations/qa/NB-QA-008_task.md
+ D agents/delegations/qa/NB-QA-009_task.md
+ D agents/delegations/qa/NB-QA-010_task.md
+ D agents/delegations/qa/NB-QA-016_task.md
+ M agents/loops/LOOP-2026-02-18-nebula-gameplay-assetization.md
+ M agents/merge/NB-CX-005_merge_manifest.md
+ M agents/merge/NB-CX-006_merge_manifest.md
+ M agents/merge/NB-CX-007_merge_manifest.md
+ M agents/merge/NB-CX-008_merge_manifest.md
+ M agents/merge/NB-CX-009_merge_manifest.md
+ M agents/merge/NB-CX-010_merge_manifest.md
+ M agents/merge/NB-CX-011_merge_manifest.md
+ M agents/merge/merge_order_wave3_2026-02-17.md
+ M agents/principal_engineer/OPERATING_PROTOCOL.md
+ M agents/principal_engineer/current_context.md
+ M agents/principal_engineer/launch_prompt.md
+ M agents/principal_engineer/memory.md
+ D agents/prompts/README.md
+ D agents/prompts/agent1_kickoff_nb-a1-002.md
+ D agents/prompts/agent1_kickoff_nb-a1-003.md
+ D agents/prompts/agent1_start_prompt.md
+ D agents/prompts/agent2_kickoff_nb-a2-001.md
+ D agents/prompts/agent2_kickoff_nb-a2-002.md
+ D agents/prompts/agent2_kickoff_nb-a2-003.md
+ D agents/prompts/agent2_kickoff_nb-fix-001.md
+ D agents/prompts/agent2_start_prompt.md
+ D agents/prompts/agent3_kickoff_nb-a3-001.md
+ D agents/prompts/agent3_kickoff_nb-a3-002.md
+ D agents/prompts/agent3_start_prompt.md
+ D agents/prompts/agent4_kickoff_nb-a4-002.md
+ D agents/prompts/agent4_kickoff_nb-a4-003.md
+ D agents/prompts/agent4_kickoff_nb-a4-004.md
+ D agents/prompts/agent4_start_prompt.md
+ D agents/prompts/agent5_kickoff_nb-a5-001.md
+ D agents/prompts/agent5_kickoff_nb-a5-002.md
+ D agents/prompts/agent5_start_prompt.md
+ D agents/prompts/codex_worker1_kickoff_nb-cx-009.md
+ D agents/prompts/codex_worker1_kickoff_nb-cx-011.md
+ D agents/prompts/qa_kickoff_nb-qa-001.md
+ D agents/prompts/qa_kickoff_nb-qa-002.md
+ D agents/prompts/qa_kickoff_nb-qa-003.md
+ D agents/prompts/qa_kickoff_nb-qa-004.md
+ D agents/prompts/qa_kickoff_nb-qa-005.md
+ D agents/prompts/qa_kickoff_nb-qa-006.md
+ D agents/prompts/qa_kickoff_nb-qa-007.md
+ D agents/prompts/qa_kickoff_nb-qa-008.md
+ D agents/prompts/qa_kickoff_nb-qa-009.md
+ D agents/prompts/qa_kickoff_nb-qa-010.md
+ D agents/prompts/qa_kickoff_nb-qa-016.md
+ D agents/prompts/qa_start_prompt.md
+ M agents/qa/NB-CX-009_qa_signoff.md
+ M agents/qa/NB-CX-010_qa_signoff.md
+ M agents/qa/checklist_template.md
+ M agents/qa/signoff_protocol.md
+ M agents/reports/agent2/NB-A2-003_task_report.md
+ M agents/reports/codex_worker1/NB-CX-007_task_report.md
+ M agents/reports/codex_worker1/NB-CX-011_task_report.md
+ M agents/reports/codex_worker2/NB-CX-006_task_report.md
+ M agents/status/codex_workers_next.md
+ M agents/status/dispatch_now.md
+ M agents/status/hitl/HITL_round_2026-02-17.md
+ M agents/status/next_assignments.md
+ M agents/status/release/consolidation_checkpoint_2026-02-17.md
+ M agents/status/release/loop_round_1_2026-02-19.md
+ M agents/status/release/next_cycle_plan_2026-02-17.md
+ M agents/status/release/release_board_2026-02-17.md
+ M agents/status/release/release_board_2026-02-18.md
+ M agents/status/release/release_board_2026-02-19.md
+ M agents/status/release/stash_audit_2026-02-18.md
+ M agents/status/release/workdir_audit_2026-02-18.md
+ D agents/team/aarne_tasapaino/README.md
+ D agents/team/aarne_tasapaino/backlog.md
+ D agents/team/aarne_tasapaino/context.md
+ D agents/team/aarne_tasapaino/inbox/NB-A1-001.md
+ D agents/team/aarne_tasapaino/inbox/NB-A1-002.md
+ D agents/team/aarne_tasapaino/inbox/NB-A1-003.md
+ D agents/team/aarne_tasapaino/launch_prompt.md
+ M agents/team/aarne_tasapaino/memory.md
+ D agents/team/aarne_tasapaino/nudge.md
+ D agents/team/aino_kuvitus/README.md
+ D agents/team/aino_kuvitus/backlog.md
+ D agents/team/aino_kuvitus/context.md
+ D agents/team/aino_kuvitus/fix_180.py
+ D agents/team/aino_kuvitus/inbox/NB-A4-001.md
+ D agents/team/aino_kuvitus/inbox/NB-A4-002.md
+ D agents/team/aino_kuvitus/inbox/NB-A4-003.md
+ D agents/team/aino_kuvitus/inbox/NB-A4-004.md
+ D agents/team/aino_kuvitus/inbox/NB-A4-006.md
+ D agents/team/aino_kuvitus/launch_prompt.md
+ D agents/team/aino_kuvitus/nudge.md
+ D agents/team/ilmari_maasto/README.md
+ D agents/team/ilmari_maasto/backlog.md
+ D agents/team/ilmari_maasto/context.md
+ D agents/team/ilmari_maasto/inbox/NB-A3-001.md
+ D agents/team/ilmari_maasto/inbox/NB-A3-002.md
+ D agents/team/ilmari_maasto/launch_prompt.md
+ D agents/team/ilmari_maasto/nudge.md
+ D agents/team/pekka_kone/README.md
+ D agents/team/pekka_kone/backlog.md
+ D agents/team/pekka_kone/context.md
+ D agents/team/pekka_kone/inbox/NB-A2-001.md
+ D agents/team/pekka_kone/inbox/NB-A2-002.md
+ D agents/team/pekka_kone/inbox/NB-A2-003.md
+ D agents/team/pekka_kone/inbox/NB-FIX-001.md
+ D agents/team/pekka_kone/launch_prompt.md
+ D agents/team/pekka_kone/nudge.md
+ D agents/team/sanna_laatu/README.md
+ D agents/team/sanna_laatu/backlog.md
+ D agents/team/sanna_laatu/context.md
+ D agents/team/sanna_laatu/inbox/NB-QA-001.md
+ D agents/team/sanna_laatu/inbox/NB-QA-002.md
+ D agents/team/sanna_laatu/inbox/NB-QA-003.md
+ D agents/team/sanna_laatu/inbox/NB-QA-004.md
+ D agents/team/sanna_laatu/inbox/NB-QA-005.md
+ D agents/team/sanna_laatu/inbox/NB-QA-006.md
+ D agents/team/sanna_laatu/inbox/NB-QA-007.md
+ D agents/team/sanna_laatu/inbox/NB-QA-008.md
+ D agents/team/sanna_laatu/inbox/NB-QA-009.md
+ D agents/team/sanna_laatu/inbox/NB-QA-010.md
+ D agents/team/sanna_laatu/inbox/NB-QA-016.md
+ D agents/team/sanna_laatu/launch_prompt.md
+ D agents/team/sanna_laatu/nudge.md
+ D agents/team/veikko_fiilis/README.md
+ D agents/team/veikko_fiilis/backlog.md
+ D agents/team/veikko_fiilis/context.md
+ D agents/team/veikko_fiilis/inbox/NB-A5-001.md
+ D agents/team/veikko_fiilis/inbox/NB-A5-002.md
+ D agents/team/veikko_fiilis/launch_prompt.md
+ D agents/team/veikko_fiilis/nudge.md
+ D agents/team_roster.md
+ M agents/templates/delegation_task.md
+ M agents/templates/loop.md
+ M agents/templates/merge_manifest.md
+ M agents/templates/qa_signoff.md
+ M agents/templates/task_report.md
+ M agents/templates/ticket.md
+ M agents/tests/README.md
+ D assets/sprites/future/nebula_bouncer/.gitkeep
+ D assets/sprites/future/nebula_bouncer/candidates/decal_blood_01.png
+ D assets/sprites/future/nebula_bouncer/candidates/decal_burn_01.png
+ D assets/sprites/future/nebula_bouncer/candidates/elite_cand_01.png
+ D assets/sprites/future/nebula_bouncer/candidates/tank_cand_01.png
+ D assets/sprites/future/nebula_bouncer/candidates/tank_cand_02.png
+ D assets/sprites/future/nebula_bouncer/sprite_enemy_bulwark.png
+ D assets/sprites/future/nebula_bouncer/sprite_enemy_heavy.png
+ D assets/sprites/future/nebula_bouncer/sprite_enemy_interceptor.png
+ D assets/sprites/future/nebula_bouncer/sprite_enemy_scout.png
+ D assets/sprites/future/nebula_bouncer/sprite_ground_tile.png
+ D assets/sprites/future/nebula_bouncer/sprite_player_orb.png
+ D assets/sprites/future/nebula_bouncer/sprite_player_ship.png
+ D assets/sprites/future/nebula_bouncer/sprite_wall_tile.png
+ D assets/sprites/future/nebula_bouncer/ui_combo_label.png
+ D assets/sprites/future/nebula_bouncer/ui_multiplier_x5.png
+ D assets/sprites/future/nebula_bouncer/vfx_hit_ring.png
+ D assets/sprites/future/nebula_bouncer/vfx_impact_flash.png
+ D assets/sprites/future/nebula_bouncer/vfx_projectile_core.png
+ D assets/sprites/future/nebula_bouncer/vfx_ribbon_trail.png
+ M docs/architecture/DESIGN.md
+ M specs/future/nebula_bouncer/asset_manifest.json
+ M specs/nebula_bouncer.md
+ M src/core/mod.rs
+ M src/eras/era_future/nebula_bouncer/components.rs
+ M src/eras/era_future/nebula_bouncer/mod.rs
+ M src/eras/era_future/nebula_bouncer/procgen.rs
+ M src/eras/era_future/nebula_bouncer/resources.rs
+ M src/eras/era_future/nebula_bouncer/systems.rs
+ M src/main.rs
+ M src/ui/menu.rs
+ M src/ui/mod.rs
+ M src/ui/music.rs
+?? agents/INDEX.md
+?? agents/PRINCIPLES.md
+?? agents/archive/
+?? agents/backlog/NB-A1-004.md
+?? agents/backlog/NB-A1-005.md
+?? agents/backlog/NB-A1-006.md
+?? agents/backlog/NB-A2-004.md
+?? agents/backlog/NB-A2-005.md
+?? agents/backlog/NB-A2-006.md
+?? agents/backlog/NB-A2-007.md
+?? agents/backlog/NB-A2-008.md
+?? agents/backlog/NB-A2-009.md
+?? agents/backlog/NB-A3-003.md
+?? agents/backlog/NB-A4-007.md
+?? agents/backlog/NB-A4-008.md
+?? agents/backlog/NB-A4-009.md
+?? agents/backlog/NB-A4-010.md
+?? agents/backlog/NB-A4-011.md
+?? agents/backlog/NB-A4-012.md
+?? agents/backlog/NB-A5-006.md
+?? agents/backlog/NB-A5-007.md
+?? agents/backlog/NB-QA-017.md
+?? agents/backlog/NB-QA-018.md
+?? agents/backlog/NB-QA-019.md
+?? agents/backlog/NB-QA-020.md
+?? agents/delegations/agent1/NB-A1-005_task.md
+?? agents/delegations/agent1/NB-A1-006_task.md
+?? agents/delegations/agent2/NB-A2-007_task.md
+?? agents/delegations/agent2/NB-A2-008_task.md
+?? agents/delegations/agent2/NB-A2-009_task.md
+?? agents/delegations/agent3/NB-A3-003_task.md
+?? agents/delegations/agent4/NB-A4-010_task.md
+?? agents/delegations/agent4/NB-A4-011_task.md
+?? agents/delegations/agent4/NB-A4-012_task.md
+?? agents/delegations/agent5/NB-A5-006_task.md
+?? agents/delegations/qa/NB-QA-019_task.md
+?? agents/delegations/qa/NB-QA-020_task.md
+?? agents/deliverables/
+?? agents/qa/NB-QA-018_qa_signoff.md
+?? agents/qa/NB-QA-020_qa_signoff.md
+?? agents/reports/agent1/
+?? agents/reports/agent2/NB-A2-005_task_report.md
+?? agents/reports/agent2/NB-A2-006_task_report.md
+?? agents/reports/agent2/NB-A2-008_task_report.md
+?? agents/reports/agent2/NB-A2-009_task_report.md
+?? agents/reports/agent3/
+?? agents/reports/agent4/
+?? agents/reports/agent5/
+?? agents/reports/qa/
+?? agents/scripts/README.md
+?? agents/team/aarne_tasapaino/brief.md
+?? agents/team/aarne_tasapaino/inbox/suggestions.md
+?? agents/team/aino_kuvitus/brief.md
+?? agents/team/aino_kuvitus/inbox/suggestions.md
+?? agents/team/ilmari_maasto/brief.md
+?? agents/team/ilmari_maasto/inbox/suggestions.md
+?? agents/team/pekka_kone/brief.md
+?? agents/team/pekka_kone/inbox/suggestions.md
+?? agents/team/sanna_laatu/brief.md
+?? agents/team/sanna_laatu/inbox/suggestions.md
+?? agents/team/veikko_fiilis/brief.md
+?? agents/team/veikko_fiilis/inbox/suggestions.md
+?? assets/scripts/generate_procedural_assets.py
+?? assets/scripts/remove_green_bg.py
+?? assets/sprites/future/nebula_bouncer/Archived/
+?? assets/sprites/future/nebula_bouncer/hex_outline.png
+?? assets/sprites/future/nebula_bouncer/ship_models/
+?? compile_errors.txt
+?? inspect_glb.py
+?? scripts/
+?? src/core/settings.rs
+?? src/eras/era_future/nebula_bouncer/test_api.rs
+?? src/eras/era_future/nebula_bouncer/topography.rs
+?? src/ui/settings.rs
+?? test_output.txt

@@ -8,6 +8,7 @@ Durable orchestration protocol for the principal engineer role.
 - Keep delivery moving with local-first execution.
 - Preserve quality via strict QA and merge gates.
 - Close loops only on testable, non-trivial value outcomes.
+- Review agent suggestion inboxes and curate team evolution.
 
 ## Branching Discipline
 
@@ -21,23 +22,12 @@ Durable orchestration protocol for the principal engineer role.
 
 Read in order:
 
-1. `agents/principal_engineer/memory.md`
-2. `agents/principal_engineer/current_context.md`
-3. Active loop artifact in `agents/loops/`
-4. `agents/status/current_milestone.md`
-5. Latest release board in `agents/status/release/`
-
-Refresh context:
-
-```bash
-python3 /home/jl/git/RetroGameGame/agents/scripts/update_principal_context.py
-```
-
-Validate loop artifact:
-
-```bash
-python3 /home/jl/git/RetroGameGame/agents/scripts/validate_loop.py --loop /home/jl/git/RetroGameGame/agents/loops/<LOOP_ID>.md
-```
+1. `agents/INDEX.md`
+2. `agents/principal_engineer/memory.md`
+3. `agents/principal_engineer/current_context.md`
+4. Active loop artifact in `agents/loops/`
+5. `agents/status/current_milestone.md`
+6. Scan all `agents/team/*/inbox/suggestions.md` for pending reviews
 
 ## Loop Contract
 
@@ -56,46 +46,35 @@ Operational loop artifact path:
 - One-ticket WIP per agent.
 - Operational source-of-truth is under `agents/`.
 - Worker activation follows explicit matrix (not ad-hoc staffing).
+- Each agent's entry point is `agents/team/<codename>/brief.md`.
 
 ## Review And Gates
 
 Before ticket merge to `develop`:
 
 1. Scope boundary check
-2. `cargo-safe check`
+2. `cargo check`
 3. Ticket scoped test command
-4. `cargo-safe fmt -- --check`
+4. `cargo fmt -- --check`
 5. QA signoff `PASS`
 
 Before promotion merge to `main`:
 
 1. Scope boundary check
-2. `cargo-safe check`
-3. `cargo-safe test`
-4. `cargo-safe fmt -- --check`
+2. `cargo check`
+3. `cargo test`
+4. `cargo fmt -- --check`
 5. QA signoff `PASS`
 
-Gate helper:
+## Agent Evolution Protocol
 
-```bash
-bash /home/jl/git/RetroGameGame/agents/scripts/verify_merge_gate.sh <TICKET_ID>
-```
+Run periodically (at least once per sprint):
 
-## Aggressive Merge + Cleanup Routine
-
-Run continuously during integration windows:
-
-1. Refresh readiness and queue merge-ready non-conflicting work:
-   - `python3 /home/jl/git/RetroGameGame/agents/scripts/queue_merge_ready.py --root /home/jl/git/RetroGameGame --date $(date +%F)`
-2. Keep one gate runner alive:
-   - `python3 /home/jl/git/RetroGameGame/agents/scripts/gate_queue.py run-loop --wait-lock`
-3. Reconcile and rebuild release board after merge waves:
-   - `python3 /home/jl/git/RetroGameGame/agents/scripts/reconcile_ticket_state.py --root /home/jl/git/RetroGameGame --date $(date +%F)`
-   - `python3 /home/jl/git/RetroGameGame/agents/scripts/build_release_board.py --root /home/jl/git/RetroGameGame --date $(date +%F)`
-4. Run workspace hygiene audit:
-   - `python3 /home/jl/git/RetroGameGame/agents/scripts/cleanup_workspace_dirs.py --root /home/jl/git/RetroGameGame`
-5. Prune only with explicit approval:
-   - `python3 /home/jl/git/RetroGameGame/agents/scripts/cleanup_workspace_dirs.py --root /home/jl/git/RetroGameGame --prune-safe`
+1. Review `agents/team/*/inbox/suggestions.md` for all agents
+2. For approved memories: merge into the agent's `memory.md`
+3. For approved mandates: add to `agents/INDEX.md` or this protocol
+4. For declined items: note rationale and clear from inbox
+5. Update `agents/principal_engineer/memory.md` with any team-wide learnings
 
 ## Loop Completion Rule
 
@@ -106,11 +85,6 @@ A loop is marked `COMPLETE` only when:
 - required QA decisions are `PASS`
 - required evidence artifacts are present
 
-## Cargo Policy
-
-Use `cargo-safe` by default for all Cargo subcommands.
-Use plain `cargo` only with explicit bypass intent.
-
 ## Handoff Protocol
 
 At session end, update:
@@ -119,7 +93,10 @@ At session end, update:
 2. active loop artifact status and next actions
 3. `agents/status/current_milestone.md` (if changed)
 4. daily status artifact if part of current workflow
-5. asset sync audit before handoff:
-   - `git status --short -- assets agents/art specs/future/nebula_bouncer`
-   - `git ls-files --others --exclude-standard assets agents/art specs/future/nebula_bouncer`
-6. follow `docs/agentic/MACHINE_SWITCH.md` before switching PCs
+
+## Platform
+
+- **OS**: Windows
+- **Python**: `py` (not `python3`)
+- **Cargo**: plain `cargo` (not `cargo`)
+- **Repo**: `c:\Users\jlaut\git\RetroGameGame`

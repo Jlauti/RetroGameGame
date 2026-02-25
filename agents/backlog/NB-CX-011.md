@@ -13,7 +13,7 @@
 - Session Health: HEALTHY
 - Work Category: ENGINE_INTEGRATION
 - Start Date: 2026-02-17
-- Scoped Test Command: cargo-safe test --lib nebula_bouncer
+- Scoped Test Command: cargo test --lib nebula_bouncer
 
 ## Objective
 
@@ -42,9 +42,9 @@ Integrate approved Future-era sprites into Nebula Bouncer runtime so player/enem
 
 ## Acceptance Commands
 
-- cargo-safe check --bin retro-game-game
-- cargo-safe test --lib nebula_bouncer
-- cargo-safe fmt -- --check
+- cargo check --bin retro-game-game
+- cargo test --lib nebula_bouncer
+- cargo fmt -- --check
 
 ## Dependencies
 
@@ -57,4 +57,4 @@ Integrate approved Future-era sprites into Nebula Bouncer runtime so player/enem
 - Runtime keeps existing collision/hitbox gameplay behavior (visual swap only, unless explicitly justified).
 - Missing assets fail gracefully to debug primitive fallback with clear log/telemetry evidence.
 - Asset manifest exists and is documented for future art iteration.
-- Task report written at `/home/jl/git/RetroGameGame/agents/reports/codex_worker1/NB-CX-011_task_report.md` with command exits and file list.
+- Task report written at `c:\Users\jlaut\git\RetroGameGame/agents/reports/codex_worker1/NB-CX-011_task_report.md` with command exits and file list.

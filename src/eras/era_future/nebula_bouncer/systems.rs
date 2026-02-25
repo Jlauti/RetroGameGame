@@ -26,8 +26,8 @@ const VOID_DOT_TICK_INTERVAL_SECS: f32 = 0.5;
 const PREFLIGHT_SUMMARY_REL_PATH: &str =
     "agents/deliverables/codex_worker2/NB-CX-006_preflight_summary.txt";
 const FEEDBACK_TELEMETRY_COOLDOWN_SECS: f32 = 0.35;
-const MODEL_UNIT_TO_WORLD: f32 = 100.0;
-const PLAYER_MODEL_VISUAL_LIFT: f32 = 75.0;
+const MODEL_UNIT_TO_WORLD: f32 = 120.0;
+const PLAYER_MODEL_VISUAL_LIFT: f32 = 42.0;
 const PLAYER_MODEL_FACING_FIX_RADIANS: f32 = 0.0;
 const SCOUT_SPRITE_SIZE: Vec2 = Vec2::new(62.0, 62.0);
 const HEAVY_SPRITE_SIZE: Vec2 = Vec2::new(78.0, 78.0);
@@ -335,38 +335,57 @@ pub fn setup_nebula_bouncer(
     }
 
     let quad_mesh = meshes.add(Rectangle::new(1.0, 1.0));
+
+    // Build a flat-top regular hexagon mesh using Bevy's built-in primitive.
+    // Radius=0.5 so scale=hex_size gives the correct footprint.
+    let hex_mesh = meshes.add(RegularPolygon::new(0.5, 6));
+
+    let hex_texture: Handle<Image> =
+        asset_server.load(crate::eras::era_future::nebula_bouncer::topography::HEX_OUTLINE_TEXTURE);
     let nebula_mats = NebulaMaterials {
         quad_mesh,
+        hex_mesh,
         wall_material: materials.add(StandardMaterial {
             base_color: Color::WHITE,
             unlit: true,
             alpha_mode: AlphaMode::Blend,
             ..default()
         }),
+        hex_material_t0: materials.add(StandardMaterial {
+            base_color: crate::eras::era_future::nebula_bouncer::topography::TIER_COLORS[0],
+            base_color_texture: Some(hex_texture.clone()),
+            unlit: true,
+            alpha_mode: AlphaMode::Blend,
+            ..default()
+        }),
         hex_material_t1: materials.add(StandardMaterial {
             base_color: crate::eras::era_future::nebula_bouncer::topography::TIER_COLORS[1],
+            base_color_texture: Some(hex_texture.clone()),
             unlit: true,
             alpha_mode: AlphaMode::Blend,
             ..default()
         }),
         hex_material_t2: materials.add(StandardMaterial {
             base_color: crate::eras::era_future::nebula_bouncer::topography::TIER_COLORS[2],
+            base_color_texture: Some(hex_texture.clone()),
             unlit: true,
             alpha_mode: AlphaMode::Blend,
             ..default()
         }),
         hex_material_t3: materials.add(StandardMaterial {
             base_color: crate::eras::era_future::nebula_bouncer::topography::TIER_COLORS[3],
+            base_color_texture: Some(hex_texture.clone()),
             unlit: true,
             alpha_mode: AlphaMode::Blend,
             ..default()
         }),
-        hex_texture: asset_server
-            .load(crate::eras::era_future::nebula_bouncer::topography::HEX_OUTLINE_TEXTURE),
+        hex_texture,
     };
     commands.insert_resource(NebulaMaterials {
         quad_mesh: nebula_mats.quad_mesh.clone(),
+        hex_mesh: nebula_mats.hex_mesh.clone(),
         wall_material: nebula_mats.wall_material.clone(),
+        hex_material_t0: nebula_mats.hex_material_t0.clone(),
         hex_material_t1: nebula_mats.hex_material_t1.clone(),
         hex_material_t2: nebula_mats.hex_material_t2.clone(),
         hex_material_t3: nebula_mats.hex_material_t3.clone(),
@@ -404,12 +423,12 @@ pub fn setup_nebula_bouncer(
         });
 
     // Spawn 3D camera and lighting for the glTF models
-    // Contract: Pitch -30°, Yaw 15°, Distance 15.0 (1920 px), Look-At Offset [0, 0, 4].
-    let cam_distance = 15.0 * 128.0;
-    let cam_pitch = -30.0f32.to_radians();
-    let cam_yaw = 15.0f32.to_radians();
+    // NB-A2-010: Closer chase framing — tighter viewport, steeper pitch, reduced forward offset.
+    let cam_distance = 8.0 * 128.0;
+    let cam_pitch = -35.0f32.to_radians();
+    let cam_yaw = 0.0f32.to_radians();
     let horizontal_forward = Vec3::new(cam_yaw.sin(), cam_yaw.cos(), 0.0).normalize();
-    let camera_target = horizontal_forward * (4.0 * 128.0);
+    let camera_target = horizontal_forward * (2.0 * 128.0);
     let camera_forward = Vec3::new(
         cam_yaw.sin() * cam_pitch.cos(),
         cam_yaw.cos() * cam_pitch.cos(),
@@ -421,10 +440,9 @@ pub fn setup_nebula_bouncer(
     commands.spawn((
         Camera3d::default(),
         Projection::Orthographic(OrthographicProjection {
-            // 15 design-units * 128 world-pixels per unit = 1920 world-pixels vertically.
-            // Avoid combining default_2d window scaling with scale=15.0 (that shrinks gameplay to a tiny center patch).
+            // NB-A2-010: Tighter viewport for closer ship-ground framing.
             scaling_mode: ScalingMode::FixedVertical {
-                viewport_height: 15.0 * 128.0,
+                viewport_height: 8.0 * 128.0,
             },
             scale: 1.0,
             // Camera sits far from the gameplay plane for the chase framing; widen clip range accordingly.

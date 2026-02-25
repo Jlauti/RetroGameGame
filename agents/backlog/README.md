@@ -1,14 +1,7 @@
 # Backlog
 
-Each ticket must use the contract in:
+Ticket definitions for all work items. Each ticket has scope, acceptance criteria, and deliverables.
 
-`/home/jl/git/RetroGameGame/agents/templates/ticket.md`
+**Naming**: `<GAME>-<AGENT>-<SEQ>.md` (e.g., `NB-A4-007.md`)
 
-Required policy fields:
-
-- Execution Lane (`LOCAL` default)
-- Critical Path (`YES|NO`)
-- Jules Eligible (`YES|NO`, default `NO`)
-- Fallback Owner (local agent)
-
-Use one-ticket WIP per agent.
+**Read a ticket only** when your `brief.md` directs you to it.

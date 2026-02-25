@@ -10,9 +10,9 @@
 ## Checks Executed
 
 - Scope boundary check
-- cargo-safe check
-- cargo-safe test
-- cargo-safe fmt -- --check
+- cargo check
+- cargo test
+- cargo fmt -- --check
 
 ## Findings
 

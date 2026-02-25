@@ -134,8 +134,12 @@ The goal of **RetroGameGame** is to *feel* the way we remember these games, rath
                     └────┬────┘
                          │
                     ┌────▼────┐
-                    │ Results │
-                    └─────────┘
+             ┌──────┤ Results │
+             │      └─────────┘
+             ▼
+      ┌──────────┐
+      │ Settings │ ← Accessible via Esc from Playing
+      └──────────┘
 ```
 
 ### Plugin Architecture
@@ -151,6 +155,7 @@ RetroGameGamePlugin (root)
 │   ├── Main menu
 │   ├── Timeline hub
 │   ├── Era select screen
+│   ├── Settings screen        # Global config UI
 │   ├── Results / score screen
 │   └── Shared UI components (buttons, transitions)
 ├── EffectsPlugin
@@ -187,75 +192,92 @@ Unlocked(bool)                     // Whether a game/era is unlocked
 HighScore { game: MiniGameId, score: u64 }
 ```
 
+### Asset Pipeline
+
+- **Topography Data Flow**: Procgen systems generate 0.0 - 1.0 height-map data on the hex grid. This data is consumed by the rendering system which quantizes it into 4 discrete visual tiers (see [NB-A1-006](file:///c:/Users/jlaut/git/RetroGameGame/agents/deliverables/agent1/NB-A1-006_camera_topography_contract.md)) while maintaining a consistent `Y=0` gameplay plane for physics.
+- **Asset Pipeline**: Models created as `.glb` (glTF binary), placed in `assets/models/era_2010s/nebula_bouncer/`. Materials embedded. Y-up, facing +Z. 1 unit = 1 game tile.
+
+The AI agent team handles integration, validation, and consistency — **not** asset creation.
+
 ### Directory Structure
 
 ```
 RetroGameGame/
 ├── Cargo.toml
+├── AGENTS.md                  # Agent build rules
 ├── .cargo/
-│   └── config.toml          # Fast linker config (Windows)
+│   └── config.toml            # Fast linker config (Windows)
+├── agents/                    # AI agent control plane
+│   ├── INDEX.md               # Master document map (START HERE)
+│   └── ...                    # See INDEX.md for full structure
 ├── assets/
 │   ├── fonts/
-│   ├── sprites/
+│   ├── models/                # .glb 3D models (human-created)
 │   │   ├── era_80s/
 │   │   │   ├── tunnel_miner/
 │   │   │   ├── cosmic_captain/
 │   │   │   └── star_goose/
+│   │   ├── era_90s/
+│   │   │   ├── worm_wars/
+│   │   │   ├── ice_blitz/
+│   │   │   └── depths_of_doom/
+│   │   └── era_2010s/
+│   │       └── nebula_bouncer/
+│   ├── sprites/               # 2D sprites (era-appropriate games)
+│   │   ├── era_80s/
 │   │   └── era_90s/
-│   │       ├── worm_wars/
-│   │       ├── ice_blitz/
-│   │       └── depths_of_doom/
 │   ├── audio/
 │   │   ├── sfx/
 │   │   └── music/
 │   └── shaders/
-│       └── crt.wgsl          # CRT scanline post-process
+│       └── crt.wgsl           # CRT scanline post-process
 ├── src/
-│   ├── main.rs               # Entry point, app builder
-│   ├── lib.rs                # Re-exports, root plugin
+│   ├── main.rs                # Entry point, app builder
+│   ├── lib.rs                 # Re-exports, root plugin
 │   ├── core/
 │   │   ├── mod.rs
-│   │   ├── states.rs         # GameState enum
-│   │   ├── progression.rs    # Save/load, unlocks
-│   │   └── input.rs          # Unified input handling
+│   │   ├── states.rs          # GameState enum
+│   │   ├── progression.rs     # Save/load, unlocks
+│   │   └── input.rs           # Unified input handling
 │   ├── ui/
 │   │   ├── mod.rs
-│   │   ├── menu.rs           # Main menu
-│   │   ├── timeline.rs       # Era timeline hub
-│   │   ├── era_select.rs     # Mini-game selection within an era
-│   │   └── results.rs        # Score / results screen
+│   │   ├── menu.rs            # Main menu
+│   │   ├── timeline.rs        # Era timeline hub
+│   │   ├── era_select.rs      # Mini-game selection within an era
+│   │   └── results.rs         # Score / results screen
 │   ├── effects/
 │   │   ├── mod.rs
-│   │   ├── crt.rs            # CRT scanline effect
-│   │   └── transitions.rs    # Screen transitions
+│   │   ├── crt.rs             # CRT scanline effect
+│   │   └── transitions.rs     # Screen transitions
 │   ├── eras/
 │   │   ├── mod.rs
-│   │   ├── shared.rs         # Shared mini-game components
+│   │   ├── shared.rs          # Shared mini-game components
 │   │   ├── era_80s/
 │   │   │   ├── mod.rs
-│   │   │   ├── tunnel_miner.rs   # Digger clone
-│   │   │   ├── cosmic_captain.rs # Captain Comic clone
-│   │   │   └── star_goose.rs     # Star Goose clone
+│   │   │   ├── tunnel_miner.rs
+│   │   │   ├── cosmic_captain.rs
+│   │   │   └── star_goose.rs
 │   │   └── era_90s/
 │   │       ├── mod.rs
-│   │       ├── worm_wars.rs      # Worms clone
-│   │       ├── ice_blitz.rs      # NHL 98 clone
-│   │       └── depths_of_doom.rs # ADOM clone
+│   │       ├── worm_wars.rs
+│   │       ├── ice_blitz.rs
+│   │       └── depths_of_doom.rs
 │   └── shared/
 │       ├── mod.rs
-│       ├── components.rs     # Shared ECS components
-│       ├── physics.rs        # Simple 2D physics
-│       └── collision.rs      # Collision detection
-├── specs/                     # Individual mini-game spec documents
+│       ├── components.rs      # Shared ECS components
+│       ├── physics.rs         # Simple 2D physics
+│       └── collision.rs       # Collision detection
+├── specs/                      # Individual mini-game spec documents
 │   ├── tunnel_miner.md
 │   ├── cosmic_captain.md
 │   ├── star_goose.md
 │   ├── worm_wars.md
 │   ├── ice_blitz.md
-│   └── depths_of_doom.md
+│   ├── depths_of_doom.md
+│   └── nebula_bouncer.md
 └── docs/
     └── architecture/
-        └── DESIGN.md         # This file
+        └── DESIGN.md          # This file
 ```
 
 ---

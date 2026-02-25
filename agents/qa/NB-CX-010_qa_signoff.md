@@ -11,7 +11,7 @@
 ### 1. Build Health
 - **Status**: PASSED
 - **Evidence**:
-  - `python3 -m unittest discover -s agents/tests`: PASS (2 tests: `test_build_release_board`, `test_reconcile_ticket_state`).
+  - `py -m unittest discover -s agents/tests`: PASS (2 tests: `test_build_release_board`, `test_reconcile_ticket_state`).
   - Scripts execute cleanly with no runtime errors.
 
 ### 2. Deliverables Audit

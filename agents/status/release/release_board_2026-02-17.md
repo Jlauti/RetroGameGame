@@ -2,7 +2,7 @@
 
 ## Source
 
-- snapshot: /home/jl/git/RetroGameGame/agents/status/release/readiness_snapshot_2026-02-17.json
+- snapshot: c:\Users\jlaut\git\RetroGameGame/agents/status/release/readiness_snapshot_2026-02-17.json
 - generated_at: 2026-02-17T18:20:44.920361+00:00
 
 ## Effective Status Counts

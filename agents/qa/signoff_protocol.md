@@ -7,15 +7,15 @@ This document defines PASS/FAIL requirements for QA signoff tickets.
 Default gate (for code-affecting tickets):
 
 ```bash
-cargo-safe check
-cargo-safe test
-cargo-safe fmt -- --check
+cargo check
+cargo test
+cargo fmt -- --check
 ```
 
 If a gate run is memory-constrained, QA may increase limits for that run:
 
 ```bash
-MEM_HIGH=11G MEM_MAX=12G CARGO_BUILD_JOBS=6 cargo-safe test
+MEM_HIGH=11G MEM_MAX=12G CARGO_BUILD_JOBS=6 cargo test
 ```
 
 For non-code deliverable tickets (docs/art-only), QA may evaluate deliverable quality separately, but must explicitly state whether global build health is PASS/FAIL/UNCHANGED in the signoff rationale.
@@ -28,8 +28,8 @@ For gameplay-facing art tickets (`agent4` sprite packs), QA must verify:
 2. Background/alpha gate passes:
 
 ```bash
-source /home/jl/git/RetroGameGame/.venv/bin/activate
-python /home/jl/git/RetroGameGame/assets/scripts/check_bg.py /home/jl/git/RetroGameGame/assets/sprites/future/nebula_bouncer --strict
+source c:\Users\jlaut\git\RetroGameGame/.venv/bin/activate
+python c:\Users\jlaut\git\RetroGameGame/assets/scripts/check_bg.py c:\Users\jlaut\git\RetroGameGame/assets/sprites/future/nebula_bouncer --strict
 ```
 
 3. In-game readability evidence exists in report notes:

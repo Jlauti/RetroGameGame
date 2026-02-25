@@ -1,35 +1,22 @@
 # Agent Execution Guardrails
 
-This repository uses `cargo-safe` as the default Cargo entrypoint for all compile/test/build operations to avoid abrupt process termination under memory pressure.
+This repository uses an AI agent team for development. See `agents/INDEX.md` for the full control plane map.
 
-## Default Rule
+## Build Rules
 
-- Always prefer `cargo-safe` over plain `cargo` for build/test/check/run/lint/doc flows.
-- Use plain `cargo` only when you intentionally want to bypass memory guardrails.
+- **Cargo**: Use plain `cargo` for all build/test/check operations
+- **Python**: Use `py` (not `python3`)
+- **Platform**: Windows (`c:\Users\jlaut\git\RetroGameGame`)
 
 ## Standard Commands
 
-- Build: `cargo-safe build`
-- Build one binary: `cargo-safe build --bin retro-game-game`
-- Run: `cargo-safe run --bin retro-game-game`
-- Test: `cargo-safe test`
-- Check: `cargo-safe check`
-- Clippy: `cargo-safe clippy --all-targets --all-features`
-- Clean: `cargo-safe clean`
-- Doc: `cargo-safe doc --no-deps`
-- Bench: `cargo-safe bench`
-- Format gate: `cargo-safe fmt -- --check`
-
-## Per-Run Overrides
-
-- More memory: `MEM_HIGH=11G MEM_MAX=12G cargo-safe build`
-- Fewer/more jobs: `CARGO_BUILD_JOBS=6 cargo-safe test`
-- Both: `MEM_HIGH=11G MEM_MAX=12G CARGO_BUILD_JOBS=6 cargo-safe build`
-
-## Notes
-
-- Current baseline remains `jobs=8`, `codegen-units=8`, memory guardrails around 9-10G.
-- If `cargo-safe` is missing, treat as environment misconfiguration and escalate.
+- Build: `cargo build`
+- Build one binary: `cargo build --bin retro-game-game`
+- Run: `cargo run --bin retro-game-game`
+- Test: `cargo test`
+- Check: `cargo check`
+- Clippy: `cargo clippy --all-targets --all-features`
+- Format gate: `cargo fmt -- --check`
 
 ## Branching Mandate
 
@@ -37,3 +24,9 @@ This repository uses `cargo-safe` as the default Cargo entrypoint for all compil
 - Ticket branches must start from `develop` and use the `codex/` prefix.
 - Ticket merges go to `develop`; only promoted, fully gated releases go to `main`.
 - Principal engineer is the sole merger to `main`.
+
+## Art Pipeline
+
+- Core 2D and 3D assets are **human-created** `.glb` models
+- Assets placed in `assets/models/<era>/<game>/`
+- Agent team handles integration, validation, and consistency — not creation

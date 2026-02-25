@@ -7,7 +7,7 @@ These scenarios map to the project agent-loop rules.
 Run:
 
 ```bash
-bash /home/jl/git/RetroGameGame/agents/scripts/policy_smoke_test.sh
+bash c:\Users\jlaut\git\RetroGameGame/agents/scripts/policy_smoke_test.sh
 ```
 
 It validates:
@@ -23,7 +23,7 @@ It validates:
 Run:
 
 ```bash
-python3 -m unittest discover -s /home/jl/git/RetroGameGame/agents/tests -p 'test_*.py' -v
+py -m unittest discover -s c:\Users\jlaut\git\RetroGameGame/agents/tests -p 'test_*.py' -v
 ```
 
 It validates:

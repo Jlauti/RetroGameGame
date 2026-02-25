@@ -744,7 +744,9 @@ pub struct CameraFeedbackSettings {
 #[derive(Resource)]
 pub struct NebulaMaterials {
     pub quad_mesh: Handle<Mesh>,
+    pub hex_mesh: Handle<Mesh>,
     pub wall_material: Handle<StandardMaterial>,
+    pub hex_material_t0: Handle<StandardMaterial>,
     pub hex_material_t1: Handle<StandardMaterial>,
     pub hex_material_t2: Handle<StandardMaterial>,
     pub hex_material_t3: Handle<StandardMaterial>,

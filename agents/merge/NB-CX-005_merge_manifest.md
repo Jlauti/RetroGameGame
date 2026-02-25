@@ -32,12 +32,12 @@
 
 - Gate Mode: TICKET
 - Gate Job ID: 20260216T190950Z_ticket_NB-CX-005_476594_990939
-- Gate Artifact Path: /home/jl/git/RetroGameGame/agents/status/gates/queue/history/20260216T190950Z_ticket_NB-CX-005_476594_990939.json
+- Gate Artifact Path: c:\Users\jlaut\git\RetroGameGame/agents/status/gates/queue/history/20260216T190950Z_ticket_NB-CX-005_476594_990939.json
 - Gate Status: PASS
 
 ## QA
 
-- QA Signoff File: /home/jl/git/RetroGameGame/agents/qa/NB-CX-005_qa_signoff.md
+- QA Signoff File: c:\Users\jlaut\git\RetroGameGame/agents/qa/NB-CX-005_qa_signoff.md
 - QA Status: PENDING
 
 ## Merge Gate

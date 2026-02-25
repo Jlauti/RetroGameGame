@@ -7,17 +7,17 @@ Prepare a clean merge/HITL checkpoint after QA completion from Sanna Laatu.
 ## Completed Consolidation Actions
 
 1. Promoted `NB-CX-009` to `READY_FOR_MERGE`:
-   - `/home/jl/git/RetroGameGame/agents/backlog/NB-CX-009.md`
+   - `c:\Users\jlaut\git\RetroGameGame/agents/backlog/NB-CX-009.md`
 2. Promoted `NB-CX-010` to `READY_FOR_MERGE`:
-   - `/home/jl/git/RetroGameGame/agents/backlog/NB-CX-010.md`
+   - `c:\Users\jlaut\git\RetroGameGame/agents/backlog/NB-CX-010.md`
 3. Added merge manifests:
-   - `/home/jl/git/RetroGameGame/agents/merge/NB-CX-009_merge_manifest.md`
-   - `/home/jl/git/RetroGameGame/agents/merge/NB-CX-010_merge_manifest.md`
+   - `c:\Users\jlaut\git\RetroGameGame/agents/merge/NB-CX-009_merge_manifest.md`
+   - `c:\Users\jlaut\git\RetroGameGame/agents/merge/NB-CX-010_merge_manifest.md`
 4. Regenerated release artifacts:
-   - `/home/jl/git/RetroGameGame/agents/status/release/readiness_snapshot_2026-02-17.json`
-   - `/home/jl/git/RetroGameGame/agents/status/release/release_board_2026-02-17.md`
+   - `c:\Users\jlaut\git\RetroGameGame/agents/status/release/readiness_snapshot_2026-02-17.json`
+   - `c:\Users\jlaut\git\RetroGameGame/agents/status/release/release_board_2026-02-17.md`
 5. Marked QA next-assignment row idle after completion:
-   - `/home/jl/git/RetroGameGame/agents/status/next_assignments.md`
+   - `c:\Users\jlaut\git\RetroGameGame/agents/status/next_assignments.md`
 
 ## Current Readiness Snapshot
 

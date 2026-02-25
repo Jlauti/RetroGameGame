@@ -24,16 +24,16 @@ Art production is accelerating and sprite forward axes may vary between batches.
 
 - Allowed paths only.
 - No physics/gameplay behavior rewrites outside orientation wiring.
-- Use `cargo-safe` for all Cargo commands.
+- Use `cargo` for all Cargo commands.
 
 ## Acceptance
 
-- `cargo-safe check --bin retro-game-game` passes.
-- `cargo-safe fmt -- --check` passes.
+- `cargo check --bin retro-game-game` passes.
+- `cargo fmt -- --check` passes.
 - Report includes any remaining rotation risks and follow-up notes for Aino metadata handoff.
 
 ## Report Format
 
 Return report at:
 
-`/home/jl/git/RetroGameGame/agents/reports/codex_worker1/NB-CX-009_task_report.md`
+`c:\Users\jlaut\git\RetroGameGame/agents/reports/codex_worker1/NB-CX-009_task_report.md`

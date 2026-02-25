@@ -33,4 +33,4 @@ Nebula vertical slice requires deterministic balance specs before heavy implemen
 
 Return report at:
 
-`/home/jl/git/RetroGameGame/agents/reports/agent1/NB-A1-001_task_report.md`
+`c:\Users\jlaut\git\RetroGameGame/agents/reports/agent1/NB-A1-001_task_report.md`

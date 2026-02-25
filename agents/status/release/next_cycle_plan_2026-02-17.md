@@ -2,13 +2,13 @@
 
 ## Mini Plan (Immediate)
 
-1. Run HITL checklist from `/home/jl/git/RetroGameGame/agents/status/hitl/HITL_round_2026-02-17.md`.
+1. Run HITL checklist from `c:\Users\jlaut\git\RetroGameGame/agents/status/hitl/HITL_round_2026-02-17.md`.
 2. Triage findings into:
    - blocker: must-fix before merge promotion
    - major: merge-allowed only with explicit follow-up ticket
    - minor: backlog for next polish cycle
 3. Finalize merge wave on `NB-CX-007..010` using:
-   - `/home/jl/git/RetroGameGame/agents/merge/merge_order_wave3_2026-02-17.md`
+   - `c:\Users\jlaut\git\RetroGameGame/agents/merge/merge_order_wave3_2026-02-17.md`
 
 ## Next Work Wave (After HITL)
 

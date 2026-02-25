@@ -1,6 +1,8 @@
 use bevy::prelude::*;
 
 use super::colors;
+use super::settings::{SettingsPanelSource, SettingsPanelState};
+use crate::core::settings::GameSettings;
 use crate::core::states::GameState;
 /// Plugin for the main menu screen.
 pub struct MenuPlugin;
@@ -261,8 +263,14 @@ fn button_interaction(
 fn menu_action(
     interaction_query: Query<(&Interaction, &MenuButton), (Changed<Interaction>, With<Button>)>,
     mut next_state: ResMut<NextState<GameState>>,
-    // mut exit: ResMut<Events<AppExit>>,
+    settings: Res<GameSettings>,
+    mut settings_panel: ResMut<SettingsPanelState>,
+    mut app_exit: MessageWriter<AppExit>,
 ) {
+    if settings_panel.open {
+        return;
+    }
+
     for (interaction, menu_button) in &interaction_query {
         if *interaction == Interaction::Pressed {
             match menu_button {
@@ -270,13 +278,13 @@ fn menu_action(
                     next_state.set(GameState::Timeline);
                 }
                 MenuButton::Settings => {
-                    // TODO: Settings
+                    settings_panel.open_from(SettingsPanelSource::Menu, &settings);
                 }
                 MenuButton::Credits => {
                     // TODO: Credits
                 }
                 MenuButton::Quit => {
-                    // exit.send(AppExit::Success);
+                    app_exit.write(AppExit::Success);
                 }
             }
         }

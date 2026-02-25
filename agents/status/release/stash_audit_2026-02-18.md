@@ -2,7 +2,7 @@
 
 ## Scope
 
-Audit of recovered worker-worktree stashes after consolidating to `/home/jl/git/RetroGameGame` on `develop`.
+Audit of recovered worker-worktree stashes after consolidating to `c:\Users\jlaut\git\RetroGameGame` on `develop`.
 
 Source map: `/tmp/retrogame_worktree_stash_map_20260218_232006.tsv`
 

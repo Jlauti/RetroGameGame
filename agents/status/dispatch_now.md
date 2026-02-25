@@ -3,6 +3,13 @@
 Generated: 2026-02-25
 Owner: principal_engineer
 
+## Standalone Waterfall Delegation
+
+1. Agent 2 (Pekka Kone)
+- Ticket: `NB-A2-010`
+- Delegation: `agents/delegations/agent2/NB-A2-010_task.md`
+- Scope: single-agent sequential overhaul for forward-only scroll read, closer chase camera, true hex topography, gentle relief, and neon tier readability.
+
 ## Immediate Hotfix Wave
 
 1. Agent 2 (Pekka Kone)

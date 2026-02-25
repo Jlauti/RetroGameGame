@@ -26,13 +26,13 @@ Agent 2 delivered initial Nebula scaffolding, and compile/test now pass. However
 
 ## Acceptance
 
-- `cargo-safe check` passes.
-- `cargo-safe test` passes.
-- `cargo-safe fmt -- --check` passes.
+- `cargo check` passes.
+- `cargo test` passes.
+- `cargo fmt -- --check` passes.
 - Report clearly lists each fix and rationale.
 
 ## Report Format
 
 Return report at:
 
-`/home/jl/git/RetroGameGame/agents/reports/agent2/NB-FIX-001_task_report.md`
+`c:\Users\jlaut\git\RetroGameGame/agents/reports/agent2/NB-FIX-001_task_report.md`

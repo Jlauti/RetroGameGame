@@ -1,5 +1,6 @@
 pub mod input;
 pub mod progression;
+pub mod settings;
 pub mod states;
 
 use bevy::prelude::*;
@@ -13,6 +14,7 @@ impl Plugin for CorePlugin {
             states::StatesPlugin,
             progression::ProgressionPlugin,
             input::InputPlugin,
+            settings::SettingsPlugin,
         ));
     }
 }

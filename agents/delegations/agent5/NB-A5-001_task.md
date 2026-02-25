@@ -18,7 +18,7 @@ Game-feel systems depend on stable projectile and collision foundations. An init
 2. Confirm render layer hierarchy and align all relevant spawn depths.
 3. Complete damage-multiplier-based feedback: screen shake and hit-stop behavior.
 4. Ensure projectile ribbons are production-usable and do not leak/stale.
-5. Add concise deliverable notes in `/home/jl/git/RetroGameGame/agents/deliverables/agent5/`.
+5. Add concise deliverable notes in `c:\Users\jlaut\git\RetroGameGame/agents/deliverables/agent5/`.
 
 ## Boundaries
 
@@ -34,4 +34,4 @@ Game-feel systems depend on stable projectile and collision foundations. An init
 
 Return report at:
 
-`/home/jl/git/RetroGameGame/agents/reports/agent5/NB-A5-001_task_report.md`
+`c:\Users\jlaut\git\RetroGameGame/agents/reports/agent5/NB-A5-001_task_report.md`
