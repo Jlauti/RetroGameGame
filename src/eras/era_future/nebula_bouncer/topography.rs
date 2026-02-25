@@ -19,9 +19,9 @@ pub const HEX_OUTLINE_TEXTURE: &str = "sprites/future/nebula_bouncer/hex_outline
 /// Tiers 1-3 render as subtle hex outlines with increasing intensity.
 pub const TIER_COLORS: [Color; 4] = [
     Color::srgba(0.0, 0.0, 0.0, 0.0),     // Tier 0: invisible (skipped)
-    Color::srgba(0.61, 0.35, 0.94, 0.10),  // Tier 1: Electric Purple (subtle)
-    Color::srgba(0.0, 1.0, 1.0, 0.18),     // Tier 2: Neon Cyan
-    Color::srgba(1.0, 0.0, 1.0, 0.28),     // Tier 3: Hot Magenta
+    Color::srgba(0.61, 0.35, 0.94, 0.10), // Tier 1: Electric Purple (subtle)
+    Color::srgba(0.0, 1.0, 1.0, 0.18),    // Tier 2: Neon Cyan
+    Color::srgba(1.0, 0.0, 1.0, 0.28),    // Tier 3: Hot Magenta
 ];
 
 /// Topography height quantization tiers
@@ -86,8 +86,11 @@ pub fn spawn_chunk_topography(
                 TopographyHex,
                 Mesh3d(nebula_mats.quad_mesh.clone()),
                 MeshMaterial3d(material),
-                Transform::from_xyz(x, y, depth::BACKGROUND + 0.25)
-                    .with_scale(Vec3::new(hex_width * 0.88, hex_height * 0.88, 1.0)),
+                Transform::from_xyz(x, y, depth::BACKGROUND + 0.25).with_scale(Vec3::new(
+                    hex_width * 0.88,
+                    hex_height * 0.88,
+                    1.0,
+                )),
             ));
         }
     }

@@ -213,8 +213,7 @@ fn spawn_transient_vfx(
             alpha_mode: AlphaMode::Blend,
             ..default()
         })),
-        Transform::from_xyz(at.x, at.y, depth::PARTICLES)
-            .with_scale(Vec3::splat(size.max(4.0))),
+        Transform::from_xyz(at.x, at.y, depth::PARTICLES).with_scale(Vec3::splat(size.max(4.0))),
         TransientVfx {
             ttl_secs: lifetime,
             shrink_per_sec: (size.max(4.0) * 0.9) / lifetime,
@@ -362,7 +361,8 @@ pub fn setup_nebula_bouncer(
             alpha_mode: AlphaMode::Blend,
             ..default()
         }),
-        hex_texture: asset_server.load(crate::eras::era_future::nebula_bouncer::topography::HEX_OUTLINE_TEXTURE),
+        hex_texture: asset_server
+            .load(crate::eras::era_future::nebula_bouncer::topography::HEX_OUTLINE_TEXTURE),
     };
     commands.insert_resource(NebulaMaterials {
         quad_mesh: nebula_mats.quad_mesh.clone(),
@@ -738,7 +738,9 @@ pub fn spawn_orb_pool(
                     Mesh3d(nebula_mats.quad_mesh.clone()),
                     MeshMaterial3d(materials.add(StandardMaterial {
                         base_color: element_trail_color(OrbElement::default()),
-                        base_color_texture: Some(asset_server.load(asset_manifest.kinetic_orb.clone())),
+                        base_color_texture: Some(
+                            asset_server.load(asset_manifest.kinetic_orb.clone()),
+                        ),
                         unlit: true,
                         alpha_mode: AlphaMode::Blend,
                         ..default()
@@ -1083,7 +1085,14 @@ pub fn spawn_next_chunk(
     // Spawn deterministic topography from procgen data layer.
     let topography =
         generate_chunk_topography(selected.height, state.global_seed, state.chunks_spawned);
-    spawn_chunk_topography(commands, asset_server, nebula_mats, chunk_y, selected.height, &topography);
+    spawn_chunk_topography(
+        commands,
+        asset_server,
+        nebula_mats,
+        chunk_y,
+        selected.height,
+        &topography,
+    );
 
     // Spawn walls
     for wall in &selected.walls {
@@ -1366,11 +1375,31 @@ pub fn update_debug_asset_overlay_text(
         return;
     };
 
-    let player_size = q_player.iter().next().map(|t| format!("{:.0}x{:.0}", t.scale.x, t.scale.y)).unwrap_or_else(|| "n/a".to_string());
-    let enemy_size = q_enemy.iter().next().map(|t| format!("{:.0}x{:.0}", t.scale.x, t.scale.y)).unwrap_or_else(|| "n/a".to_string());
-    let wall_size = q_wall.iter().next().map(|t| format!("{:.0}x{:.0}", t.scale.x, t.scale.y)).unwrap_or_else(|| "n/a".to_string());
-    let ground_size = q_ground.iter().next().map(|t| format!("{:.0}x{:.0}", t.scale.x, t.scale.y)).unwrap_or_else(|| "n/a".to_string());
-    let orb_size = q_orb.iter().next().map(|t| format!("{:.0}x{:.0}", t.scale.x, t.scale.y)).unwrap_or_else(|| "n/a".to_string());
+    let player_size = q_player
+        .iter()
+        .next()
+        .map(|t| format!("{:.0}x{:.0}", t.scale.x, t.scale.y))
+        .unwrap_or_else(|| "n/a".to_string());
+    let enemy_size = q_enemy
+        .iter()
+        .next()
+        .map(|t| format!("{:.0}x{:.0}", t.scale.x, t.scale.y))
+        .unwrap_or_else(|| "n/a".to_string());
+    let wall_size = q_wall
+        .iter()
+        .next()
+        .map(|t| format!("{:.0}x{:.0}", t.scale.x, t.scale.y))
+        .unwrap_or_else(|| "n/a".to_string());
+    let ground_size = q_ground
+        .iter()
+        .next()
+        .map(|t| format!("{:.0}x{:.0}", t.scale.x, t.scale.y))
+        .unwrap_or_else(|| "n/a".to_string());
+    let orb_size = q_orb
+        .iter()
+        .next()
+        .map(|t| format!("{:.0}x{:.0}", t.scale.x, t.scale.y))
+        .unwrap_or_else(|| "n/a".to_string());
 
     **text = format!(
         "Nebula Asset Overlay (F12)\n\
@@ -1668,7 +1697,12 @@ pub fn update_trails(
 pub fn update_transient_vfx(
     time: Res<Time>,
     mut commands: Commands,
-    mut q_vfx: Query<(Entity, &mut TransientVfx, &mut Transform, &MeshMaterial3d<StandardMaterial>)>,
+    mut q_vfx: Query<(
+        Entity,
+        &mut TransientVfx,
+        &mut Transform,
+        &MeshMaterial3d<StandardMaterial>,
+    )>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     let dt = time.delta_secs();
@@ -1680,12 +1714,12 @@ pub fn update_transient_vfx(
         vfx.ttl_secs -= dt;
         let next_scale = (transform.scale.x - vfx.shrink_per_sec * dt).max(2.0);
         transform.scale = Vec3::splat(next_scale);
-        
+
         let alpha = (vfx.ttl_secs / TRANSIENT_VFX_BASE_LIFETIME_SECS).clamp(0.0, 1.0);
         if let Some(mat) = materials.get_mut(material_handle) {
             mat.base_color.set_alpha(alpha);
         }
-        
+
         if vfx.ttl_secs <= 0.0 {
             commands.entity(entity).despawn();
         }

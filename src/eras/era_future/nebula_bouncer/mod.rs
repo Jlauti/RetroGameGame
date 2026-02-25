@@ -5,8 +5,8 @@ pub mod components;
 pub mod procgen;
 pub mod resources;
 pub mod systems;
-pub mod topography;
 pub mod test_api;
+pub mod topography;
 
 use components::*;
 use procgen::*;
@@ -62,10 +62,7 @@ impl Plugin for NebulaBouncerPlugin {
             .register_type::<ProcGenState>();
 
         // Add systems
-        app.add_systems(
-            OnEnter(PlayingState::NebulaBouncer),
-            setup_nebula_bouncer,
-        );
+        app.add_systems(OnEnter(PlayingState::NebulaBouncer), setup_nebula_bouncer);
 
         app.add_systems(
             Update,
