@@ -133,6 +133,18 @@ pub struct Enemy;
 #[reflect(Component)]
 pub struct Wall;
 
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
+pub struct NebulaBouncerContext;
+
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
+pub struct NebulaGameplayCamera;
+
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
+pub struct PlayerVisualRoot;
+
 /// Marker for entities that should participate in specific collision layers
 #[derive(PhysicsLayer, Default)]
 pub enum GameLayer {

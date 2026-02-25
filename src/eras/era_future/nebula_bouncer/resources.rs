@@ -261,6 +261,7 @@ pub fn load_chunk_assignment_profiles() -> ChunkAssignmentProfiles {
 #[serde(default)]
 pub struct NebulaAssetManifest {
     pub player_ship: String,
+    pub enemy_model_default: String,
     pub kinetic_orb: String,
     pub enemy_default: String,
     pub enemy_scout: String,
@@ -278,21 +279,31 @@ pub struct NebulaAssetManifest {
 impl Default for NebulaAssetManifest {
     fn default() -> Self {
         Self {
-            player_ship: "sprites/future/nebula_bouncer/sprite_player_ship.png".to_string(),
-            kinetic_orb: "sprites/future/nebula_bouncer/sprite_player_orb.png".to_string(),
-            enemy_default: "sprites/future/nebula_bouncer/sprite_enemy_scout.png".to_string(),
-            enemy_scout: "sprites/future/nebula_bouncer/sprite_enemy_scout.png".to_string(),
-            enemy_interceptor: "sprites/future/nebula_bouncer/sprite_enemy_interceptor.png"
+            player_ship: "sprites/future/nebula_bouncer/ship_models/TechFighter.glb#Scene0"
                 .to_string(),
-            enemy_heavy: "sprites/future/nebula_bouncer/sprite_enemy_heavy.png".to_string(),
-            enemy_bulwark: "sprites/future/nebula_bouncer/sprite_enemy_bulwark.png".to_string(),
-            wall_tile: "sprites/future/nebula_bouncer/sprite_wall_tile.png".to_string(),
-            ground_tile: "sprites/future/nebula_bouncer/sprite_ground_tile.png".to_string(),
-            vfx_impact_flash: "sprites/future/nebula_bouncer/vfx_impact_flash.png".to_string(),
-            vfx_hit_ring: "sprites/future/nebula_bouncer/vfx_hit_ring.png".to_string(),
-            vfx_projectile_core: "sprites/future/nebula_bouncer/vfx_projectile_core.png"
+            enemy_model_default:
+                "sprites/future/nebula_bouncer/ship_models/AlienFighter.glb#Scene0".to_string(),
+            kinetic_orb: "sprites/future/nebula_bouncer/Archived/sprite_player_orb.png".to_string(),
+            enemy_default: "sprites/future/nebula_bouncer/Archived/sprite_enemy_scout.png"
                 .to_string(),
-            vfx_ribbon_trail: "sprites/future/nebula_bouncer/vfx_ribbon_trail.png".to_string(),
+            enemy_scout: "sprites/future/nebula_bouncer/Archived/sprite_enemy_scout.png"
+                .to_string(),
+            enemy_interceptor:
+                "sprites/future/nebula_bouncer/Archived/sprite_enemy_interceptor.png".to_string(),
+            enemy_heavy: "sprites/future/nebula_bouncer/Archived/sprite_enemy_heavy.png"
+                .to_string(),
+            enemy_bulwark: "sprites/future/nebula_bouncer/Archived/sprite_enemy_bulwark.png"
+                .to_string(),
+            wall_tile: "sprites/future/nebula_bouncer/Archived/sprite_wall_tile.png".to_string(),
+            ground_tile: "sprites/future/nebula_bouncer/Archived/sprite_ground_tile.png"
+                .to_string(),
+            vfx_impact_flash: "sprites/future/nebula_bouncer/Archived/vfx_impact_flash.png"
+                .to_string(),
+            vfx_hit_ring: "sprites/future/nebula_bouncer/Archived/vfx_hit_ring.png".to_string(),
+            vfx_projectile_core: "sprites/future/nebula_bouncer/Archived/vfx_projectile_core.png"
+                .to_string(),
+            vfx_ribbon_trail: "sprites/future/nebula_bouncer/Archived/vfx_ribbon_trail.png"
+                .to_string(),
         }
     }
 }
@@ -726,6 +737,18 @@ pub const fn feedback_tuning(profile: FeedbackProfile) -> FeedbackTuning {
 pub struct CameraFeedbackSettings {
     pub profile: FeedbackProfile,
     pub shake_enabled: bool,
+}
+
+/// Caches standard materials and meshes for 3D isometric rendering.
+/// Replaces the old 2D Sprite pipeline.
+#[derive(Resource)]
+pub struct NebulaMaterials {
+    pub quad_mesh: Handle<Mesh>,
+    pub wall_material: Handle<StandardMaterial>,
+    pub hex_material_t1: Handle<StandardMaterial>,
+    pub hex_material_t2: Handle<StandardMaterial>,
+    pub hex_material_t3: Handle<StandardMaterial>,
+    pub hex_texture: Handle<Image>,
 }
 
 impl Default for CameraFeedbackSettings {

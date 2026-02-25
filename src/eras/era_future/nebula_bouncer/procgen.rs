@@ -59,6 +59,15 @@ pub struct SpawnDef {
     pub position: Vec2,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Reflect)]
+pub struct ChunkTopography {
+    pub cols: i32,
+    pub rows: i32,
+    pub hex_width: f32,
+    pub hex_height: f32,
+    pub tiers: Vec<u8>,
+}
+
 /// A pre-authored chunk schema
 #[derive(Debug, Clone, Serialize, Deserialize, Reflect)]
 pub struct ChunkSchema {
@@ -88,6 +97,8 @@ pub struct ProcGenState {
     pub current_pacing: ChunkPacing,
     pub previous_pacing: ChunkPacing,
     pub chunks_in_current_pacing: usize,
+    pub chunks_spawned: usize,
+    pub global_seed: u64,
 }
 
 /// Component to mark entities belonging to a specific chunk for cleanup
@@ -766,6 +777,69 @@ pub fn validate_softlock_constraints(walls: &[WallDef]) -> ValidationResult {
     }
 }
 
+pub fn generate_chunk_topography(
+    chunk_height: f32,
+    global_seed: u64,
+    sequence_index: usize,
+) -> ChunkTopography {
+    let hex_radius = 48.0;
+    let hex_width = hex_radius * 1.732; // sqrt(3)
+    let hex_height = hex_radius * 2.0;
+
+    let cols = (960.0_f32 / hex_width).ceil() as i32 + 1;
+    let rows = (chunk_height / (hex_height * 0.75_f32)).ceil() as i32 + 1;
+
+    // Using fold_hash logic from topography.rs to get a deterministic chunk seed
+    let chunk_seed = crate::eras::era_future::nebula_bouncer::topography::fold_hash(
+        global_seed,
+        sequence_index as u64,
+    );
+
+    let mut tiers = Vec::with_capacity((cols * rows) as usize);
+    let start_x = -960.0 * 0.5;
+
+    // Generate relative to the chunk so generation is position-independent
+    let start_y = -(chunk_height * 0.5);
+
+    for r in 0..rows {
+        for c in 0..cols {
+            let offset_x = if r % 2 == 1 { hex_width * 0.5 } else { 0.0 };
+            let x = start_x + c as f32 * hex_width + offset_x;
+            let y = start_y + r as f32 * (hex_height * 0.75);
+
+            let x_int = (x / hex_width) as i32;
+            let y_int = (y / (hex_height * 0.75)) as i32;
+
+            let h = crate::eras::era_future::nebula_bouncer::topography::fold_hash(
+                chunk_seed,
+                x_int as u64,
+            );
+            let h = crate::eras::era_future::nebula_bouncer::topography::fold_hash(h, y_int as u64);
+            let height = (h as f64 / u64::MAX as f64) as f32;
+
+            let tier = if height < 0.25 {
+                0
+            } else if height < 0.50 {
+                1
+            } else if height < 0.75 {
+                2
+            } else {
+                3
+            };
+
+            tiers.push(tier);
+        }
+    }
+
+    ChunkTopography {
+        cols,
+        rows,
+        hex_width,
+        hex_height,
+        tiers,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1078,6 +1152,32 @@ mod tests {
             assert!((*value >= 0.1 - 1e-6) && (*value <= 0.7 + 1e-6));
         }
         assert!(rebalance["open_a"] > rebalance["open_b"]);
+    }
+
+    #[test]
+    fn test_topography_determinism() {
+        let topo1 = super::generate_chunk_topography(800.0, 12345, 0);
+        let topo2 = super::generate_chunk_topography(800.0, 12345, 0);
+        let topo3 = super::generate_chunk_topography(800.0, 12345, 1);
+        let topo4 = super::generate_chunk_topography(800.0, 54321, 0);
+
+        assert_eq!(
+            topo1.tiers, topo2.tiers,
+            "Same seed and index should be identical"
+        );
+        assert_ne!(topo1.tiers, topo3.tiers, "Different index should differ");
+        assert_ne!(
+            topo1.tiers, topo4.tiers,
+            "Different global seed should differ"
+        );
+    }
+
+    #[test]
+    fn test_topography_tier_bounds() {
+        let topo = super::generate_chunk_topography(800.0, 42, 7);
+        for &tier in &topo.tiers {
+            assert!(tier <= 3, "Tier {} is out of bounds (0-3)", tier);
+        }
     }
 }
 

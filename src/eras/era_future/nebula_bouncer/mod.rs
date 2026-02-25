@@ -5,11 +5,14 @@ pub mod components;
 pub mod procgen;
 pub mod resources;
 pub mod systems;
+pub mod topography;
+pub mod test_api;
 
 use components::*;
 use procgen::*;
 use resources::*;
 use systems::*;
+use topography::*;
 
 use crate::core::states::PlayingState;
 
@@ -22,9 +25,12 @@ impl Plugin for NebulaBouncerPlugin {
         // Note: This adds physics globally. If we need to isolate it, we might need
         // to pause physics when not in NebulaBouncer state.
         app.add_plugins(PhysicsPlugins::default());
-        // Optional: Debug plugin for development
+        // Optional: Debug plugin for development (off by default to avoid gameplay HUD noise).
+        // Set NB_PHYSICS_DEBUG=1 to enable collider rendering.
         #[cfg(debug_assertions)]
-        app.add_plugins(PhysicsDebugPlugin::default());
+        if std::env::var_os("NB_PHYSICS_DEBUG").is_some() {
+            app.add_plugins(PhysicsDebugPlugin::default());
+        }
 
         // Register components for reflection
         app.register_type::<KineticOrb>()
@@ -33,7 +39,10 @@ impl Plugin for NebulaBouncerPlugin {
             .register_type::<EnemyStatusEffects>()
             .register_type::<PlayerShip>()
             .register_type::<Enemy>()
-            .register_type::<Wall>();
+            .register_type::<Wall>()
+            .register_type::<NebulaGameplayCamera>()
+            .register_type::<PlayerVisualRoot>()
+            .register_type::<TopographyHex>();
 
         // Initialize resources
         app.insert_resource(KineticOrbPool::new(KineticOrbPool::DEFAULT_CAPACITY))
@@ -55,7 +64,7 @@ impl Plugin for NebulaBouncerPlugin {
         // Add systems
         app.add_systems(
             OnEnter(PlayingState::NebulaBouncer),
-            (setup_nebula_bouncer, spawn_orb_pool),
+            setup_nebula_bouncer,
         );
 
         app.add_systems(
