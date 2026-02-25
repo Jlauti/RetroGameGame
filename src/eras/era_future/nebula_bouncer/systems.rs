@@ -28,7 +28,7 @@ const PREFLIGHT_SUMMARY_REL_PATH: &str =
 const FEEDBACK_TELEMETRY_COOLDOWN_SECS: f32 = 0.35;
 const MODEL_UNIT_TO_WORLD: f32 = 120.0;
 const PLAYER_MODEL_VISUAL_LIFT: f32 = 42.0;
-const PLAYER_MODEL_FACING_FIX_RADIANS: f32 = 0.0;
+const PLAYER_MODEL_FACING_FIX_RADIANS: f32 = std::f32::consts::PI;
 const SCOUT_SPRITE_SIZE: Vec2 = Vec2::new(62.0, 62.0);
 const HEAVY_SPRITE_SIZE: Vec2 = Vec2::new(78.0, 78.0);
 const INTERCEPTOR_SPRITE_SIZE: Vec2 = Vec2::new(70.0, 70.0);
@@ -418,7 +418,8 @@ pub fn setup_nebula_bouncer(
                 SceneRoot(asset_server.load(asset_manifest.player_ship.clone())),
                 Transform::from_translation(Vec3::new(0.0, 0.0, PLAYER_MODEL_VISUAL_LIFT))
                     .with_rotation(
-                        Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2)
+                        Quat::from_rotation_z(std::f32::consts::PI)
+                            * Quat::from_rotation_x(std::f32::consts::FRAC_PI_2)
                             * Quat::from_rotation_z(PLAYER_MODEL_FACING_FIX_RADIANS),
                     )
                     .with_scale(Vec3::splat(MODEL_UNIT_TO_WORLD)),
@@ -451,20 +452,21 @@ pub fn setup_nebula_bouncer(
         NebulaGameplayCamera,
     ));
 
+    // Main directional light (sun-like) angled for dramatic contrast.
     commands.spawn((
         DirectionalLight {
             shadows_enabled: false,
-            illuminance: 45000.0,
+            illuminance: 15000.0, // Reduced further for darker scene
             ..default()
         },
         Transform::from_xyz(500.0, -1000.0, 1000.0).looking_at(Vec3::ZERO, Vec3::Y),
         NebulaBouncerContext,
     ));
 
-    // Add a softer fill to reduce harsh dark areas on the ship model.
+    // Add a very subtle fill to keep models slightly visible in shadows.
     commands.spawn((
         DirectionalLight {
-            illuminance: 12000.0,
+            illuminance: 1000.0, // Minimal fill for deep shadows
             color: Color::srgb(0.86, 0.90, 1.0),
             shadows_enabled: false,
             ..default()
@@ -1168,9 +1170,10 @@ pub fn spawn_next_chunk(
                             SceneRoot(
                                 asset_server.load(asset_manifest.enemy_model_default.clone()),
                             ),
-                            Transform::from_rotation(Quat::from_rotation_x(
-                                -std::f32::consts::FRAC_PI_2,
-                            ))
+                            Transform::from_rotation(
+                                Quat::from_rotation_z(std::f32::consts::PI)
+                                    * Quat::from_rotation_x(std::f32::consts::FRAC_PI_2),
+                            )
                             .with_scale(Vec3::splat(model_scale)),
                         ));
                     });
