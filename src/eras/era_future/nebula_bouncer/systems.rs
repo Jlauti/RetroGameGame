@@ -427,6 +427,9 @@ pub fn setup_nebula_bouncer(
                 viewport_height: 15.0 * 128.0,
             },
             scale: 1.0,
+            // Camera sits far from the gameplay plane for the chase framing; widen clip range accordingly.
+            near: -5000.0,
+            far: 5000.0,
             ..OrthographicProjection::default_2d()
         }),
         Camera {
