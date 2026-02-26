@@ -28,7 +28,7 @@ const PREFLIGHT_SUMMARY_REL_PATH: &str =
 const FEEDBACK_TELEMETRY_COOLDOWN_SECS: f32 = 0.35;
 const MODEL_UNIT_TO_WORLD: f32 = 120.0;
 const PLAYER_MODEL_VISUAL_LIFT: f32 = 42.0;
-const PLAYER_MODEL_FACING_FIX_RADIANS: f32 = 0.0;
+const PLAYER_MODEL_FACING_FIX_RADIANS: f32 = std::f32::consts::PI;
 const SCOUT_SPRITE_SIZE: Vec2 = Vec2::new(62.0, 62.0);
 const HEAVY_SPRITE_SIZE: Vec2 = Vec2::new(78.0, 78.0);
 const INTERCEPTOR_SPRITE_SIZE: Vec2 = Vec2::new(70.0, 70.0);
@@ -1169,9 +1169,10 @@ pub fn spawn_next_chunk(
                             SceneRoot(
                                 asset_server.load(asset_manifest.enemy_model_default.clone()),
                             ),
-                            Transform::from_rotation(Quat::from_rotation_x(
-                                std::f32::consts::FRAC_PI_2,
-                            ))
+                            Transform::from_rotation(
+                                Quat::from_rotation_x(std::f32::consts::FRAC_PI_2)
+                                    * Quat::from_rotation_z(std::f32::consts::PI),
+                            )
                             .with_scale(Vec3::splat(model_scale)),
                         ));
                     });
