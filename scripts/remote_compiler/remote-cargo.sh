@@ -22,6 +22,12 @@ shift
 remote_port="${REMOTE_PORT:-2222}"
 remote_project_dir="${REMOTE_PROJECT_DIR:-/work/RetroGameGame}"
 sync_target_back="${SYNC_TARGET_BACK:-1}"
+ssh_id_file="${SSH_ID_FILE:-}"
+
+ssh_opts="-p ${remote_port}"
+if [[ -n "${ssh_id_file}" ]]; then
+  ssh_opts="${ssh_opts} -i ${ssh_id_file}"
+fi
 
 repo_root="$(git rev-parse --show-toplevel)"
 
@@ -33,12 +39,12 @@ rsync -az --delete \
   --exclude=".idea/" \
   --exclude=".vscode/" \
   --exclude="*.log" \
-  -e "ssh -p ${remote_port}" \
+  -e "ssh ${ssh_opts}" \
   "${repo_root}/" \
   "${ssh_target}:${remote_project_dir}/"
 
 echo "Running cargo remotely: cargo $*"
-ssh -p "${remote_port}" "${ssh_target}" bash -s -- "${remote_project_dir}" "$@" <<'EOF'
+ssh ${ssh_opts} "${ssh_target}" bash -s -- "${remote_project_dir}" "$@" <<'EOF'
 set -euo pipefail
 remote_project_dir="$1"
 shift
@@ -50,7 +56,7 @@ EOF
 if [[ "${sync_target_back}" == "1" ]]; then
   echo "Syncing remote target/ back to local target/ ..."
   rsync -az \
-    -e "ssh -p ${remote_port}" \
+    -e "ssh ${ssh_opts}" \
     "${ssh_target}:${remote_project_dir}/target/" \
     "${repo_root}/target/"
 fi

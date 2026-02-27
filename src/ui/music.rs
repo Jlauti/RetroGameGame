@@ -189,14 +189,7 @@ fn spawn_hub_music_entity(
 }
 
 fn choose_music_path() -> &'static str {
-    let primary = format!(
-        "{}/assets/{}",
-        env!("CARGO_MANIFEST_DIR"),
-        HUB_MUSIC_PRIMARY
-    );
-    if std::path::Path::new(&primary).exists() {
-        HUB_MUSIC_PRIMARY
-    } else {
-        HUB_MUSIC_FALLBACK
-    }
+    // Both files should exist in assets/music/.
+    // We prefer the lowercase one as it's more standard for the project.
+    HUB_MUSIC_PRIMARY
 }

@@ -1,10 +1,10 @@
 use crate::eras::era_future::nebula_bouncer::components::*;
 use crate::eras::era_future::nebula_bouncer::procgen::*;
 use crate::eras::era_future::nebula_bouncer::resources::{
+    compute_hit_stop_duration, feedback_tuning, next_shake_intensity, resolve_orb_spawn_stats,
     ActiveLoadout, CameraFeedbackSettings, ChunkAssignmentProfiles, EnemyArchetype, HitStop,
     KineticOrbPool, NebulaAssetManifest, NebulaMaterials, OrbSpawnStats, OrbSynergyMatrix,
-    ProcgenValidatorTelemetry, SpriteOrientationConfig, TerrainTheme, compute_hit_stop_duration,
-    feedback_tuning, next_shake_intensity, resolve_orb_spawn_stats,
+    ProcgenValidatorTelemetry, SpriteOrientationConfig, TerrainTheme,
 };
 use crate::eras::era_future::nebula_bouncer::topography::spawn_chunk_topography;
 use crate::shared::components::Health;
@@ -189,7 +189,13 @@ fn advance_enemy_status_effects(status: &mut EnemyStatusEffects, health: &mut He
 }
 
 fn preflight_artifact_path() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(PREFLIGHT_SUMMARY_REL_PATH)
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    let base = if std::fs::metadata(manifest_dir).is_ok() {
+        PathBuf::from(manifest_dir)
+    } else {
+        PathBuf::from(".")
+    };
+    base.join(PREFLIGHT_SUMMARY_REL_PATH)
 }
 
 fn spawn_transient_vfx(
@@ -912,14 +918,7 @@ pub fn handle_orb_collisions(
                     }
 
                     if hp.is_dead() {
-                        // Defer despawn: remove physics components so the solver
-                        // won't reference this entity, then hide it.
-                        // The scrolling system will despawn it on the next frame.
-                        commands
-                            .entity(enemy_entity)
-                            .remove::<RigidBody>()
-                            .remove::<Collider>()
-                            .insert(Visibility::Hidden);
+                        commands.entity(enemy_entity).despawn();
                     }
                 } else {
                     // Hit something else (Wall?)
@@ -951,12 +950,13 @@ pub fn handle_orb_collisions(
                     orb.bounces_remaining -= 1;
                     orb.damage *= 1.10 + ((orb.speed_scale - 1.0) * 0.2);
                 } else {
-                    // Deactivate
+                    // Deactivate safely by teleporting away and halting velocity
                     commands
                         .entity(e)
-                        // .insert(RigidBody::Disabled)
                         .insert(Visibility::Hidden)
-                        .remove::<LinearVelocity>();
+                        .insert(LinearVelocity::ZERO)
+                        .insert(AngularVelocity::ZERO)
+                        .insert(Transform::from_xyz(9999.0, 9999.0, depth::PROJECTILE));
 
                     orb.active = false;
                     orb_pool.push(e);

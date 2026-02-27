@@ -1,6 +1,6 @@
 use bevy::prelude::*;
-use retro_game_game::RetroGameGamePlugin;
 use retro_game_game::core;
+use retro_game_game::RetroGameGamePlugin;
 
 fn configure_wsl_winit_backend() {
     let is_wsl = cfg!(target_os = "linux") && std::env::var_os("WSL_DISTRO_NAME").is_some();
@@ -24,7 +24,8 @@ fn configure_wsl_winit_backend() {
 fn main() {
     configure_wsl_winit_backend();
 
-    let asset_root = format!("{}/assets", env!("CARGO_MANIFEST_DIR"));
+    let asset_root = find_asset_root().unwrap_or_else(|| "assets".to_string());
+
     println!("Starting RetroGameGame...");
     println!("Asset root: {}", asset_root);
 
@@ -50,4 +51,28 @@ fn main() {
         )
         .add_plugins(RetroGameGamePlugin)
         .run();
+}
+
+fn find_asset_root() -> Option<String> {
+    // 1. Check CARGO_MANIFEST_DIR (compile time)
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    let manifest_assets = std::path::Path::new(manifest_dir).join("assets");
+    if manifest_assets.exists() {
+        return Some(manifest_assets.to_string_lossy().to_string());
+    }
+
+    // 2. Check current directory and parents
+    if let Ok(mut current) = std::env::current_dir() {
+        for _ in 0..5 {
+            let candidate = current.join("assets");
+            if candidate.exists() {
+                return Some(candidate.to_string_lossy().to_string());
+            }
+            if !current.pop() {
+                break;
+            }
+        }
+    }
+
+    None
 }

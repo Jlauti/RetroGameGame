@@ -14,6 +14,37 @@ const ASSET_MANIFEST_REL_PATH: &str = "specs/future/nebula_bouncer/asset_manifes
 const CHUNK_ASSIGNMENT_PROFILES_REL_PATH: &str =
     "specs/future/nebula_bouncer/chunk_assignment_profiles.json";
 
+fn resolve_resource_path(rel_path: &str) -> PathBuf {
+    // 1. Try relative to CWD
+    let cwd_path = PathBuf::from(".").join(rel_path);
+    if cwd_path.exists() {
+        return cwd_path;
+    }
+
+    // 2. Try relative to CARGO_MANIFEST_DIR (compile time)
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    let manifest_path = PathBuf::from(manifest_dir).join(rel_path);
+    if manifest_path.exists() {
+        return manifest_path;
+    }
+
+    // 3. Try walking up from CWD to find a directory containing 'assets'
+    if let Ok(mut current) = std::env::current_dir() {
+        for _ in 0..5 {
+            let candidate = current.join(rel_path);
+            if candidate.exists() {
+                return candidate;
+            }
+            if !current.pop() {
+                break;
+            }
+        }
+    }
+
+    // Fallback to relative
+    PathBuf::from(".").join(rel_path)
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum EnemyArchetype {
@@ -230,7 +261,7 @@ impl ChunkAssignmentProfiles {
 }
 
 pub fn load_chunk_assignment_profiles() -> ChunkAssignmentProfiles {
-    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(CHUNK_ASSIGNMENT_PROFILES_REL_PATH);
+    let path = resolve_resource_path(CHUNK_ASSIGNMENT_PROFILES_REL_PATH);
     let fallback = ChunkAssignmentProfiles::default();
     let raw = match fs::read_to_string(&path) {
         Ok(raw) => raw,
@@ -320,7 +351,7 @@ impl NebulaAssetManifest {
 }
 
 pub fn load_asset_manifest() -> NebulaAssetManifest {
-    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(ASSET_MANIFEST_REL_PATH);
+    let path = resolve_resource_path(ASSET_MANIFEST_REL_PATH);
     let fallback = NebulaAssetManifest::default();
     let raw = match fs::read_to_string(&path) {
         Ok(raw) => raw,
@@ -381,7 +412,7 @@ impl SpriteOrientationConfig {
 }
 
 pub fn load_sprite_orientation_config() -> SpriteOrientationConfig {
-    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(SPRITE_ORIENTATION_CONFIG_REL_PATH);
+    let path = resolve_resource_path(SPRITE_ORIENTATION_CONFIG_REL_PATH);
     let fallback = SpriteOrientationConfig::default();
 
     let raw = match fs::read_to_string(&path) {
