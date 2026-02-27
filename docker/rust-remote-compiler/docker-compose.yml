@@ -1,0 +1,21 @@
+services:
+  rust-remote-compiler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rust-remote-compiler
+    restart: unless-stopped
+    ports:
+      - "${RUST_REMOTE_SSH_PORT:-2222}:22"
+    volumes:
+      - rust_remote_cargo_registry:/usr/local/cargo/registry
+      - rust_remote_cargo_git:/usr/local/cargo/git
+      - rust_remote_rustup:/usr/local/rustup
+      - rust_remote_workspace:/work
+      - ./authorized_keys:/root/.ssh/authorized_keys:ro
+
+volumes:
+  rust_remote_cargo_registry:
+  rust_remote_cargo_git:
+  rust_remote_rustup:
+  rust_remote_workspace:

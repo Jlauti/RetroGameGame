@@ -9,5 +9,6 @@ target_shared/
 **/__pycache__/
 .agent_compile.lock
 .agent_gate_queue*.lock
+docker/rust-remote-compiler/authorized_keys
 
 

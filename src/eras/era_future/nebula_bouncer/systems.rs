@@ -912,9 +912,14 @@ pub fn handle_orb_collisions(
                     }
 
                     if hp.is_dead() {
-                        commands.entity(enemy_entity).despawn();
-                        // Optional: Spawn explosion or particles here
-                        // commands.spawn(ExplosionBundle::new(transform...));
+                        // Defer despawn: remove physics components so the solver
+                        // won't reference this entity, then hide it.
+                        // The scrolling system will despawn it on the next frame.
+                        commands
+                            .entity(enemy_entity)
+                            .remove::<RigidBody>()
+                            .remove::<Collider>()
+                            .insert(Visibility::Hidden);
                     }
                 } else {
                     // Hit something else (Wall?)
