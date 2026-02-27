@@ -45,6 +45,7 @@ Loop contract details: `docs/agentic/AGENTIC_LOOP.md`.
 - Agent control plane: `agents/README.md`
 - Agentic docs index: `docs/agentic/README.md`
 - Machine switch protocol: `docs/agentic/MACHINE_SWITCH.md`
+- Remote Rust compiler runbook: `docs/REMOTE_RUST_COMPILER.md`
 - Principal launch prompt: `agents/principal_engineer/launch_prompt.md`
 
 ## Build Quickstart
