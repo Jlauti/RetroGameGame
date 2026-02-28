@@ -1178,8 +1178,10 @@ pub fn update_level_scrolling(
     mut validator_telemetry: ResMut<ProcgenValidatorTelemetry>,
     nebula_mats: Res<NebulaMaterials>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    q_player: Query<&Transform, (With<PlayerShip>, Without<ChunkMember>)>,
-    mut q_chunks: Query<(Entity, &mut Transform, Option<&RigidBody>), With<ChunkMember>>,
+    mut queries: ParamSet<(
+        Query<&Transform, With<PlayerShip>>,
+        Query<(Entity, &mut Transform, Option<&RigidBody>), With<ChunkMember>>,
+    )>,
 ) {
     const SCROLL_SPEED: f32 = 150.0;
     const VISUAL_DESPAWN_Y: f32 = -1800.0;
@@ -1192,22 +1194,26 @@ pub fn update_level_scrolling(
     let delta_y = SCROLL_SPEED * dt;
 
     // Movement
-    for (entity, mut transform, rigid_body) in &mut q_chunks {
-        transform.translation.y -= delta_y;
-        let despawn_y = if rigid_body.is_some() {
-            PHYSICS_DESPAWN_Y
-        } else {
-            VISUAL_DESPAWN_Y
-        };
-        if transform.translation.y < despawn_y {
-            commands.entity(entity).despawn();
+    {
+        let mut q_chunks = queries.p1();
+        for (entity, mut transform, rigid_body) in &mut q_chunks {
+            transform.translation.y -= delta_y;
+            let despawn_y = if rigid_body.is_some() {
+                PHYSICS_DESPAWN_Y
+            } else {
+                VISUAL_DESPAWN_Y
+            };
+            if transform.translation.y < despawn_y {
+                commands.entity(entity).despawn();
+            }
         }
     }
 
     procgen_state.next_spawn_y -= delta_y;
 
     // Spawn based on player progression as well as autoscroll, so flying forward can't outrun chunk creation.
-    let prefetch_target_y = q_player
+    let prefetch_target_y = queries
+        .p0()
         .iter()
         .next()
         .map(|t| t.translation.y + CHUNK_PREFETCH_LEAD_Y)
