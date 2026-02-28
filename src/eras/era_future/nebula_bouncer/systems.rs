@@ -2024,8 +2024,8 @@ pub fn apply_shake(
 }
 
 pub fn update_horizon_backdrop(
-    q_camera: Query<&Transform, With<NebulaGameplayCamera>>,
-    mut q_backdrop: Query<&mut Transform, With<HorizonBackdrop>>,
+    q_camera: Query<&Transform, (With<NebulaGameplayCamera>, Without<HorizonBackdrop>)>,
+    mut q_backdrop: Query<&mut Transform, (With<HorizonBackdrop>, Without<NebulaGameplayCamera>)>,
 ) {
     let Some(camera_transform) = q_camera.iter().next() else {
         return;
