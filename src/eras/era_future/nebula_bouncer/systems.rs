@@ -52,8 +52,8 @@ const CAMERA_BEHIND_OFFSET: f32 = -428.0;
 const CAMERA_LOOK_AHEAD: f32 = 1240.0;
 const CAMERA_FOLLOW_LERP: f32 = 6.2;
 const CAMERA_LOOK_LERP: f32 = 4.6;
-const ENERGY_LANE_WIDTH: f32 = 24.0;
-const ENERGY_LANE_ALPHA: f32 = 0.90;
+const ENERGY_LANE_WIDTH: f32 = 18.0;
+const ENERGY_LANE_ALPHA: f32 = 1.0;
 const PREFILL_CHUNK_COUNT: usize = 6;
 const LANE_SAFE_BUBBLE_INNER: f32 = 240.0;
 const LANE_SAFE_BUBBLE_OUTER: f32 = 760.0;
@@ -305,7 +305,7 @@ fn spawn_chunk_floor_tiles(
         )),
     ));
 
-    let grid_color = Color::srgba(0.20, 0.52, 0.90, 0.12);
+    let grid_color = Color::srgba(0.18, 0.42, 0.74, 0.22);
     let grid_emissive = LinearRgba::rgb(0.16, 0.30, 0.70);
     let cols_usize = cols.max(0) as usize;
     let rows_usize = rows.max(0) as usize;
@@ -317,17 +317,17 @@ fn spawn_chunk_floor_tiles(
             Mesh3d(nebula_mats.lane_mesh.clone()),
             MeshMaterial3d(materials.add(StandardMaterial {
                 base_color: grid_color,
-                emissive: grid_emissive * 1.0,
+                emissive: grid_emissive * 0.42,
                 unlit: false,
-                alpha_mode: AlphaMode::Add,
+                alpha_mode: AlphaMode::Opaque,
                 metallic: 0.08,
-                perceptual_roughness: 0.34,
+                perceptual_roughness: 0.42,
                 ..default()
             })),
-            Transform::from_xyz(x, chunk_center_y, depth::BACKGROUND + 2.0).with_scale(Vec3::new(
+            Transform::from_xyz(x, chunk_center_y, depth::BACKGROUND + 3.0).with_scale(Vec3::new(
                 1.6,
                 chunk_height * 1.03,
-                2.2,
+                3.6,
             )),
         ));
     }
@@ -339,17 +339,17 @@ fn spawn_chunk_floor_tiles(
             Mesh3d(nebula_mats.lane_mesh.clone()),
             MeshMaterial3d(materials.add(StandardMaterial {
                 base_color: grid_color,
-                emissive: grid_emissive * 1.0,
+                emissive: grid_emissive * 0.42,
                 unlit: false,
-                alpha_mode: AlphaMode::Add,
+                alpha_mode: AlphaMode::Opaque,
                 metallic: 0.08,
-                perceptual_roughness: 0.34,
+                perceptual_roughness: 0.42,
                 ..default()
             })),
-            Transform::from_xyz(0.0, y, depth::BACKGROUND + 2.0).with_scale(Vec3::new(
+            Transform::from_xyz(0.0, y, depth::BACKGROUND + 3.0).with_scale(Vec3::new(
                 GROUND_CHUNK_WIDTH * 1.03,
                 1.6,
-                2.2,
+                3.6,
             )),
         ));
     }
@@ -434,7 +434,7 @@ fn spawn_chunk_energy_lanes(
     let lane_len = (chunk_height * 1.28).max(120.0);
     for (idx, x) in lane_positions.iter().enumerate() {
         let (lane_color, lane_emissive) = lane_palette[idx % lane_palette.len()];
-        let lane_emissive_linear = LinearRgba::from(lane_emissive) * 10.5;
+        let lane_emissive_linear = LinearRgba::from(lane_emissive) * 3.8;
         let width_scale = if idx % 2 == 0 {
             ENERGY_LANE_WIDTH
         } else {
@@ -453,13 +453,13 @@ fn spawn_chunk_energy_lanes(
                 base_color: lane_color,
                 emissive: lane_emissive_linear,
                 unlit: false,
-                alpha_mode: AlphaMode::Add,
-                metallic: 0.12,
-                perceptual_roughness: 0.26,
+                alpha_mode: AlphaMode::Opaque,
+                metallic: 0.24,
+                perceptual_roughness: 0.36,
                 ..default()
             })),
-            Transform::from_xyz(*x, chunk_center_y, depth::BACKGROUND + 14.0)
-                .with_scale(Vec3::new(width_scale, lane_len, 6.0)),
+            Transform::from_xyz(*x, chunk_center_y, depth::BACKGROUND + 20.0)
+                .with_scale(Vec3::new(width_scale, lane_len, 20.0)),
         ));
     }
 }
@@ -482,13 +482,10 @@ pub fn update_energy_lane_suppression(
     for (lane_transform, lane_material, lane_visual) in &q_lanes {
         let dist = lane_transform.translation.truncate().distance(player_pos);
         let fade = ((dist - LANE_SAFE_BUBBLE_INNER) / fade_span).clamp(0.0, 1.0);
-        let alpha_scale = 0.16 + 0.84 * fade;
         let emissive_scale = 0.14 + 0.86 * fade;
 
         if let Some(material) = materials.get_mut(&lane_material.0) {
-            material.base_color = lane_visual
-                .base_color
-                .with_alpha(lane_visual.base_alpha * alpha_scale);
+            material.base_color = lane_visual.base_color.with_alpha(lane_visual.base_alpha);
             material.emissive = lane_visual.base_emissive * emissive_scale;
         }
     }
@@ -724,8 +721,8 @@ pub fn setup_nebula_bouncer(
         hex_texture: nebula_mats.hex_texture.clone(),
     });
     commands.insert_resource(GlobalAmbientLight {
-        color: Color::srgb(0.025, 0.034, 0.052),
-        brightness: 0.20,
+        color: Color::srgb(0.020, 0.024, 0.032),
+        brightness: 0.10,
         ..default()
     });
 
@@ -769,13 +766,13 @@ pub fn setup_nebula_bouncer(
         Hdr,
         Tonemapping::TonyMcMapface,
         Bloom {
-            intensity: 0.32,
-            low_frequency_boost: 0.85,
-            low_frequency_boost_curvature: 0.95,
-            high_pass_frequency: 0.68,
+            intensity: 0.12,
+            low_frequency_boost: 0.25,
+            low_frequency_boost_curvature: 0.75,
+            high_pass_frequency: 0.82,
             prefilter: BloomPrefilter {
-                threshold: 0.28,
-                threshold_softness: 0.34,
+                threshold: 0.55,
+                threshold_softness: 0.10,
             },
             composite_mode: BloomCompositeMode::Additive,
             ..Bloom::NATURAL
@@ -787,10 +784,10 @@ pub fn setup_nebula_bouncer(
             ..default()
         }),
         DistanceFog {
-            color: Color::srgba(0.008, 0.012, 0.020, 0.56),
-            directional_light_color: Color::srgba(0.36, 0.54, 0.86, 0.16),
+            color: Color::srgba(0.010, 0.012, 0.018, 0.14),
+            directional_light_color: Color::srgba(0.24, 0.30, 0.40, 0.06),
             directional_light_exponent: 15.0,
-            falloff: FogFalloff::ExponentialSquared { density: 0.00095 },
+            falloff: FogFalloff::ExponentialSquared { density: 0.00035 },
         },
         Camera {
             order: 1,
@@ -830,9 +827,9 @@ pub fn setup_nebula_bouncer(
     // Forward cyan beam source to enhance lane/readability depth in the horizon.
     commands.spawn((
         PointLight {
-            intensity: 1_900_000.0,
-            range: 3600.0,
-            radius: 72.0,
+            intensity: 240_000.0,
+            range: 2200.0,
+            radius: 48.0,
             color: Color::srgb(0.24, 0.96, 1.0),
             shadows_enabled: false,
             ..default()
@@ -844,9 +841,9 @@ pub fn setup_nebula_bouncer(
     // Warm horizon glow to silhouette enemy swarm against the sky.
     commands.spawn((
         PointLight {
-            intensity: 1_100_000.0,
-            range: 3200.0,
-            radius: 84.0,
+            intensity: 140_000.0,
+            range: 2400.0,
+            radius: 60.0,
             color: Color::srgb(1.0, 0.48, 0.16),
             shadows_enabled: false,
             ..default()
@@ -861,9 +858,9 @@ pub fn setup_nebula_bouncer(
     commands.spawn((
         Mesh3d(nebula_mats.quad_mesh.clone()),
         MeshMaterial3d(materials.add(StandardMaterial {
-            base_color: Color::WHITE,
+            base_color: Color::srgb(0.34, 0.34, 0.40),
             base_color_texture: Some(horizon_texture),
-            emissive: LinearRgba::rgb(0.05, 0.05, 0.07),
+            emissive: LinearRgba::BLACK,
             unlit: true,
             alpha_mode: AlphaMode::Opaque,
             cull_mode: None,
@@ -1167,11 +1164,13 @@ pub fn spawn_orb_pool(
                     },
                     Mesh3d(nebula_mats.orb_mesh.clone()),
                     MeshMaterial3d(materials.add(StandardMaterial {
-                        base_color: element_trail_color(OrbElement::default()).with_alpha(0.85),
+                        base_color: element_trail_color(OrbElement::default()),
                         emissive: LinearRgba::from(element_trail_color(OrbElement::default()))
-                            * 10.0,
-                        unlit: true,
-                        alpha_mode: AlphaMode::Add,
+                            * 2.6,
+                        metallic: 0.05,
+                        perceptual_roughness: 0.25,
+                        unlit: false,
+                        alpha_mode: AlphaMode::Opaque,
                         ..default()
                     })),
                 ))
@@ -2129,10 +2128,12 @@ pub fn player_shoot(
                 RigidBody::Dynamic,
                 Mesh3d(nebula_mats.orb_mesh.clone()),
                 MeshMaterial3d(materials.add(StandardMaterial {
-                    base_color: element_trail_color(loadout.element).with_alpha(0.88),
-                    emissive: LinearRgba::from(element_trail_color(loadout.element)) * 14.0,
-                    unlit: true,
-                    alpha_mode: AlphaMode::Add,
+                    base_color: element_trail_color(loadout.element),
+                    emissive: LinearRgba::from(element_trail_color(loadout.element)) * 3.2,
+                    metallic: 0.06,
+                    perceptual_roughness: 0.24,
+                    unlit: false,
+                    alpha_mode: AlphaMode::Opaque,
                     ..default()
                 })),
                 KineticOrb {
@@ -2179,10 +2180,7 @@ pub fn orient_orbs_to_velocity(
     }
 }
 
-pub fn update_trails(
-    mut gizmos: Gizmos,
-    mut query: Query<(&Transform, &mut ProjectileTrail, &KineticOrb)>,
-) {
+pub fn update_trails(mut query: Query<(&Transform, &mut ProjectileTrail, &KineticOrb)>) {
     for (transform, mut trail, orb) in &mut query {
         if !orb.active {
             trail.points.clear();
@@ -2194,15 +2192,7 @@ pub fn update_trails(
             trail.points.remove(0);
         }
 
-        if trail.points.len() > 1 {
-            for i in 0..trail.points.len() - 1 {
-                gizmos.line(
-                    trail.points[i],
-                    trail.points[i + 1],
-                    trail.color.with_alpha(i as f32 / trail.points.len() as f32),
-                );
-            }
-        }
+        // Intentionally keep trail history only; disable gizmo line rendering to avoid 2D overlays.
     }
 }
 
