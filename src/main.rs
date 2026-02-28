@@ -69,11 +69,8 @@ fn maybe_enable_brp(app: &mut App) {
         .and_then(|raw| raw.parse::<u16>().ok())
         .unwrap_or(15702);
 
-    app.add_plugins((
-        RemotePlugin::default(),
-        RemoteHttpPlugin::default().with_port(port),
-    ));
-    println!("BRP enabled at http://127.0.0.1:{port}");
+    app.add_plugins(bevy_brp_extras::BrpExtrasPlugin);
+    println!("BRP and Extras enabled.");
 }
 
 fn should_boot_nebula_for_dev() -> bool {

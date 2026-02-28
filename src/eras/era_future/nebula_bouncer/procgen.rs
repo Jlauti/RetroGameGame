@@ -818,11 +818,11 @@ pub fn generate_chunk_topography(
             let h = crate::eras::era_future::nebula_bouncer::topography::fold_hash(h, y_int as u64);
             let height = (h as f64 / u64::MAX as f64) as f32;
 
-            let tier = if height < 0.25 {
+            let tier = if height < 0.65 {
                 0
-            } else if height < 0.50 {
+            } else if height < 0.82 {
                 1
-            } else if height < 0.75 {
+            } else if height < 0.94 {
                 2
             } else {
                 3
