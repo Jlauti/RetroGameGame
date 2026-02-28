@@ -177,19 +177,19 @@ pub fn spawn_chunk_topography(
             );
             let extrusion_roll = fold_hash(cell_seed, (tier as u64) << 1 | 1) % 100;
             let extrusion_threshold = if side_curve > 0.72 {
-                24
+                15
             } else if tier >= 2 {
-                11
+                7
             } else {
-                5
+                3
             };
             if extrusion_roll < extrusion_threshold {
                 let tier_height = match tier {
-                    0 => 18.0_f32,
-                    1 => 30.0_f32,
-                    2 => 44.0_f32,
-                    3 => 64.0_f32,
-                    _ => 18.0_f32,
+                    0 => 28.0_f32,
+                    1 => 44.0_f32,
+                    2 => 62.0_f32,
+                    3 => 86.0_f32,
+                    _ => 28.0_f32,
                 };
                 let z_scale = (tier_height / 50.0_f32).max(0.36_f32);
                 let prism_center_z = base_outline_z + 8.0 + (25.0 * z_scale) + (side_curve * 8.0);

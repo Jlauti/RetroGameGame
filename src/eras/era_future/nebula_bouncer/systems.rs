@@ -275,28 +275,68 @@ fn spawn_chunk_floor_tiles(
     let rows = (chunk_height / tile_h).ceil().max(1.0) as i32;
     let start_x = -GROUND_CHUNK_WIDTH * 0.5 + tile_w * 0.5;
     let start_y = chunk_center_y - chunk_height * 0.5 + tile_h * 0.5;
+    commands.spawn((
+        ChunkMember,
+        GroundVisual,
+        Mesh3d(nebula_mats.quad_mesh.clone()),
+        MeshMaterial3d(materials.add(StandardMaterial {
+            base_color: terrain_floor_color(terrain_theme),
+            emissive: LinearRgba::from(terrain_floor_emissive(terrain_theme)) * 0.35,
+            metallic: 0.24,
+            perceptual_roughness: 0.14,
+            reflectance: 0.72,
+            unlit: false,
+            alpha_mode: AlphaMode::Opaque,
+            ..default()
+        })),
+        Transform::from_xyz(0.0, chunk_center_y, depth::BACKGROUND - 8.0).with_scale(Vec3::new(
+            GROUND_CHUNK_WIDTH * 1.04,
+            chunk_height * 1.04,
+            1.0,
+        )),
+    ));
 
+    let grid_color = Color::srgba(0.20, 0.52, 0.90, 0.22);
+    let grid_emissive = LinearRgba::rgb(0.18, 0.36, 0.86);
+    for col in 0..cols {
+        let x = start_x + col as f32 * tile_w;
+        commands.spawn((
+            ChunkMember,
+            GroundVisual,
+            Mesh3d(nebula_mats.quad_mesh.clone()),
+            MeshMaterial3d(materials.add(StandardMaterial {
+                base_color: grid_color,
+                emissive: grid_emissive * 1.6,
+                unlit: true,
+                alpha_mode: AlphaMode::Add,
+                ..default()
+            })),
+            Transform::from_xyz(x, chunk_center_y, depth::BACKGROUND + 1.0).with_scale(Vec3::new(
+                2.4,
+                chunk_height * 1.03,
+                1.0,
+            )),
+        ));
+    }
     for row in 0..rows {
-        for col in 0..cols {
-            let x = start_x + col as f32 * tile_w;
-            let y = start_y + row as f32 * tile_h;
-            commands.spawn((
-                ChunkMember,
-                GroundVisual,
-                Mesh3d(nebula_mats.quad_mesh.clone()),
-                MeshMaterial3d(materials.add(StandardMaterial {
-                    base_color: terrain_floor_color(terrain_theme),
-                    emissive: terrain_floor_emissive(terrain_theme).into(),
-                    metallic: 0.0,
-                    perceptual_roughness: 0.94,
-                    unlit: false,
-                    alpha_mode: AlphaMode::Opaque,
-                    ..default()
-                })),
-                Transform::from_xyz(x, y, depth::BACKGROUND)
-                    .with_scale(FLOOR_TILE_SIZE.extend(1.0)),
-            ));
-        }
+        let y = start_y + row as f32 * tile_h;
+        commands.spawn((
+            ChunkMember,
+            GroundVisual,
+            Mesh3d(nebula_mats.quad_mesh.clone()),
+            MeshMaterial3d(materials.add(StandardMaterial {
+                base_color: grid_color,
+                emissive: grid_emissive * 1.6,
+                unlit: true,
+                alpha_mode: AlphaMode::Add,
+                ..default()
+            })),
+            Transform::from_xyz(0.0, y, depth::BACKGROUND + 1.0).with_scale(Vec3::new(
+                GROUND_CHUNK_WIDTH * 1.03,
+                2.4,
+                1.0,
+            )),
+        ));
     }
 
     spawn_chunk_energy_lanes(
@@ -320,22 +360,65 @@ fn spawn_chunk_energy_lanes(
     let lane_positions = [
         -560.0_f32, -420.0, -280.0, -140.0, 140.0, 280.0, 420.0, 560.0,
     ];
-    let (lane_color, lane_emissive) = match terrain_theme {
-        TerrainTheme::Standard => (
-            Color::srgba(0.30, 0.98, 1.0, ENERGY_LANE_ALPHA),
-            Color::srgb(0.28, 0.98, 1.0),
-        ),
-        TerrainTheme::Cold => (
-            Color::srgba(0.38, 0.92, 1.0, ENERGY_LANE_ALPHA),
-            Color::srgb(0.28, 0.86, 1.0),
-        ),
-        TerrainTheme::Hazard => (
-            Color::srgba(0.34, 0.90, 1.0, ENERGY_LANE_ALPHA),
-            Color::srgb(0.24, 0.82, 1.0),
-        ),
+    let lane_palette: &[(Color, Color)] = match terrain_theme {
+        TerrainTheme::Standard => &[
+            (
+                Color::srgba(0.26, 0.96, 1.0, ENERGY_LANE_ALPHA),
+                Color::srgb(0.22, 0.94, 1.0),
+            ),
+            (
+                Color::srgba(0.34, 0.86, 1.0, ENERGY_LANE_ALPHA),
+                Color::srgb(0.30, 0.82, 1.0),
+            ),
+            (
+                Color::srgba(0.80, 0.34, 1.0, ENERGY_LANE_ALPHA),
+                Color::srgb(0.74, 0.30, 1.0),
+            ),
+            (
+                Color::srgba(1.0, 0.58, 0.20, ENERGY_LANE_ALPHA),
+                Color::srgb(1.0, 0.50, 0.16),
+            ),
+        ],
+        TerrainTheme::Cold => &[
+            (
+                Color::srgba(0.30, 0.90, 1.0, ENERGY_LANE_ALPHA),
+                Color::srgb(0.24, 0.84, 1.0),
+            ),
+            (
+                Color::srgba(0.42, 0.74, 1.0, ENERGY_LANE_ALPHA),
+                Color::srgb(0.36, 0.66, 1.0),
+            ),
+            (
+                Color::srgba(0.62, 0.50, 1.0, ENERGY_LANE_ALPHA),
+                Color::srgb(0.56, 0.44, 1.0),
+            ),
+            (
+                Color::srgba(0.30, 1.0, 0.70, ENERGY_LANE_ALPHA),
+                Color::srgb(0.24, 0.96, 0.62),
+            ),
+        ],
+        TerrainTheme::Hazard => &[
+            (
+                Color::srgba(1.0, 0.26, 0.18, ENERGY_LANE_ALPHA),
+                Color::srgb(1.0, 0.22, 0.14),
+            ),
+            (
+                Color::srgba(1.0, 0.52, 0.20, ENERGY_LANE_ALPHA),
+                Color::srgb(1.0, 0.46, 0.16),
+            ),
+            (
+                Color::srgba(1.0, 0.82, 0.22, ENERGY_LANE_ALPHA),
+                Color::srgb(1.0, 0.76, 0.18),
+            ),
+            (
+                Color::srgba(0.40, 0.96, 0.40, ENERGY_LANE_ALPHA),
+                Color::srgb(0.34, 0.90, 0.34),
+            ),
+        ],
     };
     let lane_len = (chunk_height * 1.16).max(120.0);
     for (idx, x) in lane_positions.iter().enumerate() {
+        let (lane_color, lane_emissive) = lane_palette[idx % lane_palette.len()];
         let width_scale = if idx % 2 == 0 {
             ENERGY_LANE_WIDTH
         } else {
