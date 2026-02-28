@@ -1,6 +1,7 @@
-use crate::eras::era_future::nebula_bouncer::components::depth;
+use crate::eras::era_future::nebula_bouncer::components::{GameLayer, HexExtrusion, Wall, depth};
 use crate::eras::era_future::nebula_bouncer::procgen::{ChunkMember, ChunkTopography};
 use crate::eras::era_future::nebula_bouncer::resources::NebulaMaterials;
+use avian2d::prelude::*;
 use bevy::prelude::*;
 
 /// Component for a single hex in the topography grid
@@ -106,10 +107,8 @@ pub fn spawn_chunk_topography(
             };
             let tier = (tier_u8 as usize).min(TIER_COLORS.len() - 1);
             let normalized_height = smoothed_height(topography, cols, rows, c, r);
-            // Blend tier steps with local smoothing to reduce harsh stair-stepping.
+            // Blend tier steps with local smoothing to keep coherent terrain contours.
             let elevation = (normalized_height - 0.35) * 24.0;
-            // footprint > 1.0 so hexes overlap slightly → continuous terrain with no gaps.
-            let footprint = 1.04;
             let side_ratio = (x.abs() / CANYON_HALF_WIDTH).clamp(0.0, 1.0);
             let side_curve = side_ratio.powf(1.45);
             let canyon_lift = side_curve * 176.0;
@@ -129,42 +128,19 @@ pub fn spawn_chunk_topography(
                 3 => nebula_mats.hex_cap_material_t3.clone(),
                 _ => nebula_mats.hex_cap_material_t0.clone(),
             };
+            let base_outline_z =
+                depth::BACKGROUND + 4.0 + (elevation * 0.22) + (canyon_lift * 0.08)
+                    - (valley_sink * 0.05);
 
-            // NB-A2-010 pass6: Tier-dependent height for 3D terrain relief.
-            // Each tier sits at a different Z level; Z-scale stretches the prism vertically.
-            let tier_height = match tier {
-                0 => 0.0,
-                1 => 30.0,
-                2 => 68.0,
-                3 => 118.0,
-                _ => 0.0,
-            };
-            let z_scale = 1.20 + tier as f32 * 0.32; // taller prisms for higher tiers
-            let prism_center_z =
-                depth::BACKGROUND + tier_height + elevation + canyon_lift - valley_sink - 42.0;
-            // Extrusion depth is 50 units around center, so top face sits at +25*scale.
-            let cap_z = prism_center_z + (25.0 * z_scale) + 1.2;
-            commands.spawn((
-                ChunkMember,
-                TopographyHex,
-                Mesh3d(nebula_mats.hex_mesh.clone()),
-                MeshMaterial3d(material),
-                Transform::from_xyz(x, y, prism_center_z).with_scale(Vec3::new(
-                    hex_width * footprint,
-                    hex_height * footprint,
-                    z_scale,
-                )),
-            ));
-
-            // Additive cap overlay gives each top face a neon contour without changing collision.
+            // Outline-first terrain: every tile gets a neon contour, but most remain flat.
             commands.spawn((
                 ChunkMember,
                 TopographyHex,
                 Mesh3d(nebula_mats.quad_mesh.clone()),
-                MeshMaterial3d(cap_material),
-                Transform::from_xyz(x, y, cap_z).with_scale(Vec3::new(
-                    hex_width * 1.01,
-                    hex_height * 1.01,
+                MeshMaterial3d(cap_material.clone()),
+                Transform::from_xyz(x, y, base_outline_z).with_scale(Vec3::new(
+                    hex_width * 0.97,
+                    hex_height * 0.97,
                     1.0,
                 )),
             ));
@@ -183,11 +159,73 @@ pub fn spawn_chunk_topography(
                     TopographyHex,
                     Mesh3d(nebula_mats.quad_mesh.clone()),
                     MeshMaterial3d(material),
-                    Transform::from_xyz(x, y, cap_z + 1.4).with_scale(Vec3::new(
+                    Transform::from_xyz(x, y, base_outline_z + 0.8).with_scale(Vec3::new(
                         hex_width * 0.88,
                         hex_height * 0.88,
                         1.0,
                     )),
+                ));
+            }
+
+            // Occasional physical hazard pillars: collision kills player, orb ricochets for bonus.
+            let cell_seed = fold_hash(
+                ((r as u64) << 32) | c as u64,
+                chunk_center_y.to_bits() as u64,
+            );
+            let extrusion_roll = fold_hash(cell_seed, (tier as u64) << 1 | 1) % 100;
+            let extrusion_threshold = if side_curve > 0.72 {
+                24
+            } else if tier >= 2 {
+                11
+            } else {
+                5
+            };
+            if extrusion_roll < extrusion_threshold {
+                let tier_height = match tier {
+                    0 => 18.0_f32,
+                    1 => 30.0_f32,
+                    2 => 44.0_f32,
+                    3 => 64.0_f32,
+                    _ => 18.0_f32,
+                };
+                let z_scale = (tier_height / 50.0_f32).max(0.36_f32);
+                let prism_center_z = base_outline_z + 8.0 + (25.0 * z_scale) + (side_curve * 8.0);
+                let cap_z = prism_center_z + (25.0 * z_scale) + 1.2;
+                commands.spawn((
+                    ChunkMember,
+                    TopographyHex,
+                    Mesh3d(nebula_mats.hex_mesh.clone()),
+                    MeshMaterial3d(material),
+                    Transform::from_xyz(x, y, prism_center_z).with_scale(Vec3::new(
+                        hex_width * 0.96,
+                        hex_height * 0.96,
+                        z_scale,
+                    )),
+                ));
+                commands.spawn((
+                    ChunkMember,
+                    TopographyHex,
+                    Mesh3d(nebula_mats.quad_mesh.clone()),
+                    MeshMaterial3d(cap_material),
+                    Transform::from_xyz(x, y, cap_z).with_scale(Vec3::new(
+                        hex_width * 0.93,
+                        hex_height * 0.93,
+                        1.0,
+                    )),
+                ));
+                commands.spawn((
+                    Wall,
+                    HexExtrusion,
+                    ChunkMember,
+                    Transform::from_xyz(x, y, depth::WALL),
+                    RigidBody::Static,
+                    Collider::circle((hex_width * 0.26).clamp(12.0, 40.0)),
+                    Friction::new(0.0),
+                    Restitution::new(1.0).with_combine_rule(CoefficientCombine::Max),
+                    CollisionLayers::new(
+                        GameLayer::Wall,
+                        [GameLayer::Projectile, GameLayer::Player],
+                    ),
                 ));
             }
         }

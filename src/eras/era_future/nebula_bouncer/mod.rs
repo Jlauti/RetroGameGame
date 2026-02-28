@@ -40,6 +40,7 @@ impl Plugin for NebulaBouncerPlugin {
             .register_type::<PlayerShip>()
             .register_type::<Enemy>()
             .register_type::<Wall>()
+            .register_type::<HexExtrusion>()
             .register_type::<NebulaGameplayCamera>()
             .register_type::<PlayerVisualRoot>()
             .register_type::<TopographyHex>();
@@ -56,7 +57,8 @@ impl Plugin for NebulaBouncerPlugin {
             .init_resource::<ActiveLoadout>()
             .init_resource::<OrbSynergyMatrix>()
             .init_resource::<CameraFeedbackSettings>()
-            .init_resource::<HitStop>();
+            .init_resource::<HitStop>()
+            .init_resource::<NebulaRunStats>();
 
         app.register_type::<ChunkLibrary>()
             .register_type::<ProcGenState>();
@@ -75,6 +77,7 @@ impl Plugin for NebulaBouncerPlugin {
                 debug_telemetry_hotkey,
                 toggle_debug_asset_overlay,
                 update_debug_asset_overlay_text,
+                handle_player_extrusion_collisions,
                 handle_orb_collisions,
                 update_enemy_status_effects,
                 systems::update_level_scrolling,

@@ -21,6 +21,7 @@ log_file="${tmp_dir}/game.log"
 before_file="${tmp_dir}/camera_before.json"
 after_file="${tmp_dir}/camera_after.json"
 lights_file="${tmp_dir}/lights.json"
+terrain_file="${tmp_dir}/terrain.json"
 
 cleanup() {
   if [[ -n "${game_pid:-}" ]] && kill -0 "${game_pid}" >/dev/null 2>&1; then
@@ -127,6 +128,29 @@ query_lights='{
   }
 }'
 
+query_terrain='{
+  "jsonrpc":"2.0",
+  "id":104,
+  "method":"world.query",
+  "params":{
+    "data":{
+      "components":[
+        "bevy_transform::components::transform::Transform"
+      ],
+      "option":[],
+      "has":[
+        "retro_game_game::eras::era_future::nebula_bouncer::topography::TopographyHex",
+        "retro_game_game::eras::era_future::nebula_bouncer::components::HexExtrusion"
+      ]
+    },
+    "filter":{
+      "with":[],
+      "without":[]
+    },
+    "strict":false
+  }
+}'
+
 for _ in $(seq 1 80); do
   post_brp_json "${query_camera}" "${before_file}" 3 || true
   if [[ "$(jq '.result | length' "${before_file}" 2>/dev/null || echo 0)" -gt 0 ]]; then
@@ -143,6 +167,7 @@ if [[ "$(jq '.result | length' "${before_file}" 2>/dev/null || echo 0)" -eq 0 ]]
 fi
 
 post_brp_json "${query_lights}" "${lights_file}"
+post_brp_json "${query_terrain}" "${terrain_file}"
 
 camera_entity="$(jq -r '.result[0].entity // empty' "${before_file}")"
 if [[ -z "${camera_entity}" ]]; then
@@ -180,6 +205,7 @@ echo "Artifacts:"
 echo "  before: ${before_file}"
 echo "  after:  ${after_file}"
 echo "  lights: ${lights_file}"
+echo "  terrain:${terrain_file}"
 echo
 echo "Camera entity: ${camera_entity}"
 echo "Bloom intensity before:"
@@ -195,3 +221,7 @@ echo "Directional lights found:"
 jq '[.result[] | select(.has["bevy_light::directional_light::DirectionalLight"] == true)] | length' "${lights_file}"
 echo "Point lights found:"
 jq '[.result[] | select(.has["bevy_light::point_light::PointLight"] == true)] | length' "${lights_file}"
+echo "Topography hex visuals found:"
+jq '[.result[] | select(.has["retro_game_game::eras::era_future::nebula_bouncer::topography::TopographyHex"] == true)] | length' "${terrain_file}"
+echo "Extrusion hazards found:"
+jq '[.result[] | select(.has["retro_game_game::eras::era_future::nebula_bouncer::components::HexExtrusion"] == true)] | length' "${terrain_file}"

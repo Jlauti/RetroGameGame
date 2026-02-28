@@ -135,6 +135,10 @@ pub struct Wall;
 
 #[derive(Component, Reflect, Default)]
 #[reflect(Component)]
+pub struct HexExtrusion;
+
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
 pub struct NebulaBouncerContext;
 
 #[derive(Component, Reflect, Default)]

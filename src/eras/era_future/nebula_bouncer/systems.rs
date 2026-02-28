@@ -1,13 +1,15 @@
+use crate::core::states::GameState;
 use crate::eras::era_future::nebula_bouncer::components::*;
 use crate::eras::era_future::nebula_bouncer::procgen::*;
 use crate::eras::era_future::nebula_bouncer::resources::{
-    ActiveLoadout, CameraFeedbackSettings, ChunkAssignmentProfiles, EnemyArchetype, HitStop,
-    KineticOrbPool, NebulaAssetManifest, NebulaMaterials, OrbSpawnStats, OrbSynergyMatrix,
-    ProcgenValidatorTelemetry, SpriteOrientationConfig, TerrainTheme, compute_hit_stop_duration,
-    feedback_tuning, next_shake_intensity, resolve_orb_spawn_stats,
+    ActiveLoadout, BOUNCE_MAX, CameraFeedbackSettings, ChunkAssignmentProfiles, EnemyArchetype,
+    HitStop, KineticOrbPool, NebulaAssetManifest, NebulaMaterials, NebulaRunStats, OrbSpawnStats,
+    OrbSynergyMatrix, ProcgenValidatorTelemetry, SpriteOrientationConfig, TerrainTheme,
+    compute_hit_stop_duration, feedback_tuning, next_shake_intensity, resolve_orb_spawn_stats,
 };
 use crate::eras::era_future::nebula_bouncer::topography::spawn_chunk_topography;
 use crate::shared::components::Health;
+use crate::ui::results::GameResults;
 use avian2d::prelude::*;
 use bevy::core_pipeline::tonemapping::Tonemapping;
 use bevy::ecs::message::MessageReader;
@@ -31,7 +33,8 @@ const PREFLIGHT_SUMMARY_REL_PATH: &str =
     "agents/deliverables/codex_worker2/NB-CX-006_preflight_summary.txt";
 const FEEDBACK_TELEMETRY_COOLDOWN_SECS: f32 = 0.35;
 const MODEL_UNIT_TO_WORLD: f32 = 155.0;
-const PLAYER_MODEL_VISUAL_LIFT: f32 = 36.0;
+const PLAYER_MODEL_VISUAL_LIFT: f32 = 84.0;
+const PLAYER_HOVER_Z: f32 = depth::PLAYER + 18.0;
 const SCOUT_SPRITE_SIZE: Vec2 = Vec2::new(62.0, 62.0);
 const HEAVY_SPRITE_SIZE: Vec2 = Vec2::new(78.0, 78.0);
 const INTERCEPTOR_SPRITE_SIZE: Vec2 = Vec2::new(70.0, 70.0);
@@ -417,11 +420,13 @@ pub fn setup_nebula_bouncer(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut orb_pool: ResMut<KineticOrbPool>,
+    mut run_stats: ResMut<NebulaRunStats>,
     q_stale_camera2d: Query<Entity, With<Camera2d>>,
 ) {
     info!("Nebula Bouncer scaffold loaded (Avian 2D integrated).");
     // Ensure gravity is zero for top-down physics
     commands.insert_resource(Gravity(Vec2::ZERO));
+    *run_stats = NebulaRunStats::default();
 
     // Despawn leftover Camera2d from previous screens (menu / era-select)
     // to prevent 2D sprite pass from conflicting with 3D isometric view.
@@ -586,7 +591,7 @@ pub fn setup_nebula_bouncer(
             Collider::circle(15.0),
             LinearVelocity::ZERO,
             AngularVelocity::ZERO,
-            Transform::from_xyz(0.0, -200.0, depth::PLAYER),
+            Transform::from_xyz(0.0, -200.0, PLAYER_HOVER_Z),
             CollisionLayers::new(
                 GameLayer::Player,
                 [GameLayer::Enemy, GameLayer::Wall, GameLayer::Projectile],
@@ -1076,17 +1081,60 @@ pub fn attach_screen_shake_to_cameras(
     }
 }
 
+pub fn handle_player_extrusion_collisions(
+    mut collision_events: MessageReader<CollisionStart>,
+    q_player: Query<Entity, With<PlayerShip>>,
+    q_extrusions: Query<(), With<HexExtrusion>>,
+    mut run_stats: ResMut<NebulaRunStats>,
+    mut results: ResMut<GameResults>,
+    mut next_game_state: ResMut<NextState<GameState>>,
+) {
+    let Some(player_entity) = q_player.iter().next() else {
+        return;
+    };
+
+    for event in collision_events.read() {
+        let collided_with_player =
+            event.collider1 == player_entity || event.collider2 == player_entity;
+        if !collided_with_player {
+            continue;
+        }
+        let other = if event.collider1 == player_entity {
+            event.collider2
+        } else {
+            event.collider1
+        };
+
+        if !q_extrusions.contains(other) {
+            continue;
+        }
+
+        run_stats.extrusion_crashes = run_stats.extrusion_crashes.saturating_add(1);
+        results.game_name = "Nebula Bouncer".to_string();
+        results.score = run_stats.ricochet_bonus_score;
+        results.is_new_high = results.score > results.high_score;
+        results.high_score = results.high_score.max(results.score);
+        results.tokens_earned = (results.score / 50).max(run_stats.extrusion_bounces / 4);
+        results.completed = false;
+        results.newly_completed = false;
+        next_game_state.set(GameState::Results);
+        break;
+    }
+}
+
 pub fn handle_orb_collisions(
     mut commands: Commands,
     mut collision_events: MessageReader<CollisionStart>,
     asset_server: Res<AssetServer>,
     asset_manifest: Res<NebulaAssetManifest>,
-    mut orbs: Query<(Entity, &mut KineticOrb, &Transform)>,
+    mut orbs: Query<(Entity, &mut KineticOrb, &Transform, &mut LinearVelocity)>,
     mut orb_pool: ResMut<KineticOrbPool>,
+    mut run_stats: ResMut<NebulaRunStats>,
     feedback_settings: Res<CameraFeedbackSettings>,
     mut shake: Query<&mut ScreenShake, With<NebulaGameplayCamera>>,
     mut hit_stop: ResMut<HitStop>,
     mut enemies: Query<(Entity, &mut Health, &mut EnemyStatusEffects), With<Enemy>>,
+    extrusions: Query<(), With<HexExtrusion>>,
     nebula_mats: Res<NebulaMaterials>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
@@ -1105,7 +1153,7 @@ pub fn handle_orb_collisions(
         };
 
         if let Some(entity) = orb_entity {
-            if let Ok((e, mut orb, orb_transform)) = orbs.get_mut(entity) {
+            if let Ok((e, mut orb, orb_transform, mut orb_velocity)) = orbs.get_mut(entity) {
                 // Determine what we hit
                 let other = if entity == e1 { e2 } else { e1 };
 
@@ -1158,6 +1206,7 @@ pub fn handle_orb_collisions(
                     }
                 } else {
                     // Hit something else (Wall?)
+                    let hit_extrusion = extrusions.contains(other);
                     // Minor shake for wall hits
                     if let Some(mut s) = shake.iter_mut().next() {
                         s.intensity = next_shake_intensity(
@@ -1176,10 +1225,26 @@ pub fn handle_orb_collisions(
                         &mut materials,
                         &asset_manifest.vfx_hit_ring,
                         orb_transform.translation,
-                        Color::srgba(0.94, 0.98, 1.0, 0.7),
+                        if hit_extrusion {
+                            Color::srgba(0.52, 1.0, 0.96, 0.82)
+                        } else {
+                            Color::srgba(0.94, 0.98, 1.0, 0.7)
+                        },
                         TRANSIENT_VFX_BASE_SIZE * 0.9,
                         TRANSIENT_VFX_BASE_LIFETIME_SECS * 0.85,
                     );
+                    if hit_extrusion {
+                        run_stats.extrusion_bounces = run_stats.extrusion_bounces.saturating_add(1);
+                        let ricochet_bonus = 12 + ((orb.bounces_remaining.min(8) as u64) * 3);
+                        run_stats.ricochet_bonus_score = run_stats
+                            .ricochet_bonus_score
+                            .saturating_add(ricochet_bonus);
+                        let max_bounces = BOUNCE_MAX.max(1) as u32;
+                        orb.bounces_remaining =
+                            (orb.bounces_remaining.saturating_add(2)).min(max_bounces);
+                        orb.damage *= 1.20;
+                        orb_velocity.0 *= 1.08;
+                    }
                 }
 
                 if orb.bounces_remaining > 0 {

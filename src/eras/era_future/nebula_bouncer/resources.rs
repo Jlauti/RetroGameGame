@@ -490,6 +490,13 @@ pub struct HitStop {
     pub timer: f32,
 }
 
+#[derive(Resource, Default)]
+pub struct NebulaRunStats {
+    pub ricochet_bonus_score: u64,
+    pub extrusion_bounces: u64,
+    pub extrusion_crashes: u64,
+}
+
 #[derive(Resource, Clone, Copy, Debug, PartialEq)]
 pub struct ActiveLoadout {
     pub element: OrbElement,
