@@ -39,7 +39,6 @@ const SCOUT_SPRITE_SIZE: Vec2 = Vec2::new(62.0, 62.0);
 const HEAVY_SPRITE_SIZE: Vec2 = Vec2::new(78.0, 78.0);
 const INTERCEPTOR_SPRITE_SIZE: Vec2 = Vec2::new(70.0, 70.0);
 const BULWARK_SPRITE_SIZE: Vec2 = Vec2::new(86.0, 86.0);
-const FLOOR_TILE_SIZE: Vec2 = Vec2::new(128.0, 128.0);
 const WALL_VISUAL_THICKNESS: f32 = 36.0;
 const WALL_SEGMENT_MAX_LENGTH: f32 = 96.0;
 const BASE_ENEMY_COLLIDER_RADIUS: f32 = 15.0;
@@ -267,12 +266,6 @@ fn spawn_chunk_floor_tiles(
     chunk_height: f32,
     terrain_theme: TerrainTheme,
 ) {
-    let tile_w = FLOOR_TILE_SIZE.x.max(8.0);
-    let tile_h = FLOOR_TILE_SIZE.y.max(8.0);
-    let cols = (GROUND_CHUNK_WIDTH / tile_w).ceil().max(1.0) as i32;
-    let rows = (chunk_height / tile_h).ceil().max(1.0) as i32;
-    let start_x = -GROUND_CHUNK_WIDTH * 0.5 + tile_w * 0.5;
-    let start_y = chunk_center_y - chunk_height * 0.5 + tile_h * 0.5;
     commands.spawn((
         ChunkMember,
         GroundVisual,
@@ -293,55 +286,6 @@ fn spawn_chunk_floor_tiles(
             1.0,
         )),
     ));
-
-    let grid_color = Color::srgba(0.18, 0.42, 0.74, 0.22);
-    let grid_emissive = LinearRgba::rgb(0.16, 0.30, 0.70);
-    let cols_usize = cols.max(0) as usize;
-    let rows_usize = rows.max(0) as usize;
-    for col in (0..cols_usize).step_by(2) {
-        let x = start_x + col as f32 * tile_w;
-        commands.spawn((
-            ChunkMember,
-            GroundVisual,
-            Mesh3d(nebula_mats.lane_mesh.clone()),
-            MeshMaterial3d(materials.add(StandardMaterial {
-                base_color: grid_color,
-                emissive: grid_emissive * 0.42,
-                unlit: false,
-                alpha_mode: AlphaMode::Opaque,
-                metallic: 0.08,
-                perceptual_roughness: 0.42,
-                ..default()
-            })),
-            Transform::from_xyz(x, chunk_center_y, depth::BACKGROUND + 3.0).with_scale(Vec3::new(
-                1.6,
-                chunk_height * 1.03,
-                3.6,
-            )),
-        ));
-    }
-    for row in (0..rows_usize).step_by(2) {
-        let y = start_y + row as f32 * tile_h;
-        commands.spawn((
-            ChunkMember,
-            GroundVisual,
-            Mesh3d(nebula_mats.lane_mesh.clone()),
-            MeshMaterial3d(materials.add(StandardMaterial {
-                base_color: grid_color,
-                emissive: grid_emissive * 0.42,
-                unlit: false,
-                alpha_mode: AlphaMode::Opaque,
-                metallic: 0.08,
-                perceptual_roughness: 0.42,
-                ..default()
-            })),
-            Transform::from_xyz(0.0, y, depth::BACKGROUND + 3.0).with_scale(Vec3::new(
-                GROUND_CHUNK_WIDTH * 1.03,
-                1.6,
-                3.6,
-            )),
-        ));
-    }
 }
 
 fn spawn_wall_visual_segments(

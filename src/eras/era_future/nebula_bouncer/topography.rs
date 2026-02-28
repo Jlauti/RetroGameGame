@@ -145,42 +145,8 @@ pub fn spawn_chunk_topography(
                     1.0,
                 )),
             ));
-            // Secondary outline layer slightly offset to make edge read bolder from far camera.
-            commands.spawn((
-                ChunkMember,
-                TopographyHex,
-                Mesh3d(nebula_mats.quad_mesh.clone()),
-                MeshMaterial3d(cap_material.clone()),
-                Transform::from_xyz(x, y, base_outline_z + 0.14).with_scale(Vec3::new(
-                    hex_width * 0.99,
-                    hex_height * 0.99,
-                    1.0,
-                )),
-            ));
-
-            // Sparse chroma accents add extra neon variation while preserving the green base read.
+            // Keep tile read clean: no flat accent overlays on non-extruded tiles.
             let accent_selector = fold_hash(((r as u64) << 32) | c as u64, tier as u64) % 29;
-            let accent_material = match accent_selector {
-                0 => Some(nebula_mats.hex_accent_material_cyan.clone()),
-                1 => Some(nebula_mats.hex_accent_material_magenta.clone()),
-                2 => Some(nebula_mats.hex_accent_material_amber.clone()),
-                3 => Some(nebula_mats.hex_accent_material_blue.clone()),
-                4 => Some(nebula_mats.hex_accent_material_lime.clone()),
-                _ => None,
-            };
-            if let Some(material) = accent_material {
-                commands.spawn((
-                    ChunkMember,
-                    TopographyHex,
-                    Mesh3d(nebula_mats.quad_mesh.clone()),
-                    MeshMaterial3d(material),
-                    Transform::from_xyz(x, y, base_outline_z + 0.8).with_scale(Vec3::new(
-                        hex_width * 0.88,
-                        hex_height * 0.88,
-                        1.0,
-                    )),
-                ));
-            }
 
             // Occasional physical hazard pillars: collision kills player, orb ricochets for bonus.
             let cell_seed = fold_hash(
