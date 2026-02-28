@@ -785,6 +785,9 @@ pub struct NebulaMaterials {
     pub hex_cap_material_t1: Handle<StandardMaterial>,
     pub hex_cap_material_t2: Handle<StandardMaterial>,
     pub hex_cap_material_t3: Handle<StandardMaterial>,
+    pub hex_accent_material_cyan: Handle<StandardMaterial>,
+    pub hex_accent_material_magenta: Handle<StandardMaterial>,
+    pub hex_accent_material_amber: Handle<StandardMaterial>,
     pub hex_texture: Handle<Image>,
 }
 

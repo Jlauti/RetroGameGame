@@ -168,6 +168,28 @@ pub fn spawn_chunk_topography(
                     1.0,
                 )),
             ));
+
+            // Sparse chroma accents add extra neon variation while preserving the green base read.
+            let accent_selector = fold_hash(((r as u64) << 32) | c as u64, tier as u64) % 19;
+            let accent_material = match accent_selector {
+                0 => Some(nebula_mats.hex_accent_material_cyan.clone()),
+                1 => Some(nebula_mats.hex_accent_material_magenta.clone()),
+                2 => Some(nebula_mats.hex_accent_material_amber.clone()),
+                _ => None,
+            };
+            if let Some(material) = accent_material {
+                commands.spawn((
+                    ChunkMember,
+                    TopographyHex,
+                    Mesh3d(nebula_mats.quad_mesh.clone()),
+                    MeshMaterial3d(material),
+                    Transform::from_xyz(x, y, cap_z + 1.4).with_scale(Vec3::new(
+                        hex_width * 0.88,
+                        hex_height * 0.88,
+                        1.0,
+                    )),
+                ));
+            }
         }
     }
 }

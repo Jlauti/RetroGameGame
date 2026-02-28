@@ -513,6 +513,30 @@ pub fn setup_nebula_bouncer(
             alpha_mode: AlphaMode::Blend,
             ..default()
         }),
+        hex_accent_material_cyan: materials.add(StandardMaterial {
+            base_color: Color::srgba(0.26, 0.98, 1.0, 0.62),
+            emissive: LinearRgba::rgb(0.94, 3.20, 4.20),
+            base_color_texture: Some(hex_texture.clone()),
+            unlit: true,
+            alpha_mode: AlphaMode::Add,
+            ..default()
+        }),
+        hex_accent_material_magenta: materials.add(StandardMaterial {
+            base_color: Color::srgba(0.90, 0.34, 1.0, 0.56),
+            emissive: LinearRgba::rgb(3.10, 1.04, 3.84),
+            base_color_texture: Some(hex_texture.clone()),
+            unlit: true,
+            alpha_mode: AlphaMode::Add,
+            ..default()
+        }),
+        hex_accent_material_amber: materials.add(StandardMaterial {
+            base_color: Color::srgba(1.0, 0.62, 0.20, 0.52),
+            emissive: LinearRgba::rgb(3.80, 1.72, 0.44),
+            base_color_texture: Some(hex_texture.clone()),
+            unlit: true,
+            alpha_mode: AlphaMode::Add,
+            ..default()
+        }),
         hex_texture,
     };
     commands.insert_resource(NebulaMaterials {
@@ -527,6 +551,9 @@ pub fn setup_nebula_bouncer(
         hex_cap_material_t1: nebula_mats.hex_cap_material_t1.clone(),
         hex_cap_material_t2: nebula_mats.hex_cap_material_t2.clone(),
         hex_cap_material_t3: nebula_mats.hex_cap_material_t3.clone(),
+        hex_accent_material_cyan: nebula_mats.hex_accent_material_cyan.clone(),
+        hex_accent_material_magenta: nebula_mats.hex_accent_material_magenta.clone(),
+        hex_accent_material_amber: nebula_mats.hex_accent_material_amber.clone(),
         hex_texture: nebula_mats.hex_texture.clone(),
     });
     commands.insert_resource(GlobalAmbientLight {
