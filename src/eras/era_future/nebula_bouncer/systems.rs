@@ -82,7 +82,10 @@ fn enemy_glow_color(archetype: EnemyArchetype) -> Color {
 }
 
 fn fold_seed(seed: u64, value: u64) -> u64 {
-    seed.wrapping_mul(0x9E37_79B9_7F4A_7C15).rotate_left(7) ^ value
+    let mut z = seed.wrapping_add(value).wrapping_mul(0x9E37_79B9_7F4A_7C15);
+    z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+    z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+    z ^ (z >> 31)
 }
 
 fn assignment_seed(chunk: &ChunkSchema, spawn: &SpawnDef, chunk_y: f32, spawn_index: usize) -> u64 {
@@ -138,22 +141,6 @@ fn element_trail_color(element: OrbElement) -> Color {
         OrbElement::Cryo => Color::srgb(0.18, 0.72, 1.0),
         OrbElement::Tesla => Color::srgb(0.82, 0.95, 1.0),
         OrbElement::Void => Color::srgb(0.62, 0.45, 1.0),
-    }
-}
-
-fn terrain_floor_color(theme: TerrainTheme) -> Color {
-    match theme {
-        TerrainTheme::Standard => Color::srgb(0.002, 0.006, 0.004),
-        TerrainTheme::Cold => Color::srgb(0.003, 0.008, 0.014),
-        TerrainTheme::Hazard => Color::srgb(0.012, 0.007, 0.004),
-    }
-}
-
-fn terrain_floor_emissive(theme: TerrainTheme) -> Color {
-    match theme {
-        TerrainTheme::Standard => Color::srgb(0.006, 0.042, 0.018),
-        TerrainTheme::Cold => Color::srgb(0.008, 0.036, 0.074),
-        TerrainTheme::Hazard => Color::srgb(0.066, 0.030, 0.009),
     }
 }
 
@@ -249,31 +236,72 @@ fn spawn_chunk_floor_tiles(
     _asset_server: &AssetServer,
     _assets: &NebulaAssetManifest,
     nebula_mats: &NebulaMaterials,
-    materials: &mut Assets<StandardMaterial>,
+    _materials: &mut Assets<StandardMaterial>,
     chunk_center_y: f32,
     chunk_height: f32,
-    terrain_theme: TerrainTheme,
+    _terrain_theme: TerrainTheme,
 ) {
+    // 1. One dark base slab per chunk (GroundVisual) for continuity
     commands.spawn((
         ChunkMember,
         GroundVisual,
         Mesh3d(nebula_mats.quad_mesh.clone()),
-        MeshMaterial3d(materials.add(StandardMaterial {
-            base_color: terrain_floor_color(terrain_theme),
-            emissive: LinearRgba::from(terrain_floor_emissive(terrain_theme)) * 0.35,
-            metallic: 0.24,
-            perceptual_roughness: 0.14,
-            reflectance: 0.72,
-            unlit: false,
-            alpha_mode: AlphaMode::Opaque,
-            ..default()
-        })),
-        Transform::from_xyz(0.0, chunk_center_y, depth::BACKGROUND - 8.0).with_scale(Vec3::new(
+        MeshMaterial3d(nebula_mats.ground_base_material.clone()),
+        Transform::from_xyz(0.0, chunk_center_y, depth::BACKGROUND + 0.1).with_scale(Vec3::new(
             GROUND_CHUNK_WIDTH * 1.12,
             chunk_height * 1.18,
             1.0,
         )),
     ));
+
+    // 2. Add deterministic panel subdivisions and thin emissive seams
+    let chunk_seed = (chunk_center_y.to_bits() as u64) ^ (chunk_height.to_bits() as u64);
+
+    let rows = 5;
+    let cols = 4;
+    let cell_w = GROUND_CHUNK_WIDTH * 1.12 / cols as f32;
+    let cell_h = chunk_height * 1.18 / rows as f32;
+
+    for r in 0..rows {
+        for c in 0..cols {
+            let cell_seed = fold_seed(chunk_seed, ((r as u64) << 16) | c as u64);
+
+            let offset_x = (((cell_seed % 100) as f32 / 100.0) - 0.5) * cell_w * 0.4;
+            let offset_y = ((((cell_seed >> 8) % 100) as f32 / 100.0) - 0.5) * cell_h * 0.4;
+
+            let center_x =
+                -(GROUND_CHUNK_WIDTH * 1.12) / 2.0 + (c as f32 + 0.5) * cell_w + offset_x;
+            let center_y =
+                chunk_center_y - (chunk_height * 1.18) / 2.0 + (r as f32 + 0.5) * cell_h + offset_y;
+
+            let panel_w = cell_w * (0.6 + ((cell_seed >> 16) % 40) as f32 / 100.0);
+            let panel_h = cell_h * (0.6 + ((cell_seed >> 24) % 40) as f32 / 100.0);
+
+            let seam_mat = match cell_seed % 3 {
+                0 => nebula_mats.hex_accent_material_cyan.clone(),
+                1 => nebula_mats.hex_accent_material_magenta.clone(),
+                _ => nebula_mats.hex_accent_material_amber.clone(),
+            };
+
+            // Thin horizontal seam strip
+            commands.spawn((
+                ChunkMember,
+                Mesh3d(nebula_mats.quad_mesh.clone()),
+                MeshMaterial3d(seam_mat.clone()),
+                Transform::from_xyz(center_x, center_y, depth::BACKGROUND + 0.2)
+                    .with_scale(Vec3::new(panel_w, 4.0, 1.0)),
+            ));
+
+            // Thin vertical seam strip
+            commands.spawn((
+                ChunkMember,
+                Mesh3d(nebula_mats.quad_mesh.clone()),
+                MeshMaterial3d(seam_mat),
+                Transform::from_xyz(center_x, center_y, depth::BACKGROUND + 0.2)
+                    .with_scale(Vec3::new(4.0, panel_h, 1.0)),
+            ));
+        }
+    }
 }
 
 pub fn setup_nebula_bouncer(
@@ -326,110 +354,91 @@ pub fn setup_nebula_bouncer(
         // NB-A2-010 pass6: Solid-color materials for 3D hex prisms.
         // No texture — the Extrusion side faces show as lit terrain walls.
         hex_material_t0: materials.add(StandardMaterial {
-            base_color: Color::srgba(0.006, 0.015, 0.008, 0.98),
-            emissive: LinearRgba::rgb(0.020, 0.088, 0.040),
-            unlit: false,
-            alpha_mode: AlphaMode::Opaque,
-            perceptual_roughness: 0.94,
+            base_color: Color::srgb(0.005, 0.008, 0.010),
+            metallic: 0.5,
+            perceptual_roughness: 0.3,
             ..default()
         }),
         hex_material_t1: materials.add(StandardMaterial {
-            base_color: Color::srgba(0.008, 0.018, 0.010, 0.98),
-            emissive: LinearRgba::rgb(0.026, 0.118, 0.052),
-            unlit: false,
-            alpha_mode: AlphaMode::Opaque,
-            perceptual_roughness: 0.92,
+            base_color: Color::srgb(0.008, 0.012, 0.015),
+            metallic: 0.5,
+            perceptual_roughness: 0.3,
             ..default()
         }),
         hex_material_t2: materials.add(StandardMaterial {
-            base_color: Color::srgba(0.010, 0.022, 0.012, 0.98),
-            emissive: LinearRgba::rgb(0.035, 0.160, 0.064),
-            unlit: false,
-            alpha_mode: AlphaMode::Opaque,
-            perceptual_roughness: 0.90,
+            base_color: Color::srgb(0.010, 0.018, 0.020),
+            metallic: 0.5,
+            perceptual_roughness: 0.3,
             ..default()
         }),
         hex_material_t3: materials.add(StandardMaterial {
-            base_color: Color::srgba(0.012, 0.026, 0.014, 0.98),
-            emissive: LinearRgba::rgb(0.048, 0.210, 0.082),
-            unlit: false,
-            alpha_mode: AlphaMode::Opaque,
-            perceptual_roughness: 0.88,
+            base_color: Color::srgb(0.015, 0.022, 0.025),
+            metallic: 0.5,
+            perceptual_roughness: 0.3,
             ..default()
         }),
+        // Tri-neon rims
         hex_cap_material_t0: materials.add(StandardMaterial {
-            base_color: Color::srgba(0.24, 1.00, 0.64, 0.34),
-            emissive: LinearRgba::rgb(0.92, 4.40, 1.84),
-            base_color_texture: Some(hex_texture.clone()),
+            base_color: Color::BLACK,
+            emissive: LinearRgba::rgb(0.1, 0.6, 1.0) * 1.5, // Cyan
             unlit: true,
-            alpha_mode: AlphaMode::Add,
             ..default()
         }),
         hex_cap_material_t1: materials.add(StandardMaterial {
-            base_color: Color::srgba(0.30, 1.00, 0.68, 0.36),
-            emissive: LinearRgba::rgb(1.20, 4.90, 2.04),
-            base_color_texture: Some(hex_texture.clone()),
+            base_color: Color::BLACK,
+            emissive: LinearRgba::rgb(0.8, 0.1, 1.0) * 1.5, // Magenta
             unlit: true,
-            alpha_mode: AlphaMode::Add,
             ..default()
         }),
         hex_cap_material_t2: materials.add(StandardMaterial {
-            base_color: Color::srgba(0.36, 1.00, 0.74, 0.40),
-            emissive: LinearRgba::rgb(1.56, 5.54, 2.30),
-            base_color_texture: Some(hex_texture.clone()),
+            base_color: Color::BLACK,
+            emissive: LinearRgba::rgb(1.0, 0.5, 0.05) * 1.5, // Amber
             unlit: true,
-            alpha_mode: AlphaMode::Add,
             ..default()
         }),
         hex_cap_material_t3: materials.add(StandardMaterial {
-            base_color: Color::srgba(0.44, 1.00, 0.82, 0.44),
-            emissive: LinearRgba::rgb(1.92, 6.30, 2.64),
-            base_color_texture: Some(hex_texture.clone()),
+            base_color: Color::BLACK,
+            emissive: LinearRgba::rgb(0.3, 0.9, 1.0) * 2.5, // Bright Cyan
             unlit: true,
-            alpha_mode: AlphaMode::Add,
             ..default()
         }),
         hex_accent_material_cyan: materials.add(StandardMaterial {
-            base_color: Color::srgba(0.26, 0.98, 1.0, 0.42),
-            emissive: LinearRgba::rgb(0.80, 2.60, 3.50),
-            base_color_texture: Some(hex_texture.clone()),
+            base_color: Color::srgb(0.2, 0.8, 1.0),
+            emissive: LinearRgba::rgb(0.4, 1.6, 2.0) * 10.0,
             unlit: true,
-            alpha_mode: AlphaMode::Add,
             ..default()
         }),
         hex_accent_material_magenta: materials.add(StandardMaterial {
-            base_color: Color::srgba(0.90, 0.34, 1.0, 0.40),
-            emissive: LinearRgba::rgb(2.40, 0.84, 2.90),
-            base_color_texture: Some(hex_texture.clone()),
+            base_color: Color::srgb(0.9, 0.2, 1.0),
+            emissive: LinearRgba::rgb(1.8, 0.4, 2.0) * 10.0,
             unlit: true,
-            alpha_mode: AlphaMode::Add,
             ..default()
         }),
         hex_accent_material_amber: materials.add(StandardMaterial {
-            base_color: Color::srgba(1.0, 0.62, 0.20, 0.38),
-            emissive: LinearRgba::rgb(2.80, 1.20, 0.32),
-            base_color_texture: Some(hex_texture.clone()),
+            base_color: Color::srgb(1.0, 0.6, 0.1),
+            emissive: LinearRgba::rgb(2.0, 1.2, 0.2) * 10.0,
             unlit: true,
-            alpha_mode: AlphaMode::Add,
             ..default()
         }),
         hex_accent_material_blue: materials.add(StandardMaterial {
-            base_color: Color::srgba(0.30, 0.56, 1.0, 0.42),
-            emissive: LinearRgba::rgb(0.92, 1.40, 3.10),
-            base_color_texture: Some(hex_texture.clone()),
+            base_color: Color::srgb(0.2, 0.4, 1.0),
+            emissive: LinearRgba::rgb(0.4, 0.8, 2.0) * 10.0,
             unlit: true,
-            alpha_mode: AlphaMode::Add,
             ..default()
         }),
         hex_accent_material_lime: materials.add(StandardMaterial {
-            base_color: Color::srgba(0.72, 1.0, 0.30, 0.40),
-            emissive: LinearRgba::rgb(1.82, 2.40, 0.62),
-            base_color_texture: Some(hex_texture.clone()),
+            base_color: Color::srgb(0.4, 1.0, 0.1),
+            emissive: LinearRgba::rgb(0.8, 2.0, 0.2) * 10.0,
             unlit: true,
-            alpha_mode: AlphaMode::Add,
             ..default()
         }),
         hex_texture,
+        ground_base_material: materials.add(StandardMaterial {
+            base_color: Color::srgb(0.005, 0.005, 0.005),
+            metallic: 0.9,
+            perceptual_roughness: 0.1,
+            ..default()
+        }),
     };
     commands.insert_resource(NebulaMaterials {
         quad_mesh: nebula_mats.quad_mesh.clone(),
@@ -451,6 +460,7 @@ pub fn setup_nebula_bouncer(
         hex_accent_material_blue: nebula_mats.hex_accent_material_blue.clone(),
         hex_accent_material_lime: nebula_mats.hex_accent_material_lime.clone(),
         hex_texture: nebula_mats.hex_texture.clone(),
+        ground_base_material: nebula_mats.ground_base_material.clone(),
     });
     commands.insert_resource(GlobalAmbientLight {
         color: Color::srgb(0.020, 0.024, 0.032),

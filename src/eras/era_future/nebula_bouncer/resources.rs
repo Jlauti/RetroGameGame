@@ -800,6 +800,7 @@ pub struct NebulaMaterials {
     pub hex_accent_material_blue: Handle<StandardMaterial>,
     pub hex_accent_material_lime: Handle<StandardMaterial>,
     pub hex_texture: Handle<Image>,
+    pub ground_base_material: Handle<StandardMaterial>,
 }
 
 impl Default for CameraFeedbackSettings {

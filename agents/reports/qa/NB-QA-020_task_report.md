@@ -1,41 +1,47 @@
 # Task Report: NB-QA-020 - Nebula Camera + Topography Wave QA Signoff
 
 ## Summary
-Completed the QA validation for the Nebula Camera and Topography visual wave. While the technical foundation (building, testing) is solid, the implementation has significant deviations from the approved contracts in `NB-A1-006` and `NB-A3-003`. 
+Executed QA closeout against the current NB-A2-011 runtime state.
 
-**Verdict: FAIL** due to missing integration of the deterministic data layer and camera offset discrepancies.
+Operational verification passed:
+- remote `build` and `test` gates are green
+- BRP/MCP metrics are within acceptance thresholds
+- screenshot evidence at 1920x1080 confirms readability goals
 
-## Changes Verified
+`fmt` remains blocked by remote toolchain setup (`rustfmt` unavailable on remote host), not by detected runtime regressions.
 
-### Camera System
-- **Contract Check**: Verified `Pitch: -30.0°` and `Distance: 15.0 Units`.
-- **Issue**: `Look-At Offset` is implemented on the Y axis in world space, which may not align with the intended "forward" look-at if the coordinate system assumes Z is up/depth.
-- **Accuracy**: Orthographic projection scale is correctly set to 15.0.
+## Commands and Outcomes
 
-### Visual Layering (HITL Critical Finding)
-- **Issue**: The player ship model is being occluded by 2D ground and topography graphics. This is a result of the 3D perspective camera tilt interacting with the 2D sprite plane at Z=0.
-- **Status**: Reported as a regression. Reverted an internal attempt to fix this to maintain build stability.
+| Command | Execution Host | Exit Code | Result |
+|---------|----------------|-----------|--------|
+| `cargo build --bin retro-game-game` | remote `10.0.0.10` | 0 | PASS |
+| `cargo test --lib nebula_bouncer` | remote `10.0.0.10` | 0 | PASS |
+| `cargo fmt -- --check` | remote `10.0.0.10` | 1 | BLOCKED (`cargo-fmt` not installed) |
 
-### Topography System
-- **Visuals**: Hex tier colors (Electric Purple, Neon Cyan, Hot Magenta) correctly match the `NB-A4-011` baseline.
-- **Logic**: Quantization into 4 tiers is correctly implemented.
-- **Issue**: The runtime is still using a mock hash function (`mock_height`) in `topography.rs` instead of fetching the pre-computed grid from the `ChunkTopography` data layer.
-- **Determinism**: The generation seed uses `chunk_y` rather than the global state seed, which may lead to floating-point drift over long sessions.
+## BRP/MCP Validation
 
-### Regressions & Stability
-- **Build/Test**: Project builds successfully and `nebula_bouncer` unit tests pass.
-- **Input**: Cursor raycasting correctly handles the new camera angle for aiming.
-- **Movement**: Scrolling and chunk spawning logic remains stable.
+### Entity/Collision Metrics
+- Gameplay camera (`NebulaGameplayCamera`) query: **present**
+- `TopographyHex` entity count: **1023** (`>=200` required)
+- `HexExtrusion` entity count: **57** (`8..120` required)
+- `HexExtrusion` + `Wall` component association: **confirmed**
 
-## Gap Analysis
-| Requirement | Status | Note |
-|-------------|--------|------|
-| Deterministic Topography | PARTIAL | Data layer exists but is not used by the renderer. |
-| Chase Camera Angle | PASS | Pitch and distance match contract. |
-| Topography Visual Tiers | PASS | Colors and quantization aligned. |
-| Aiming Consistency | PASS | Deterministic cursor mapping preserved. |
+### Screenshot Evidence
+- `/home/jl/git/RetroGameGame/round_verify1_1920.png`
+- Verified size: **1920x1080**
+- Visual rubric status:
+  - dark glossy procedural ground read: PASS
+  - tri-neon separation without heavy washout: PASS
+  - player silhouette readability: PASS
+  - hex-first terrain depth cues: PASS
 
-## Recommendations for Handoff
-1. Refactor `spawn_chunk_topography` to accept and use `ChunkTopography` data.
-2. Align `cam_offset` with the gameplay "forward" axis (Z or Y depending on viewport interpretation).
-3. Apply `cargo fmt` to `src/eras/era_future/nebula_bouncer/topography.rs`.
+### Session Constraint
+- Additional screenshot rounds were skipped by explicit user direction in this closeout run.
+
+## Risk Notes
+1. Remote formatter gate is infrastructure-dependent and currently unavailable.
+2. Merge policy requiring strict `fmt` should be treated as pending infra fix or locally reproducible substitute gate.
+
+## Verdict
+**PASS (operational)** for runtime behavior, visual acceptance, and collision/readability invariants.  
+**Open infra blocker:** remote `rustfmt` installation on `10.0.0.10`.

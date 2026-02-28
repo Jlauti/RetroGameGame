@@ -40,8 +40,12 @@ pub fn quantize_height(height: f32) -> usize {
     }
 }
 
+/// Generate a pseudo-random hash from a seed and a value (SplitMix64 mix).
 pub fn fold_hash(seed: u64, value: u64) -> u64 {
-    seed.wrapping_mul(0x9E37_79B9_7F4A_7C15).rotate_left(7) ^ value
+    let mut z = seed.wrapping_add(value).wrapping_mul(0x9E37_79B9_7F4A_7C15);
+    z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+    z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+    z ^ (z >> 31)
 }
 
 fn tier_at(topography: &ChunkTopography, cols: i32, rows: i32, c: i32, r: i32) -> Option<f32> {
@@ -130,21 +134,42 @@ pub fn spawn_chunk_topography(
                 _ => nebula_mats.hex_cap_material_t0.clone(),
             };
             let base_outline_z =
-                depth::BACKGROUND + 4.0 + (elevation * 0.22) + (canyon_lift * 0.08)
+                depth::BACKGROUND + 1.0 + (elevation * 0.22) + (canyon_lift * 0.08)
                     - (valley_sink * 0.05);
 
-            // Outline-first terrain: every tile gets a neon contour, but most remain flat.
-            commands.spawn((
-                ChunkMember,
-                TopographyHex,
-                Mesh3d(nebula_mats.quad_mesh.clone()),
-                MeshMaterial3d(cap_material.clone()),
-                Transform::from_xyz(x, y, base_outline_z).with_scale(Vec3::new(
-                    hex_width * 0.97,
-                    hex_height * 0.97,
-                    1.0,
-                )),
-            ));
+            let rim_scale = 0.96;
+            let body_scale = 0.88;
+            let flat_z_scale = 0.02;
+
+            // Only spawn flat hexes for elevated tiers to let the procedural ground slab show in the valleys.
+            if tier > 0 {
+                // Flat Neon Rim Base
+                commands.spawn((
+                    ChunkMember,
+                    TopographyHex,
+                    Mesh3d(nebula_mats.hex_mesh.clone()),
+                    MeshMaterial3d(cap_material.clone()),
+                    Transform::from_xyz(x, y, base_outline_z).with_scale(Vec3::new(
+                        hex_width * rim_scale,
+                        hex_height * rim_scale,
+                        flat_z_scale,
+                    )),
+                ));
+
+                // Flat Dark Body Top
+                commands.spawn((
+                    ChunkMember,
+                    TopographyHex,
+                    Mesh3d(nebula_mats.hex_mesh.clone()),
+                    MeshMaterial3d(material.clone()),
+                    Transform::from_xyz(x, y, base_outline_z + 0.5).with_scale(Vec3::new(
+                        hex_width * body_scale,
+                        hex_height * body_scale,
+                        flat_z_scale,
+                    )),
+                ));
+            }
+
             // Keep tile read clean: no flat accent overlays on non-extruded tiles.
             let accent_selector = fold_hash(((r as u64) << 32) | c as u64, tier as u64) % 29;
 
@@ -155,11 +180,11 @@ pub fn spawn_chunk_topography(
             );
             let extrusion_roll = fold_hash(cell_seed, (tier as u64) << 1 | 1) % 100;
             let extrusion_threshold = if side_curve > 0.72 {
-                15
-            } else if tier >= 2 {
-                7
-            } else {
                 3
+            } else if tier >= 2 {
+                2
+            } else {
+                1
             };
             if extrusion_roll < extrusion_threshold {
                 let tier_height = match tier {
@@ -171,7 +196,7 @@ pub fn spawn_chunk_topography(
                 };
                 let z_scale = (tier_height / 50.0_f32).max(0.36_f32);
                 let prism_center_z = base_outline_z + 8.0 + (25.0 * z_scale) + (side_curve * 8.0);
-                let cap_z = prism_center_z + (25.0 * z_scale) + 1.2;
+                let cap_z = prism_center_z + (25.0 * z_scale) + 0.5;
                 let extrusion_rim_material = match accent_selector % 5 {
                     0 => nebula_mats.hex_accent_material_cyan.clone(),
                     1 => nebula_mats.hex_accent_material_magenta.clone(),
@@ -179,37 +204,43 @@ pub fn spawn_chunk_topography(
                     3 => nebula_mats.hex_accent_material_blue.clone(),
                     _ => nebula_mats.hex_accent_material_lime.clone(),
                 };
+
+                // Pillar body
                 commands.spawn((
                     ChunkMember,
                     TopographyHex,
                     Mesh3d(nebula_mats.hex_mesh.clone()),
-                    MeshMaterial3d(material),
+                    MeshMaterial3d(material.clone()),
                     Transform::from_xyz(x, y, prism_center_z).with_scale(Vec3::new(
-                        hex_width * 0.96,
-                        hex_height * 0.96,
+                        hex_width * rim_scale,
+                        hex_height * rim_scale,
                         z_scale,
                     )),
                 ));
+
+                // Pillar neon cap
                 commands.spawn((
                     ChunkMember,
                     TopographyHex,
-                    Mesh3d(nebula_mats.quad_mesh.clone()),
-                    MeshMaterial3d(cap_material),
+                    Mesh3d(nebula_mats.hex_mesh.clone()),
+                    MeshMaterial3d(extrusion_rim_material),
                     Transform::from_xyz(x, y, cap_z).with_scale(Vec3::new(
-                        hex_width * 0.93,
-                        hex_height * 0.93,
-                        1.0,
+                        hex_width * rim_scale,
+                        hex_height * rim_scale,
+                        flat_z_scale,
                     )),
                 ));
+
+                // Pillar cap dark center
                 commands.spawn((
                     ChunkMember,
                     TopographyHex,
-                    Mesh3d(nebula_mats.quad_mesh.clone()),
-                    MeshMaterial3d(extrusion_rim_material),
-                    Transform::from_xyz(x, y, cap_z + 0.8).with_scale(Vec3::new(
-                        hex_width * 0.86,
-                        hex_height * 0.86,
-                        1.0,
+                    Mesh3d(nebula_mats.hex_mesh.clone()),
+                    MeshMaterial3d(material.clone()),
+                    Transform::from_xyz(x, y, cap_z + 0.5).with_scale(Vec3::new(
+                        hex_width * body_scale,
+                        hex_height * body_scale,
+                        flat_z_scale,
                     )),
                 ));
                 commands.spawn((
