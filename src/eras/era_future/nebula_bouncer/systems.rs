@@ -54,7 +54,7 @@ const CAMERA_FOLLOW_LERP: f32 = 6.2;
 const CAMERA_LOOK_LERP: f32 = 4.6;
 const ENERGY_LANE_WIDTH: f32 = 24.0;
 const ENERGY_LANE_ALPHA: f32 = 0.90;
-const PLAYER_THRUSTER_SIZE: Vec2 = Vec2::new(24.0, 58.0);
+const PREFILL_CHUNK_COUNT: usize = 6;
 const LANE_SAFE_BUBBLE_INNER: f32 = 240.0;
 const LANE_SAFE_BUBBLE_OUTER: f32 = 760.0;
 
@@ -299,8 +299,8 @@ fn spawn_chunk_floor_tiles(
             ..default()
         })),
         Transform::from_xyz(0.0, chunk_center_y, depth::BACKGROUND - 8.0).with_scale(Vec3::new(
-            GROUND_CHUNK_WIDTH * 1.04,
-            chunk_height * 1.04,
+            GROUND_CHUNK_WIDTH * 1.12,
+            chunk_height * 1.18,
             1.0,
         )),
     ));
@@ -314,18 +314,20 @@ fn spawn_chunk_floor_tiles(
         commands.spawn((
             ChunkMember,
             GroundVisual,
-            Mesh3d(nebula_mats.quad_mesh.clone()),
+            Mesh3d(nebula_mats.lane_mesh.clone()),
             MeshMaterial3d(materials.add(StandardMaterial {
                 base_color: grid_color,
                 emissive: grid_emissive * 1.0,
-                unlit: true,
+                unlit: false,
                 alpha_mode: AlphaMode::Add,
+                metallic: 0.08,
+                perceptual_roughness: 0.34,
                 ..default()
             })),
-            Transform::from_xyz(x, chunk_center_y, depth::BACKGROUND + 1.0).with_scale(Vec3::new(
+            Transform::from_xyz(x, chunk_center_y, depth::BACKGROUND + 2.0).with_scale(Vec3::new(
                 1.6,
                 chunk_height * 1.03,
-                1.0,
+                2.2,
             )),
         ));
     }
@@ -334,18 +336,20 @@ fn spawn_chunk_floor_tiles(
         commands.spawn((
             ChunkMember,
             GroundVisual,
-            Mesh3d(nebula_mats.quad_mesh.clone()),
+            Mesh3d(nebula_mats.lane_mesh.clone()),
             MeshMaterial3d(materials.add(StandardMaterial {
                 base_color: grid_color,
                 emissive: grid_emissive * 1.0,
-                unlit: true,
+                unlit: false,
                 alpha_mode: AlphaMode::Add,
+                metallic: 0.08,
+                perceptual_roughness: 0.34,
                 ..default()
             })),
-            Transform::from_xyz(0.0, y, depth::BACKGROUND + 1.0).with_scale(Vec3::new(
+            Transform::from_xyz(0.0, y, depth::BACKGROUND + 2.0).with_scale(Vec3::new(
                 GROUND_CHUNK_WIDTH * 1.03,
                 1.6,
-                1.0,
+                2.2,
             )),
         ));
     }
@@ -427,7 +431,7 @@ fn spawn_chunk_energy_lanes(
             ),
         ],
     };
-    let lane_len = (chunk_height * 1.16).max(120.0);
+    let lane_len = (chunk_height * 1.28).max(120.0);
     for (idx, x) in lane_positions.iter().enumerate() {
         let (lane_color, lane_emissive) = lane_palette[idx % lane_palette.len()];
         let lane_emissive_linear = LinearRgba::from(lane_emissive) * 10.5;
@@ -444,16 +448,18 @@ fn spawn_chunk_energy_lanes(
                 base_emissive: lane_emissive_linear,
                 base_alpha: ENERGY_LANE_ALPHA,
             },
-            Mesh3d(nebula_mats.quad_mesh.clone()),
+            Mesh3d(nebula_mats.lane_mesh.clone()),
             MeshMaterial3d(materials.add(StandardMaterial {
                 base_color: lane_color,
                 emissive: lane_emissive_linear,
-                unlit: true,
+                unlit: false,
                 alpha_mode: AlphaMode::Add,
+                metallic: 0.12,
+                perceptual_roughness: 0.26,
                 ..default()
             })),
-            Transform::from_xyz(*x, chunk_center_y, depth::BACKGROUND + 12.0)
-                .with_scale(Vec3::new(width_scale, lane_len, 1.0)),
+            Transform::from_xyz(*x, chunk_center_y, depth::BACKGROUND + 14.0)
+                .with_scale(Vec3::new(width_scale, lane_len, 6.0)),
         ));
     }
 }
@@ -567,6 +573,8 @@ pub fn setup_nebula_bouncer(
     }
 
     let quad_mesh = meshes.add(Rectangle::new(1.0, 1.0));
+    let lane_mesh = meshes.add(Cuboid::new(1.0, 1.0, 1.0));
+    let orb_mesh = meshes.add(Sphere::new(0.5));
 
     // Build a true 3D hexagonal pillar mesh using Bevy's Extrusion primitive.
     // Radius=0.5 so scale=hex_size gives the correct footprint.
@@ -577,7 +585,9 @@ pub fn setup_nebula_bouncer(
         asset_server.load(crate::eras::era_future::nebula_bouncer::topography::HEX_OUTLINE_TEXTURE);
     let nebula_mats = NebulaMaterials {
         quad_mesh,
+        lane_mesh,
         hex_mesh,
+        orb_mesh,
         wall_material: materials.add(StandardMaterial {
             base_color: Color::WHITE,
             unlit: true,
@@ -694,7 +704,9 @@ pub fn setup_nebula_bouncer(
     };
     commands.insert_resource(NebulaMaterials {
         quad_mesh: nebula_mats.quad_mesh.clone(),
+        lane_mesh: nebula_mats.lane_mesh.clone(),
         hex_mesh: nebula_mats.hex_mesh.clone(),
+        orb_mesh: nebula_mats.orb_mesh.clone(),
         wall_material: nebula_mats.wall_material.clone(),
         hex_material_t0: nebula_mats.hex_material_t0.clone(),
         hex_material_t1: nebula_mats.hex_material_t1.clone(),
@@ -719,21 +731,6 @@ pub fn setup_nebula_bouncer(
 
     // Spawn Player
     let player_scene = asset_server.load(asset_manifest.player_ship.clone());
-    let thruster_glow_material = materials.add(StandardMaterial {
-        base_color: Color::srgba(0.75, 0.32, 1.0, 0.86),
-        emissive: LinearRgba::rgb(4.4, 1.8, 7.2),
-        unlit: true,
-        alpha_mode: AlphaMode::Add,
-        ..default()
-    });
-    let thruster_core_material = materials.add(StandardMaterial {
-        base_color: Color::srgba(0.38, 0.86, 1.0, 0.62),
-        emissive: LinearRgba::rgb(2.1, 6.6, 9.4),
-        unlit: true,
-        alpha_mode: AlphaMode::Add,
-        ..default()
-    });
-
     commands
         .spawn((
             PlayerShip,
@@ -761,20 +758,6 @@ pub fn setup_nebula_bouncer(
                             * Quat::from_rotation_x(std::f32::consts::FRAC_PI_2),
                     )
                     .with_scale(Vec3::splat(MODEL_UNIT_TO_WORLD)),
-            ));
-            for x in [-14.0_f32, 14.0] {
-                parent.spawn((
-                    Mesh3d(nebula_mats.quad_mesh.clone()),
-                    MeshMaterial3d(thruster_glow_material.clone()),
-                    Transform::from_xyz(x, -34.0, depth::PARTICLES - depth::PLAYER)
-                        .with_scale(PLAYER_THRUSTER_SIZE.extend(1.0)),
-                ));
-            }
-            parent.spawn((
-                Mesh3d(nebula_mats.quad_mesh.clone()),
-                MeshMaterial3d(thruster_core_material.clone()),
-                Transform::from_xyz(0.0, -18.0, depth::PARTICLES - depth::PLAYER - 1.0)
-                    .with_scale(Vec3::new(16.0, 30.0, 1.0)),
             ));
         });
 
@@ -869,6 +852,26 @@ pub fn setup_nebula_bouncer(
             ..default()
         },
         Transform::from_xyz(0.0, CAMERA_LOOK_AHEAD + 520.0, 220.0),
+        NebulaBouncerContext,
+    ));
+
+    // Far-field sky card so the horizon is intentional rather than pure black.
+    let horizon_texture: Handle<Image> =
+        asset_server.load("sprites/future/nebula_bouncer/backround1.png");
+    commands.spawn((
+        Mesh3d(nebula_mats.quad_mesh.clone()),
+        MeshMaterial3d(materials.add(StandardMaterial {
+            base_color: Color::WHITE,
+            base_color_texture: Some(horizon_texture),
+            emissive: LinearRgba::rgb(0.05, 0.05, 0.07),
+            unlit: true,
+            alpha_mode: AlphaMode::Opaque,
+            cull_mode: None,
+            ..default()
+        })),
+        Transform::from_xyz(0.0, CAMERA_LOOK_AHEAD + 2800.0, 980.0)
+            .with_rotation(Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2))
+            .with_scale(Vec3::new(9600.0, 3000.0, 1.0)),
         NebulaBouncerContext,
     ));
 
@@ -1060,6 +1063,21 @@ pub fn setup_nebula_bouncer(
     };
     library.chunks.push(pillar_chunk);
 
+    // Prefill world so distant floor/hex field is visible from first frame.
+    for _ in 0..PREFILL_CHUNK_COUNT {
+        spawn_next_chunk(
+            &mut commands,
+            &asset_server,
+            &asset_manifest,
+            &chunk_assignment_profiles,
+            &mut procgen_state,
+            &library,
+            &mut validator_telemetry,
+            &nebula_mats,
+            &mut materials,
+        );
+    }
+
     let policy = ProcgenValidationPolicy::default();
     let preflight = run_preflight_validation(&library, &policy);
     let preflight_artifact = preflight_artifact_path();
@@ -1147,7 +1165,7 @@ pub fn spawn_orb_pool(
                         width: BASE_ORB_TRAIL_WIDTH,
                         color: element_trail_color(OrbElement::default()),
                     },
-                    Mesh3d(nebula_mats.quad_mesh.clone()),
+                    Mesh3d(nebula_mats.orb_mesh.clone()),
                     MeshMaterial3d(materials.add(StandardMaterial {
                         base_color: element_trail_color(OrbElement::default()).with_alpha(0.85),
                         emissive: LinearRgba::from(element_trail_color(OrbElement::default()))
@@ -1431,7 +1449,8 @@ pub fn update_level_scrolling(
     mut q_chunks: Query<(Entity, &mut Transform, Option<&RigidBody>), With<ChunkMember>>,
 ) {
     const SCROLL_SPEED: f32 = 150.0;
-    const VISUAL_DESPAWN_Y: f32 = -1200.0;
+    const VISUAL_DESPAWN_Y: f32 = -1800.0;
+    const CHUNK_PREFETCH_LEAD_Y: f32 = 3000.0;
     // Delay despawn for physics bodies so we don't remove colliders near active contacts.
     // This mitigates rare Avian solver panics from stale manifold handles during cleanup.
     const PHYSICS_DESPAWN_Y: f32 = -5000.0;
@@ -1454,7 +1473,7 @@ pub fn update_level_scrolling(
     procgen_state.next_spawn_y -= delta_y;
 
     // Spawn when needed
-    if procgen_state.next_spawn_y < 1200.0 {
+    if procgen_state.next_spawn_y < CHUNK_PREFETCH_LEAD_Y {
         spawn_next_chunk(
             &mut commands,
             &asset_server,
@@ -2103,12 +2122,12 @@ pub fn player_shoot(
                     .with_scale(Vec3::new(
                         resolved_stats.radius * ORB_VISUAL_SCALE * 1.4,
                         resolved_stats.radius * ORB_VISUAL_SCALE,
-                        1.0,
+                        resolved_stats.radius * ORB_VISUAL_SCALE * 0.9,
                     )),
                 LinearVelocity(direction * resolved_stats.speed),
                 Visibility::Visible,
                 RigidBody::Dynamic,
-                Mesh3d(nebula_mats.quad_mesh.clone()),
+                Mesh3d(nebula_mats.orb_mesh.clone()),
                 MeshMaterial3d(materials.add(StandardMaterial {
                     base_color: element_trail_color(loadout.element).with_alpha(0.88),
                     emissive: LinearRgba::from(element_trail_color(loadout.element)) * 14.0,
