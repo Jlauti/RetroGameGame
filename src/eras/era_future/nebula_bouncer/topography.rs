@@ -11,6 +11,7 @@ pub struct TopographyHex;
 pub const HEX_RADIUS: f32 = 48.0;
 pub const HEX_WIDTH: f32 = HEX_RADIUS * 1.732; // sqrt(3)
 pub const HEX_HEIGHT: f32 = HEX_RADIUS * 2.0;
+const CANYON_HALF_WIDTH: f32 = 960.0 * 0.5;
 
 /// Hex outline texture path (generated procedural asset).
 pub const HEX_OUTLINE_TEXTURE: &str = "sprites/future/nebula_bouncer/hex_outline.png";
@@ -18,10 +19,10 @@ pub const HEX_OUTLINE_TEXTURE: &str = "sprites/future/nebula_bouncer/hex_outline
 /// Tier colors for neon topography. Tier 0 is the lowest basin, Tier 3 the highest mound.
 /// NB-A2-010 pass3: Bright saturated neon wireframe edges. Texture provides outline shape.
 pub const TIER_COLORS: [Color; 4] = [
-    Color::srgba(0.0, 0.6, 1.0, 0.85),  // Tier 0: Neon cyan
-    Color::srgba(0.55, 0.0, 1.0, 0.90), // Tier 1: Neon purple
-    Color::srgba(0.0, 1.0, 0.5, 0.90),  // Tier 2: Neon green
-    Color::srgba(1.0, 0.0, 0.85, 0.95), // Tier 3: Neon magenta
+    Color::srgba(0.03, 0.28, 0.12, 0.96), // Tier 0: dark emerald
+    Color::srgba(0.05, 0.42, 0.18, 0.96), // Tier 1: emerald
+    Color::srgba(0.09, 0.60, 0.25, 0.96), // Tier 2: bright emerald
+    Color::srgba(0.18, 0.82, 0.34, 0.96), // Tier 3: neon crest
 ];
 
 /// Topography height quantization tiers
@@ -80,7 +81,7 @@ fn smoothed_height(topography: &ChunkTopography, cols: i32, rows: i32, c: i32, r
 
 pub fn spawn_chunk_topography(
     commands: &mut Commands,
-    asset_server: &AssetServer,
+    _asset_server: &AssetServer,
     nebula_mats: &NebulaMaterials,
     chunk_center_y: f32,
     chunk_height: f32,
@@ -92,8 +93,7 @@ pub fn spawn_chunk_topography(
     let hex_height = topography.hex_height.max(1.0);
     let start_x = -960.0 * 0.5;
     let start_y = chunk_center_y - chunk_height * 0.5;
-    let hex_texture: Handle<Image> = asset_server.load(HEX_OUTLINE_TEXTURE);
-    let _ = hex_texture; // ensure it stays loaded in cache
+    let _ = nebula_mats.hex_texture.clone(); // keep outline texture alive
 
     for r in 0..rows {
         for c in 0..cols {
@@ -106,10 +106,14 @@ pub fn spawn_chunk_topography(
             };
             let tier = (tier_u8 as usize).min(TIER_COLORS.len() - 1);
             let normalized_height = smoothed_height(topography, cols, rows, c, r);
-            // NB-A2-010 pass2: Visible relief with slightly overlapping footprint.
-            let elevation = (normalized_height - 0.35) * 0.45;
+            // Blend tier steps with local smoothing to reduce harsh stair-stepping.
+            let elevation = (normalized_height - 0.35) * 24.0;
             // footprint > 1.0 so hexes overlap slightly → continuous terrain with no gaps.
             let footprint = 1.04;
+            let side_ratio = (x.abs() / CANYON_HALF_WIDTH).clamp(0.0, 1.0);
+            let side_curve = side_ratio.powf(1.45);
+            let canyon_lift = side_curve * 140.0;
+            let valley_sink = (1.0 - side_curve) * 26.0;
 
             let material = match tier {
                 0 => nebula_mats.hex_material_t0.clone(),
@@ -118,25 +122,53 @@ pub fn spawn_chunk_topography(
                 3 => nebula_mats.hex_material_t3.clone(),
                 _ => nebula_mats.hex_material_t0.clone(),
             };
+            let cap_material = match tier {
+                0 => nebula_mats.hex_cap_material_t0.clone(),
+                1 => nebula_mats.hex_cap_material_t1.clone(),
+                2 => nebula_mats.hex_cap_material_t2.clone(),
+                3 => nebula_mats.hex_cap_material_t3.clone(),
+                _ => nebula_mats.hex_cap_material_t0.clone(),
+            };
 
             // NB-A2-010 pass6: Tier-dependent height for 3D terrain relief.
             // Each tier sits at a different Z level; Z-scale stretches the prism vertically.
             let tier_height = match tier {
                 0 => 0.0,
-                1 => 12.0,
-                2 => 28.0,
-                3 => 48.0,
+                1 => 24.0,
+                2 => 54.0,
+                3 => 92.0,
                 _ => 0.0,
             };
-            let z_scale = 1.0 + tier as f32 * 0.3; // taller prisms for higher tiers
+            let z_scale = 1.1 + tier as f32 * 0.24; // taller prisms for higher tiers
             commands.spawn((
                 ChunkMember,
                 TopographyHex,
                 Mesh3d(nebula_mats.hex_mesh.clone()),
                 MeshMaterial3d(material),
-                Transform::from_xyz(x, y, depth::BACKGROUND + tier_height - 25.0).with_scale(
-                    Vec3::new(hex_width * footprint, hex_height * footprint, z_scale),
-                ),
+                Transform::from_xyz(
+                    x,
+                    y,
+                    depth::BACKGROUND + tier_height + elevation + canyon_lift - valley_sink - 42.0,
+                )
+                .with_scale(Vec3::new(
+                    hex_width * footprint,
+                    hex_height * footprint,
+                    z_scale,
+                )),
+            ));
+
+            // Additive cap overlay gives each top face a neon contour without changing collision.
+            commands.spawn((
+                ChunkMember,
+                TopographyHex,
+                Mesh3d(nebula_mats.quad_mesh.clone()),
+                MeshMaterial3d(cap_material),
+                Transform::from_xyz(
+                    x,
+                    y,
+                    depth::BACKGROUND + tier_height + elevation + canyon_lift - valley_sink + 34.0,
+                )
+                .with_scale(Vec3::new(hex_width * 1.01, hex_height * 1.01, 1.0)),
             ));
         }
     }

@@ -1,17 +1,20 @@
 use crate::eras::era_future::nebula_bouncer::components::*;
 use crate::eras::era_future::nebula_bouncer::procgen::*;
 use crate::eras::era_future::nebula_bouncer::resources::{
-    compute_hit_stop_duration, feedback_tuning, next_shake_intensity, resolve_orb_spawn_stats,
     ActiveLoadout, CameraFeedbackSettings, ChunkAssignmentProfiles, EnemyArchetype, HitStop,
     KineticOrbPool, NebulaAssetManifest, NebulaMaterials, OrbSpawnStats, OrbSynergyMatrix,
-    ProcgenValidatorTelemetry, SpriteOrientationConfig, TerrainTheme,
+    ProcgenValidatorTelemetry, SpriteOrientationConfig, TerrainTheme, compute_hit_stop_duration,
+    feedback_tuning, next_shake_intensity, resolve_orb_spawn_stats,
 };
 use crate::eras::era_future::nebula_bouncer::topography::spawn_chunk_topography;
 use crate::shared::components::Health;
 use avian2d::prelude::*;
-use bevy::camera::ScalingMode;
+use bevy::core_pipeline::tonemapping::Tonemapping;
 use bevy::ecs::message::MessageReader;
+use bevy::light::GlobalAmbientLight;
+use bevy::post_process::bloom::{Bloom, BloomCompositeMode, BloomPrefilter};
 use bevy::prelude::*;
+use bevy::render::view::Hdr;
 use std::path::PathBuf;
 // use rand::prelude::*; // Use explicit random calls
 
@@ -26,9 +29,8 @@ const VOID_DOT_TICK_INTERVAL_SECS: f32 = 0.5;
 const PREFLIGHT_SUMMARY_REL_PATH: &str =
     "agents/deliverables/codex_worker2/NB-CX-006_preflight_summary.txt";
 const FEEDBACK_TELEMETRY_COOLDOWN_SECS: f32 = 0.35;
-const MODEL_UNIT_TO_WORLD: f32 = 120.0;
-const PLAYER_MODEL_VISUAL_LIFT: f32 = 42.0;
-const PLAYER_MODEL_FACING_FIX_RADIANS: f32 = 0.0;
+const MODEL_UNIT_TO_WORLD: f32 = 155.0;
+const PLAYER_MODEL_VISUAL_LIFT: f32 = 36.0;
 const SCOUT_SPRITE_SIZE: Vec2 = Vec2::new(62.0, 62.0);
 const HEAVY_SPRITE_SIZE: Vec2 = Vec2::new(78.0, 78.0);
 const INTERCEPTOR_SPRITE_SIZE: Vec2 = Vec2::new(70.0, 70.0);
@@ -37,10 +39,18 @@ const FLOOR_TILE_SIZE: Vec2 = Vec2::new(128.0, 128.0);
 const WALL_VISUAL_THICKNESS: f32 = 36.0;
 const WALL_SEGMENT_MAX_LENGTH: f32 = 96.0;
 const BASE_ENEMY_COLLIDER_RADIUS: f32 = 15.0;
-const ORB_VISUAL_SCALE: f32 = 5.0;
+const ORB_VISUAL_SCALE: f32 = 7.0;
 const PLAYER_MUZZLE_FORWARD_OFFSET: f32 = 22.0;
 const TRANSIENT_VFX_BASE_LIFETIME_SECS: f32 = 0.24;
 const TRANSIENT_VFX_BASE_SIZE: f32 = 70.0;
+const CAMERA_HEIGHT: f32 = 210.0;
+const CAMERA_BEHIND_OFFSET: f32 = -228.0;
+const CAMERA_LOOK_AHEAD: f32 = 860.0;
+const CAMERA_FOLLOW_LERP: f32 = 6.2;
+const CAMERA_LOOK_LERP: f32 = 4.6;
+const ENERGY_LANE_WIDTH: f32 = 32.0;
+const ENERGY_LANE_ALPHA: f32 = 0.78;
+const PLAYER_THRUSTER_SIZE: Vec2 = Vec2::new(24.0, 58.0);
 
 fn enemy_sprite_size(archetype: EnemyArchetype) -> Vec2 {
     match archetype {
@@ -60,26 +70,12 @@ fn enemy_base_hp(archetype: EnemyArchetype) -> i32 {
     }
 }
 
-fn enemy_tint(archetype: EnemyArchetype, terrain_theme: TerrainTheme) -> Color {
-    match terrain_theme {
-        TerrainTheme::Standard => match archetype {
-            EnemyArchetype::Scout => Color::srgb(0.92, 0.98, 1.0),
-            EnemyArchetype::Interceptor => Color::srgb(1.0, 0.95, 0.84),
-            EnemyArchetype::Heavy => Color::srgb(1.0, 0.88, 0.82),
-            EnemyArchetype::Bulwark => Color::srgb(0.94, 0.92, 1.0),
-        },
-        TerrainTheme::Cold => match archetype {
-            EnemyArchetype::Scout => Color::srgb(0.82, 0.95, 1.0),
-            EnemyArchetype::Interceptor => Color::srgb(0.90, 0.96, 1.0),
-            EnemyArchetype::Heavy => Color::srgb(0.78, 0.91, 1.0),
-            EnemyArchetype::Bulwark => Color::srgb(0.75, 0.86, 1.0),
-        },
-        TerrainTheme::Hazard => match archetype {
-            EnemyArchetype::Scout => Color::srgb(1.0, 0.88, 0.82),
-            EnemyArchetype::Interceptor => Color::srgb(1.0, 0.84, 0.76),
-            EnemyArchetype::Heavy => Color::srgb(1.0, 0.76, 0.70),
-            EnemyArchetype::Bulwark => Color::srgb(1.0, 0.74, 0.66),
-        },
+fn enemy_glow_color(archetype: EnemyArchetype) -> Color {
+    match archetype {
+        EnemyArchetype::Scout => Color::srgb(1.0, 0.58, 0.16),
+        EnemyArchetype::Interceptor => Color::srgb(1.0, 0.45, 0.09),
+        EnemyArchetype::Heavy => Color::srgb(1.0, 0.34, 0.06),
+        EnemyArchetype::Bulwark => Color::srgb(1.0, 0.52, 0.22),
     }
 }
 
@@ -133,10 +129,42 @@ fn facing_angle(direction: Vec2, forward_offset: f32) -> Option<f32> {
 
 fn element_trail_color(element: OrbElement) -> Color {
     match element {
-        OrbElement::Plasma => Color::srgb(1.0, 0.5, 0.0),
-        OrbElement::Cryo => Color::srgb(0.45, 0.85, 1.0),
-        OrbElement::Tesla => Color::srgb(0.95, 0.95, 0.35),
+        OrbElement::Plasma => Color::srgb(0.26, 0.92, 1.0),
+        OrbElement::Cryo => Color::srgb(0.18, 0.72, 1.0),
+        OrbElement::Tesla => Color::srgb(0.82, 0.95, 1.0),
         OrbElement::Void => Color::srgb(0.62, 0.45, 1.0),
+    }
+}
+
+fn terrain_floor_color(theme: TerrainTheme) -> Color {
+    match theme {
+        TerrainTheme::Standard => Color::srgb(0.003, 0.010, 0.006),
+        TerrainTheme::Cold => Color::srgb(0.004, 0.010, 0.018),
+        TerrainTheme::Hazard => Color::srgb(0.014, 0.010, 0.006),
+    }
+}
+
+fn terrain_floor_emissive(theme: TerrainTheme) -> Color {
+    match theme {
+        TerrainTheme::Standard => Color::srgb(0.010, 0.060, 0.026),
+        TerrainTheme::Cold => Color::srgb(0.010, 0.045, 0.086),
+        TerrainTheme::Hazard => Color::srgb(0.080, 0.035, 0.010),
+    }
+}
+
+fn terrain_wall_color(theme: TerrainTheme) -> Color {
+    match theme {
+        TerrainTheme::Standard => Color::srgb(0.016, 0.055, 0.024),
+        TerrainTheme::Cold => Color::srgb(0.016, 0.050, 0.080),
+        TerrainTheme::Hazard => Color::srgb(0.074, 0.044, 0.020),
+    }
+}
+
+fn terrain_wall_emissive(theme: TerrainTheme) -> Color {
+    match theme {
+        TerrainTheme::Standard => Color::srgb(0.08, 0.72, 0.26),
+        TerrainTheme::Cold => Color::srgb(0.08, 0.58, 0.86),
+        TerrainTheme::Hazard => Color::srgb(0.72, 0.26, 0.09),
     }
 }
 
@@ -229,8 +257,8 @@ fn spawn_transient_vfx(
 
 fn spawn_chunk_floor_tiles(
     commands: &mut Commands,
-    asset_server: &AssetServer,
-    assets: &NebulaAssetManifest,
+    _asset_server: &AssetServer,
+    _assets: &NebulaAssetManifest,
     nebula_mats: &NebulaMaterials,
     materials: &mut Assets<StandardMaterial>,
     chunk_center_y: f32,
@@ -253,10 +281,12 @@ fn spawn_chunk_floor_tiles(
                 GroundVisual,
                 Mesh3d(nebula_mats.quad_mesh.clone()),
                 MeshMaterial3d(materials.add(StandardMaterial {
-                    base_color: terrain_theme.floor_tint(),
-                    base_color_texture: Some(asset_server.load(assets.ground_tile.clone())),
-                    unlit: true,
-                    alpha_mode: AlphaMode::Blend,
+                    base_color: terrain_floor_color(terrain_theme),
+                    emissive: terrain_floor_emissive(terrain_theme).into(),
+                    metallic: 0.0,
+                    perceptual_roughness: 0.94,
+                    unlit: false,
+                    alpha_mode: AlphaMode::Opaque,
                     ..default()
                 })),
                 Transform::from_xyz(x, y, depth::BACKGROUND)
@@ -264,12 +294,68 @@ fn spawn_chunk_floor_tiles(
             ));
         }
     }
+
+    spawn_chunk_energy_lanes(
+        commands,
+        nebula_mats,
+        materials,
+        chunk_center_y,
+        chunk_height,
+        terrain_theme,
+    );
+}
+
+fn spawn_chunk_energy_lanes(
+    commands: &mut Commands,
+    nebula_mats: &NebulaMaterials,
+    materials: &mut Assets<StandardMaterial>,
+    chunk_center_y: f32,
+    chunk_height: f32,
+    terrain_theme: TerrainTheme,
+) {
+    let lane_positions = [-390.0_f32, -280.0, -180.0, -70.0, 70.0, 180.0, 280.0, 390.0];
+    let (lane_color, lane_emissive) = match terrain_theme {
+        TerrainTheme::Standard => (
+            Color::srgba(0.24, 0.96, 1.0, ENERGY_LANE_ALPHA),
+            Color::srgb(0.22, 0.95, 1.0),
+        ),
+        TerrainTheme::Cold => (
+            Color::srgba(0.35, 0.90, 1.0, ENERGY_LANE_ALPHA),
+            Color::srgb(0.22, 0.80, 1.0),
+        ),
+        TerrainTheme::Hazard => (
+            Color::srgba(0.32, 0.90, 1.0, ENERGY_LANE_ALPHA),
+            Color::srgb(0.20, 0.78, 1.0),
+        ),
+    };
+    let lane_len = (chunk_height * 1.16).max(120.0);
+    for (idx, x) in lane_positions.iter().enumerate() {
+        let width_scale = if idx % 2 == 0 {
+            ENERGY_LANE_WIDTH
+        } else {
+            ENERGY_LANE_WIDTH * 0.72
+        };
+        commands.spawn((
+            ChunkMember,
+            GroundVisual,
+            Mesh3d(nebula_mats.quad_mesh.clone()),
+            MeshMaterial3d(materials.add(StandardMaterial {
+                base_color: lane_color,
+                emissive: LinearRgba::from(lane_emissive) * 8.5,
+                unlit: true,
+                alpha_mode: AlphaMode::Add,
+                ..default()
+            })),
+            Transform::from_xyz(*x, chunk_center_y, depth::BACKGROUND + 12.0)
+                .with_scale(Vec3::new(width_scale, lane_len, 1.0)),
+        ));
+    }
 }
 
 fn spawn_wall_visual_segments(
     commands: &mut Commands,
-    asset_server: &AssetServer,
-    assets: &NebulaAssetManifest,
+    _asset_server: &AssetServer,
+    _assets: &NebulaAssetManifest,
     nebula_mats: &NebulaMaterials,
     materials: &mut Assets<StandardMaterial>,
     chunk_center_y: f32,
@@ -304,10 +390,12 @@ fn spawn_wall_visual_segments(
             WallVisual,
             Mesh3d(nebula_mats.quad_mesh.clone()),
             MeshMaterial3d(materials.add(StandardMaterial {
-                base_color: terrain_theme.wall_tint(),
-                base_color_texture: Some(asset_server.load(assets.wall_tile.clone())),
-                unlit: true,
-                alpha_mode: AlphaMode::Blend,
+                base_color: terrain_wall_color(terrain_theme),
+                emissive: LinearRgba::from(terrain_wall_emissive(terrain_theme)) * 1.3,
+                metallic: 0.08,
+                perceptual_roughness: 0.62,
+                unlit: false,
+                alpha_mode: AlphaMode::Opaque,
                 ..default()
             })),
             Transform::from_xyz(world_pos.x, world_pos.y, depth::WALL)
@@ -361,30 +449,66 @@ pub fn setup_nebula_bouncer(
         // NB-A2-010 pass6: Solid-color materials for 3D hex prisms.
         // No texture — the Extrusion side faces show as lit terrain walls.
         hex_material_t0: materials.add(StandardMaterial {
-            base_color: Color::srgba(0.02, 0.06, 0.18, 0.90),
-            emissive: bevy::color::palettes::css::DARK_CYAN.into(),
+            base_color: Color::srgba(0.010, 0.024, 0.012, 0.98),
+            emissive: LinearRgba::rgb(0.025, 0.14, 0.064),
             unlit: false,
-            alpha_mode: AlphaMode::Blend,
+            alpha_mode: AlphaMode::Opaque,
+            perceptual_roughness: 0.92,
             ..default()
         }),
         hex_material_t1: materials.add(StandardMaterial {
-            base_color: Color::srgba(0.10, 0.02, 0.22, 0.90),
-            emissive: bevy::color::palettes::css::DARK_VIOLET.into(),
+            base_color: Color::srgba(0.012, 0.028, 0.014, 0.98),
+            emissive: LinearRgba::rgb(0.035, 0.18, 0.082),
             unlit: false,
-            alpha_mode: AlphaMode::Blend,
+            alpha_mode: AlphaMode::Opaque,
+            perceptual_roughness: 0.90,
             ..default()
         }),
         hex_material_t2: materials.add(StandardMaterial {
-            base_color: Color::srgba(0.02, 0.18, 0.10, 0.90),
-            emissive: bevy::color::palettes::css::DARK_GREEN.into(),
+            base_color: Color::srgba(0.014, 0.032, 0.016, 0.98),
+            emissive: LinearRgba::rgb(0.045, 0.24, 0.100),
             unlit: false,
-            alpha_mode: AlphaMode::Blend,
+            alpha_mode: AlphaMode::Opaque,
+            perceptual_roughness: 0.88,
             ..default()
         }),
         hex_material_t3: materials.add(StandardMaterial {
-            base_color: Color::srgba(0.20, 0.02, 0.16, 0.90),
-            emissive: bevy::color::palettes::css::DEEP_PINK.into(),
+            base_color: Color::srgba(0.018, 0.038, 0.018, 0.98),
+            emissive: LinearRgba::rgb(0.058, 0.32, 0.130),
             unlit: false,
+            alpha_mode: AlphaMode::Opaque,
+            perceptual_roughness: 0.86,
+            ..default()
+        }),
+        hex_cap_material_t0: materials.add(StandardMaterial {
+            base_color: Color::srgba(0.20, 1.00, 0.58, 0.34),
+            emissive: LinearRgba::rgb(0.22, 1.60, 0.68),
+            base_color_texture: Some(hex_texture.clone()),
+            unlit: true,
+            alpha_mode: AlphaMode::Blend,
+            ..default()
+        }),
+        hex_cap_material_t1: materials.add(StandardMaterial {
+            base_color: Color::srgba(0.24, 1.00, 0.62, 0.36),
+            emissive: LinearRgba::rgb(0.30, 1.82, 0.74),
+            base_color_texture: Some(hex_texture.clone()),
+            unlit: true,
+            alpha_mode: AlphaMode::Blend,
+            ..default()
+        }),
+        hex_cap_material_t2: materials.add(StandardMaterial {
+            base_color: Color::srgba(0.28, 1.00, 0.66, 0.38),
+            emissive: LinearRgba::rgb(0.38, 2.06, 0.84),
+            base_color_texture: Some(hex_texture.clone()),
+            unlit: true,
+            alpha_mode: AlphaMode::Blend,
+            ..default()
+        }),
+        hex_cap_material_t3: materials.add(StandardMaterial {
+            base_color: Color::srgba(0.36, 1.00, 0.74, 0.42),
+            emissive: LinearRgba::rgb(0.52, 2.28, 0.95),
+            base_color_texture: Some(hex_texture.clone()),
+            unlit: true,
             alpha_mode: AlphaMode::Blend,
             ..default()
         }),
@@ -398,10 +522,35 @@ pub fn setup_nebula_bouncer(
         hex_material_t1: nebula_mats.hex_material_t1.clone(),
         hex_material_t2: nebula_mats.hex_material_t2.clone(),
         hex_material_t3: nebula_mats.hex_material_t3.clone(),
+        hex_cap_material_t0: nebula_mats.hex_cap_material_t0.clone(),
+        hex_cap_material_t1: nebula_mats.hex_cap_material_t1.clone(),
+        hex_cap_material_t2: nebula_mats.hex_cap_material_t2.clone(),
+        hex_cap_material_t3: nebula_mats.hex_cap_material_t3.clone(),
         hex_texture: nebula_mats.hex_texture.clone(),
+    });
+    commands.insert_resource(GlobalAmbientLight {
+        color: Color::srgb(0.06, 0.11, 0.16),
+        brightness: 0.42,
+        ..default()
     });
 
     // Spawn Player
+    let player_scene = asset_server.load(asset_manifest.player_ship.clone());
+    let thruster_glow_material = materials.add(StandardMaterial {
+        base_color: Color::srgba(0.75, 0.32, 1.0, 0.86),
+        emissive: LinearRgba::rgb(4.4, 1.8, 7.2),
+        unlit: true,
+        alpha_mode: AlphaMode::Add,
+        ..default()
+    });
+    let thruster_core_material = materials.add(StandardMaterial {
+        base_color: Color::srgba(0.38, 0.86, 1.0, 0.62),
+        emissive: LinearRgba::rgb(2.1, 6.6, 9.4),
+        unlit: true,
+        alpha_mode: AlphaMode::Add,
+        ..default()
+    });
+
     commands
         .spawn((
             PlayerShip,
@@ -421,7 +570,7 @@ pub fn setup_nebula_bouncer(
             // glTF assets are authored Y-up; rotate into the XY gameplay plane and scale to world units.
             parent.spawn((
                 PlayerVisualRoot,
-                SceneRoot(asset_server.load(asset_manifest.player_ship.clone())),
+                SceneRoot(player_scene.clone()),
                 Transform::from_translation(Vec3::new(0.0, 0.0, PLAYER_MODEL_VISUAL_LIFT))
                     .with_rotation(
                         // World-space Z(PI) spins facing 180° AFTER X(PI/2) tilts upright.
@@ -430,54 +579,79 @@ pub fn setup_nebula_bouncer(
                     )
                     .with_scale(Vec3::splat(MODEL_UNIT_TO_WORLD)),
             ));
+            for x in [-14.0_f32, 14.0] {
+                parent.spawn((
+                    Mesh3d(nebula_mats.quad_mesh.clone()),
+                    MeshMaterial3d(thruster_glow_material.clone()),
+                    Transform::from_xyz(x, -34.0, depth::PARTICLES - depth::PLAYER)
+                        .with_scale(PLAYER_THRUSTER_SIZE.extend(1.0)),
+                ));
+            }
+            parent.spawn((
+                Mesh3d(nebula_mats.quad_mesh.clone()),
+                MeshMaterial3d(thruster_core_material.clone()),
+                Transform::from_xyz(0.0, -18.0, depth::PARTICLES - depth::PLAYER - 1.0)
+                    .with_scale(Vec3::new(16.0, 30.0, 1.0)),
+            ));
         });
 
     // Spawn 3D camera and lighting for the glTF models
     // NB-A2-010 pass4: Perspective projection for true depth foreshortening.
     // Camera sits behind and above the ship, looking forward.
-    let cam_height = 280.0; // height above the Z=0 gameplay plane
-    let cam_behind = -420.0; // behind the player on Y axis
-    let look_ahead = 600.0; // how far ahead of player to aim camera
-
     commands.spawn((
         Camera3d::default(),
+        Hdr,
+        Tonemapping::TonyMcMapface,
+        Bloom {
+            intensity: 0.24,
+            low_frequency_boost: 0.85,
+            low_frequency_boost_curvature: 0.95,
+            high_pass_frequency: 0.66,
+            prefilter: BloomPrefilter {
+                threshold: 0.22,
+                threshold_softness: 0.45,
+            },
+            composite_mode: BloomCompositeMode::Additive,
+            ..Bloom::NATURAL
+        },
         Projection::Perspective(PerspectiveProjection {
-            fov: 60.0f32.to_radians(),
+            fov: 54.0f32.to_radians(),
             near: 1.0,
             far: 10000.0,
             ..default()
         }),
         Camera {
             order: 1,
-            clear_color: ClearColorConfig::None,
+            clear_color: ClearColorConfig::Custom(Color::srgb(0.003, 0.004, 0.012)),
             ..default()
         },
-        Transform::from_xyz(0.0, cam_behind, cam_height)
-            .looking_at(Vec3::new(0.0, look_ahead, 0.0), Vec3::Z),
+        Transform::from_xyz(0.0, CAMERA_BEHIND_OFFSET, CAMERA_HEIGHT)
+            .looking_at(Vec3::new(0.0, CAMERA_LOOK_AHEAD, 0.0), Vec3::Z),
         NebulaBouncerContext,
         NebulaGameplayCamera,
     ));
 
-    // Main directional light (sun-like) angled for dramatic contrast.
+    // Main directional light: cool key from behind camera.
     commands.spawn((
         DirectionalLight {
             shadows_enabled: false,
-            illuminance: 15000.0, // Reduced further for darker scene
+            illuminance: 1700.0,
+            color: Color::srgb(0.82, 0.94, 1.0),
             ..default()
         },
-        Transform::from_xyz(500.0, -1000.0, 1000.0).looking_at(Vec3::ZERO, Vec3::Y),
+        Transform::from_xyz(-380.0, -520.0, 760.0).looking_at(Vec3::new(0.0, 360.0, 0.0), Vec3::Z),
         NebulaBouncerContext,
     ));
 
-    // Add a very subtle fill to keep models slightly visible in shadows.
+    // Warm opposing rim to push silhouette contrast.
     commands.spawn((
         DirectionalLight {
-            illuminance: 1000.0, // Minimal fill for deep shadows
-            color: Color::srgb(0.86, 0.90, 1.0),
+            illuminance: 1400.0,
+            color: Color::srgb(1.0, 0.58, 0.26),
             shadows_enabled: false,
             ..default()
         },
-        Transform::from_xyz(500.0, 350.0, 760.0).looking_at(Vec3::ZERO, Vec3::Z),
+        Transform::from_xyz(420.0, 980.0, 680.0).looking_at(Vec3::new(0.0, 120.0, 0.0), Vec3::Z),
         NebulaBouncerContext,
     ));
 
@@ -722,8 +896,8 @@ pub fn setup_nebula_bouncer(
 
 pub fn spawn_orb_pool(
     commands: &mut Commands,
-    asset_server: &AssetServer,
-    asset_manifest: &NebulaAssetManifest,
+    _asset_server: &AssetServer,
+    _asset_manifest: &NebulaAssetManifest,
     orb_pool: &mut KineticOrbPool,
     nebula_mats: &NebulaMaterials,
     materials: &mut Assets<StandardMaterial>,
@@ -741,7 +915,8 @@ pub fn spawn_orb_pool(
                     Restitution::new(1.0).with_combine_rule(CoefficientCombine::Max),
                     Friction::new(0.0), // No friction in space
                     Mass(1.0),
-                    Transform::from_xyz(9999.0, 9999.0, depth::PROJECTILE),
+                    Transform::from_xyz(9999.0, 9999.0, depth::PROJECTILE)
+                        .with_scale(Vec3::splat(BASE_ORB_RADIUS * ORB_VISUAL_SCALE)),
                     Visibility::Hidden,
                     CollisionLayers::new(
                         GameLayer::Projectile,
@@ -757,12 +932,11 @@ pub fn spawn_orb_pool(
                     },
                     Mesh3d(nebula_mats.quad_mesh.clone()),
                     MeshMaterial3d(materials.add(StandardMaterial {
-                        base_color: element_trail_color(OrbElement::default()),
-                        base_color_texture: Some(
-                            asset_server.load(asset_manifest.kinetic_orb.clone()),
-                        ),
+                        base_color: element_trail_color(OrbElement::default()).with_alpha(0.85),
+                        emissive: LinearRgba::from(element_trail_color(OrbElement::default()))
+                            * 10.0,
                         unlit: true,
-                        alpha_mode: AlphaMode::Blend,
+                        alpha_mode: AlphaMode::Add,
                         ..default()
                     })),
                 ))
@@ -1151,6 +1325,14 @@ pub fn spawn_next_chunk(
                     .max(1.0) as i32;
                 let scale_factor = enemy_size.x / 64.0;
                 let model_scale = scale_factor * MODEL_UNIT_TO_WORLD;
+                let glow_color = enemy_glow_color(archetype);
+                let aura_material = materials.add(StandardMaterial {
+                    base_color: glow_color.with_alpha(0.32),
+                    emissive: LinearRgba::from(glow_color) * 8.0,
+                    unlit: true,
+                    alpha_mode: AlphaMode::Add,
+                    ..default()
+                });
                 commands
                     .spawn((
                         Enemy,
@@ -1180,6 +1362,15 @@ pub fn spawn_next_chunk(
                                     * Quat::from_rotation_x(std::f32::consts::FRAC_PI_2),
                             )
                             .with_scale(Vec3::splat(model_scale)),
+                        ));
+                        parent.spawn((
+                            Mesh3d(nebula_mats.quad_mesh.clone()),
+                            MeshMaterial3d(aura_material.clone()),
+                            Transform::from_xyz(0.0, 0.0, 4.0).with_scale(Vec3::new(
+                                enemy_size.x * 1.8,
+                                enemy_size.y * 1.3,
+                                1.0,
+                            )),
                         ));
                     });
             }
@@ -1517,8 +1708,8 @@ pub fn orient_player_to_cursor(
 
 pub fn player_shoot(
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
-    asset_manifest: Res<NebulaAssetManifest>,
+    _asset_server: Res<AssetServer>,
+    _asset_manifest: Res<NebulaAssetManifest>,
     mouse: Res<ButtonInput<MouseButton>>,
     q_window: Query<&Window>,
     q_camera: Query<(&Camera, &GlobalTransform), With<NebulaGameplayCamera>>,
@@ -1631,16 +1822,21 @@ pub fn player_shoot(
             commands.entity(orb_entity).insert((
                 Collider::circle(resolved_stats.radius),
                 Transform::from_xyz(orb_spawn_origin.x, orb_spawn_origin.y, depth::PROJECTILE)
-                    .with_rotation(orb_rotation),
+                    .with_rotation(orb_rotation)
+                    .with_scale(Vec3::new(
+                        resolved_stats.radius * ORB_VISUAL_SCALE * 1.4,
+                        resolved_stats.radius * ORB_VISUAL_SCALE,
+                        1.0,
+                    )),
                 LinearVelocity(direction * resolved_stats.speed),
                 Visibility::Visible,
                 RigidBody::Dynamic,
                 Mesh3d(nebula_mats.quad_mesh.clone()),
                 MeshMaterial3d(materials.add(StandardMaterial {
-                    base_color: element_trail_color(loadout.element),
-                    base_color_texture: Some(asset_server.load(asset_manifest.kinetic_orb.clone())),
+                    base_color: element_trail_color(loadout.element).with_alpha(0.88),
+                    emissive: LinearRgba::from(element_trail_color(loadout.element)) * 14.0,
                     unlit: true,
-                    alpha_mode: AlphaMode::Blend,
+                    alpha_mode: AlphaMode::Add,
                     ..default()
                 })),
                 KineticOrb {
@@ -1763,6 +1959,7 @@ pub fn update_enemy_status_effects(
 pub fn apply_shake(
     time: Res<Time<Real>>,
     feedback_settings: Res<CameraFeedbackSettings>,
+    q_player: Query<&GlobalTransform, With<PlayerShip>>,
     mut query: Query<
         (&mut Transform, &mut ScreenShake),
         (With<Camera>, With<NebulaGameplayCamera>),
@@ -1770,12 +1967,30 @@ pub fn apply_shake(
 ) {
     let dt = time.delta_secs();
     let tuning = feedback_tuning(feedback_settings.profile);
+    let player_anchor = q_player.iter().next().map(|t| t.translation());
     for (mut transform, mut shake) in &mut query {
         // Remove last frame's offset so shake never accumulates as drift.
         transform.translation.x -= shake.last_offset.x;
         transform.translation.y -= shake.last_offset.y;
         shake.last_offset = Vec2::ZERO;
         shake.decay = tuning.shake_decay;
+
+        if let Some(player_pos) = player_anchor {
+            let desired_pos = Vec3::new(
+                player_pos.x * 0.32,
+                player_pos.y + CAMERA_BEHIND_OFFSET,
+                CAMERA_HEIGHT,
+            );
+            let follow_t = 1.0 - (-CAMERA_FOLLOW_LERP * dt).exp();
+            transform.translation = transform.translation.lerp(desired_pos, follow_t);
+
+            let desired_look =
+                Vec3::new(player_pos.x * 0.16, player_pos.y + CAMERA_LOOK_AHEAD, 0.0);
+            let mut look_transform = Transform::from_translation(transform.translation);
+            look_transform.look_at(desired_look, Vec3::Z);
+            let look_t = 1.0 - (-CAMERA_LOOK_LERP * dt).exp();
+            transform.rotation = transform.rotation.slerp(look_transform.rotation, look_t);
+        }
 
         if !feedback_settings.shake_enabled {
             shake.intensity = 0.0;

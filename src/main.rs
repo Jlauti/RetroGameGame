@@ -1,6 +1,7 @@
 use bevy::prelude::*;
-use retro_game_game::core;
+use bevy::remote::{RemotePlugin, http::RemoteHttpPlugin};
 use retro_game_game::RetroGameGamePlugin;
+use retro_game_game::core;
 
 fn configure_wsl_winit_backend() {
     let is_wsl = cfg!(target_os = "linux") && std::env::var_os("WSL_DISTRO_NAME").is_some();
@@ -31,26 +32,44 @@ fn main() {
 
     let initial_settings = core::settings::load_settings();
 
-    App::new()
-        .add_plugins(
-            DefaultPlugins
-                .set(WindowPlugin {
-                    primary_window: Some(Window {
-                        title: "RetroGameGame".into(),
-                        resolution: initial_settings.resolution.into(),
-                        mode: initial_settings.display_mode.to_bevy_mode(),
-                        resizable: true,
-                        ..default()
-                    }),
-                    ..default()
-                })
-                .set(AssetPlugin {
-                    file_path: asset_root,
+    let mut app = App::new();
+    app.add_plugins(
+        DefaultPlugins
+            .set(WindowPlugin {
+                primary_window: Some(Window {
+                    title: "RetroGameGame".into(),
+                    resolution: initial_settings.resolution.into(),
+                    mode: initial_settings.display_mode.to_bevy_mode(),
+                    resizable: true,
                     ..default()
                 }),
-        )
-        .add_plugins(RetroGameGamePlugin)
-        .run();
+                ..default()
+            })
+            .set(AssetPlugin {
+                file_path: asset_root,
+                ..default()
+            }),
+    );
+    maybe_enable_brp(&mut app);
+    app.add_plugins(RetroGameGamePlugin);
+    app.run();
+}
+
+fn maybe_enable_brp(app: &mut App) {
+    if std::env::var_os("BEVY_BRP_ENABLE").is_none() {
+        return;
+    }
+
+    let port = std::env::var("BEVY_BRP_PORT")
+        .ok()
+        .and_then(|raw| raw.parse::<u16>().ok())
+        .unwrap_or(15702);
+
+    app.add_plugins((
+        RemotePlugin::default(),
+        RemoteHttpPlugin::default().with_port(port),
+    ));
+    println!("BRP enabled at http://127.0.0.1:{port}");
 }
 
 fn find_asset_root() -> Option<String> {
