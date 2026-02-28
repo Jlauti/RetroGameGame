@@ -52,11 +52,7 @@ const CAMERA_BEHIND_OFFSET: f32 = -428.0;
 const CAMERA_LOOK_AHEAD: f32 = 1240.0;
 const CAMERA_FOLLOW_LERP: f32 = 6.2;
 const CAMERA_LOOK_LERP: f32 = 4.6;
-const ENERGY_LANE_WIDTH: f32 = 18.0;
-const ENERGY_LANE_ALPHA: f32 = 1.0;
 const PREFILL_CHUNK_COUNT: usize = 6;
-const LANE_SAFE_BUBBLE_INNER: f32 = 240.0;
-const LANE_SAFE_BUBBLE_OUTER: f32 = 760.0;
 
 fn enemy_sprite_size(archetype: EnemyArchetype) -> Vec2 {
     match archetype {
@@ -118,13 +114,6 @@ pub struct GroundVisual;
 
 #[derive(Component)]
 pub struct WallVisual;
-
-#[derive(Component)]
-pub struct EnergyLaneVisual {
-    pub base_color: Color,
-    pub base_emissive: LinearRgba,
-    pub base_alpha: f32,
-}
 
 #[derive(Component)]
 pub struct TransientVfx {
@@ -352,142 +341,6 @@ fn spawn_chunk_floor_tiles(
                 3.6,
             )),
         ));
-    }
-
-    spawn_chunk_energy_lanes(
-        commands,
-        nebula_mats,
-        materials,
-        chunk_center_y,
-        chunk_height,
-        terrain_theme,
-    );
-}
-
-fn spawn_chunk_energy_lanes(
-    commands: &mut Commands,
-    nebula_mats: &NebulaMaterials,
-    materials: &mut Assets<StandardMaterial>,
-    chunk_center_y: f32,
-    chunk_height: f32,
-    terrain_theme: TerrainTheme,
-) {
-    let lane_positions = [
-        -560.0_f32, -420.0, -280.0, -140.0, 140.0, 280.0, 420.0, 560.0,
-    ];
-    let lane_palette: &[(Color, Color)] = match terrain_theme {
-        TerrainTheme::Standard => &[
-            (
-                Color::srgba(0.26, 0.96, 1.0, ENERGY_LANE_ALPHA),
-                Color::srgb(0.22, 0.94, 1.0),
-            ),
-            (
-                Color::srgba(0.34, 0.86, 1.0, ENERGY_LANE_ALPHA),
-                Color::srgb(0.30, 0.82, 1.0),
-            ),
-            (
-                Color::srgba(0.80, 0.34, 1.0, ENERGY_LANE_ALPHA),
-                Color::srgb(0.74, 0.30, 1.0),
-            ),
-            (
-                Color::srgba(1.0, 0.58, 0.20, ENERGY_LANE_ALPHA),
-                Color::srgb(1.0, 0.50, 0.16),
-            ),
-        ],
-        TerrainTheme::Cold => &[
-            (
-                Color::srgba(0.30, 0.90, 1.0, ENERGY_LANE_ALPHA),
-                Color::srgb(0.24, 0.84, 1.0),
-            ),
-            (
-                Color::srgba(0.42, 0.74, 1.0, ENERGY_LANE_ALPHA),
-                Color::srgb(0.36, 0.66, 1.0),
-            ),
-            (
-                Color::srgba(0.62, 0.50, 1.0, ENERGY_LANE_ALPHA),
-                Color::srgb(0.56, 0.44, 1.0),
-            ),
-            (
-                Color::srgba(0.30, 1.0, 0.70, ENERGY_LANE_ALPHA),
-                Color::srgb(0.24, 0.96, 0.62),
-            ),
-        ],
-        TerrainTheme::Hazard => &[
-            (
-                Color::srgba(1.0, 0.26, 0.18, ENERGY_LANE_ALPHA),
-                Color::srgb(1.0, 0.22, 0.14),
-            ),
-            (
-                Color::srgba(1.0, 0.52, 0.20, ENERGY_LANE_ALPHA),
-                Color::srgb(1.0, 0.46, 0.16),
-            ),
-            (
-                Color::srgba(1.0, 0.82, 0.22, ENERGY_LANE_ALPHA),
-                Color::srgb(1.0, 0.76, 0.18),
-            ),
-            (
-                Color::srgba(0.40, 0.96, 0.40, ENERGY_LANE_ALPHA),
-                Color::srgb(0.34, 0.90, 0.34),
-            ),
-        ],
-    };
-    let lane_len = (chunk_height * 1.28).max(120.0);
-    for (idx, x) in lane_positions.iter().enumerate() {
-        let (lane_color, lane_emissive) = lane_palette[idx % lane_palette.len()];
-        let lane_emissive_linear = LinearRgba::from(lane_emissive) * 3.8;
-        let width_scale = if idx % 2 == 0 {
-            ENERGY_LANE_WIDTH
-        } else {
-            ENERGY_LANE_WIDTH * 0.72
-        };
-        commands.spawn((
-            ChunkMember,
-            GroundVisual,
-            EnergyLaneVisual {
-                base_color: lane_color,
-                base_emissive: lane_emissive_linear,
-                base_alpha: ENERGY_LANE_ALPHA,
-            },
-            Mesh3d(nebula_mats.lane_mesh.clone()),
-            MeshMaterial3d(materials.add(StandardMaterial {
-                base_color: lane_color,
-                emissive: lane_emissive_linear,
-                unlit: false,
-                alpha_mode: AlphaMode::Opaque,
-                metallic: 0.24,
-                perceptual_roughness: 0.36,
-                ..default()
-            })),
-            Transform::from_xyz(*x, chunk_center_y, depth::BACKGROUND + 20.0)
-                .with_scale(Vec3::new(width_scale, lane_len, 20.0)),
-        ));
-    }
-}
-
-pub fn update_energy_lane_suppression(
-    q_player: Query<&Transform, With<PlayerShip>>,
-    q_lanes: Query<(
-        &Transform,
-        &MeshMaterial3d<StandardMaterial>,
-        &EnergyLaneVisual,
-    )>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-) {
-    let Some(player_transform) = q_player.iter().next() else {
-        return;
-    };
-    let player_pos = player_transform.translation.truncate();
-    let fade_span = (LANE_SAFE_BUBBLE_OUTER - LANE_SAFE_BUBBLE_INNER).max(1.0);
-
-    for (lane_transform, lane_material, lane_visual) in &q_lanes {
-        let dist = lane_transform.translation.truncate().distance(player_pos);
-        let fade = ((dist - LANE_SAFE_BUBBLE_INNER) / fade_span).clamp(0.0, 1.0);
-        let emissive_scale = 0.14 + 0.86 * fade;
-
-        if let Some(material) = materials.get_mut(&lane_material.0) {
-            material.base_color = lane_visual.base_color.with_alpha(lane_visual.base_alpha);
-            material.emissive = lane_visual.base_emissive * emissive_scale;
-        }
     }
 }
 
