@@ -12,7 +12,8 @@ pub struct TopographyHex;
 pub const HEX_RADIUS: f32 = 48.0;
 pub const HEX_WIDTH: f32 = HEX_RADIUS * 1.732; // sqrt(3)
 pub const HEX_HEIGHT: f32 = HEX_RADIUS * 2.0;
-const CANYON_HALF_WIDTH: f32 = 960.0 * 0.5;
+const TERRAIN_WIDTH: f32 = 1360.0;
+const CANYON_HALF_WIDTH: f32 = TERRAIN_WIDTH * 0.5;
 
 /// Hex outline texture path (generated procedural asset).
 pub const HEX_OUTLINE_TEXTURE: &str = "sprites/future/nebula_bouncer/hex_outline.png";
@@ -92,7 +93,7 @@ pub fn spawn_chunk_topography(
     let rows = topography.rows.max(0);
     let hex_width = topography.hex_width.max(1.0);
     let hex_height = topography.hex_height.max(1.0);
-    let start_x = -960.0 * 0.5;
+    let start_x = -TERRAIN_WIDTH * 0.5;
     let start_y = chunk_center_y - chunk_height * 0.5;
     let _ = nebula_mats.hex_texture.clone(); // keep outline texture alive
 
@@ -146,11 +147,13 @@ pub fn spawn_chunk_topography(
             ));
 
             // Sparse chroma accents add extra neon variation while preserving the green base read.
-            let accent_selector = fold_hash(((r as u64) << 32) | c as u64, tier as u64) % 19;
+            let accent_selector = fold_hash(((r as u64) << 32) | c as u64, tier as u64) % 17;
             let accent_material = match accent_selector {
                 0 => Some(nebula_mats.hex_accent_material_cyan.clone()),
                 1 => Some(nebula_mats.hex_accent_material_magenta.clone()),
                 2 => Some(nebula_mats.hex_accent_material_amber.clone()),
+                3 => Some(nebula_mats.hex_accent_material_blue.clone()),
+                4 => Some(nebula_mats.hex_accent_material_lime.clone()),
                 _ => None,
             };
             if let Some(material) = accent_material {

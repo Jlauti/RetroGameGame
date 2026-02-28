@@ -27,7 +27,7 @@ const BASE_ORB_SPEED: f32 = 500.0;
 const BASE_ORB_BOUNCES: u32 = 3;
 const BASE_ORB_RADIUS: f32 = 5.0;
 const BASE_ORB_TRAIL_WIDTH: f32 = 4.0;
-const GROUND_CHUNK_WIDTH: f32 = 960.0;
+const GROUND_CHUNK_WIDTH: f32 = 1360.0;
 const VOID_DOT_TICK_INTERVAL_SECS: f32 = 0.5;
 const PREFLIGHT_SUMMARY_REL_PATH: &str =
     "agents/deliverables/codex_worker2/NB-CX-006_preflight_summary.txt";
@@ -47,9 +47,9 @@ const ORB_VISUAL_SCALE: f32 = 7.0;
 const PLAYER_MUZZLE_FORWARD_OFFSET: f32 = 22.0;
 const TRANSIENT_VFX_BASE_LIFETIME_SECS: f32 = 0.24;
 const TRANSIENT_VFX_BASE_SIZE: f32 = 70.0;
-const CAMERA_HEIGHT: f32 = 188.0;
-const CAMERA_BEHIND_OFFSET: f32 = -212.0;
-const CAMERA_LOOK_AHEAD: f32 = 980.0;
+const CAMERA_HEIGHT: f32 = 314.0;
+const CAMERA_BEHIND_OFFSET: f32 = -428.0;
+const CAMERA_LOOK_AHEAD: f32 = 1240.0;
 const CAMERA_FOLLOW_LERP: f32 = 6.2;
 const CAMERA_LOOK_LERP: f32 = 4.6;
 const ENERGY_LANE_WIDTH: f32 = 24.0;
@@ -317,7 +317,9 @@ fn spawn_chunk_energy_lanes(
     chunk_height: f32,
     terrain_theme: TerrainTheme,
 ) {
-    let lane_positions = [-364.0_f32, -252.0, -132.0, 132.0, 252.0, 364.0];
+    let lane_positions = [
+        -560.0_f32, -420.0, -280.0, -140.0, 140.0, 280.0, 420.0, 560.0,
+    ];
     let (lane_color, lane_emissive) = match terrain_theme {
         TerrainTheme::Standard => (
             Color::srgba(0.30, 0.98, 1.0, ENERGY_LANE_ALPHA),
@@ -542,6 +544,22 @@ pub fn setup_nebula_bouncer(
             alpha_mode: AlphaMode::Add,
             ..default()
         }),
+        hex_accent_material_blue: materials.add(StandardMaterial {
+            base_color: Color::srgba(0.30, 0.56, 1.0, 0.58),
+            emissive: LinearRgba::rgb(1.26, 1.72, 4.40),
+            base_color_texture: Some(hex_texture.clone()),
+            unlit: true,
+            alpha_mode: AlphaMode::Add,
+            ..default()
+        }),
+        hex_accent_material_lime: materials.add(StandardMaterial {
+            base_color: Color::srgba(0.72, 1.0, 0.30, 0.54),
+            emissive: LinearRgba::rgb(2.42, 3.20, 0.86),
+            base_color_texture: Some(hex_texture.clone()),
+            unlit: true,
+            alpha_mode: AlphaMode::Add,
+            ..default()
+        }),
         hex_texture,
     };
     commands.insert_resource(NebulaMaterials {
@@ -559,11 +577,13 @@ pub fn setup_nebula_bouncer(
         hex_accent_material_cyan: nebula_mats.hex_accent_material_cyan.clone(),
         hex_accent_material_magenta: nebula_mats.hex_accent_material_magenta.clone(),
         hex_accent_material_amber: nebula_mats.hex_accent_material_amber.clone(),
+        hex_accent_material_blue: nebula_mats.hex_accent_material_blue.clone(),
+        hex_accent_material_lime: nebula_mats.hex_accent_material_lime.clone(),
         hex_texture: nebula_mats.hex_texture.clone(),
     });
     commands.insert_resource(GlobalAmbientLight {
-        color: Color::srgb(0.03, 0.07, 0.10),
-        brightness: 0.26,
+        color: Color::srgb(0.025, 0.034, 0.052),
+        brightness: 0.20,
         ..default()
     });
 
@@ -648,16 +668,16 @@ pub fn setup_nebula_bouncer(
             ..Bloom::NATURAL
         },
         Projection::Perspective(PerspectiveProjection {
-            fov: 62.0f32.to_radians(),
+            fov: 58.0f32.to_radians(),
             near: 1.0,
             far: 10000.0,
             ..default()
         }),
         DistanceFog {
-            color: Color::srgba(0.014, 0.040, 0.028, 0.94),
-            directional_light_color: Color::srgba(0.24, 0.98, 0.86, 0.46),
-            directional_light_exponent: 26.0,
-            falloff: FogFalloff::ExponentialSquared { density: 0.00185 },
+            color: Color::srgba(0.010, 0.016, 0.026, 0.74),
+            directional_light_color: Color::srgba(0.42, 0.62, 0.92, 0.24),
+            directional_light_exponent: 19.0,
+            falloff: FogFalloff::ExponentialSquared { density: 0.00125 },
         },
         Camera {
             order: 1,

@@ -782,11 +782,12 @@ pub fn generate_chunk_topography(
     global_seed: u64,
     sequence_index: usize,
 ) -> ChunkTopography {
+    const TERRAIN_WIDTH: f32 = 1360.0;
     let hex_radius = 48.0;
     let hex_width = hex_radius * 1.732; // sqrt(3)
     let hex_height = hex_radius * 2.0;
 
-    let cols = (960.0_f32 / hex_width).ceil() as i32 + 1;
+    let cols = (TERRAIN_WIDTH / hex_width).ceil() as i32 + 1;
     let rows = (chunk_height / (hex_height * 0.75_f32)).ceil() as i32 + 1;
 
     // Using fold_hash logic from topography.rs to get a deterministic chunk seed
@@ -796,7 +797,7 @@ pub fn generate_chunk_topography(
     );
 
     let mut tiers = Vec::with_capacity((cols * rows) as usize);
-    let start_x = -960.0 * 0.5;
+    let start_x = -TERRAIN_WIDTH * 0.5;
 
     // Generate relative to the chunk so generation is position-independent
     let start_y = -(chunk_height * 0.5);
