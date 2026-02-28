@@ -145,9 +145,21 @@ pub fn spawn_chunk_topography(
                     1.0,
                 )),
             ));
+            // Secondary outline layer slightly offset to make edge read bolder from far camera.
+            commands.spawn((
+                ChunkMember,
+                TopographyHex,
+                Mesh3d(nebula_mats.quad_mesh.clone()),
+                MeshMaterial3d(cap_material.clone()),
+                Transform::from_xyz(x, y, base_outline_z + 0.14).with_scale(Vec3::new(
+                    hex_width * 0.99,
+                    hex_height * 0.99,
+                    1.0,
+                )),
+            ));
 
             // Sparse chroma accents add extra neon variation while preserving the green base read.
-            let accent_selector = fold_hash(((r as u64) << 32) | c as u64, tier as u64) % 17;
+            let accent_selector = fold_hash(((r as u64) << 32) | c as u64, tier as u64) % 29;
             let accent_material = match accent_selector {
                 0 => Some(nebula_mats.hex_accent_material_cyan.clone()),
                 1 => Some(nebula_mats.hex_accent_material_magenta.clone()),
@@ -194,6 +206,13 @@ pub fn spawn_chunk_topography(
                 let z_scale = (tier_height / 50.0_f32).max(0.36_f32);
                 let prism_center_z = base_outline_z + 8.0 + (25.0 * z_scale) + (side_curve * 8.0);
                 let cap_z = prism_center_z + (25.0 * z_scale) + 1.2;
+                let extrusion_rim_material = match accent_selector % 5 {
+                    0 => nebula_mats.hex_accent_material_cyan.clone(),
+                    1 => nebula_mats.hex_accent_material_magenta.clone(),
+                    2 => nebula_mats.hex_accent_material_amber.clone(),
+                    3 => nebula_mats.hex_accent_material_blue.clone(),
+                    _ => nebula_mats.hex_accent_material_lime.clone(),
+                };
                 commands.spawn((
                     ChunkMember,
                     TopographyHex,
@@ -213,6 +232,17 @@ pub fn spawn_chunk_topography(
                     Transform::from_xyz(x, y, cap_z).with_scale(Vec3::new(
                         hex_width * 0.93,
                         hex_height * 0.93,
+                        1.0,
+                    )),
+                ));
+                commands.spawn((
+                    ChunkMember,
+                    TopographyHex,
+                    Mesh3d(nebula_mats.quad_mesh.clone()),
+                    MeshMaterial3d(extrusion_rim_material),
+                    Transform::from_xyz(x, y, cap_z + 0.8).with_scale(Vec3::new(
+                        hex_width * 0.86,
+                        hex_height * 0.86,
                         1.0,
                     )),
                 ));

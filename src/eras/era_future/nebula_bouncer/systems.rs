@@ -55,6 +55,8 @@ const CAMERA_LOOK_LERP: f32 = 4.6;
 const ENERGY_LANE_WIDTH: f32 = 24.0;
 const ENERGY_LANE_ALPHA: f32 = 0.90;
 const PLAYER_THRUSTER_SIZE: Vec2 = Vec2::new(24.0, 58.0);
+const LANE_SAFE_BUBBLE_INNER: f32 = 240.0;
+const LANE_SAFE_BUBBLE_OUTER: f32 = 760.0;
 
 fn enemy_sprite_size(archetype: EnemyArchetype) -> Vec2 {
     match archetype {
@@ -116,6 +118,13 @@ pub struct GroundVisual;
 
 #[derive(Component)]
 pub struct WallVisual;
+
+#[derive(Component)]
+pub struct EnergyLaneVisual {
+    pub base_color: Color,
+    pub base_emissive: LinearRgba,
+    pub base_alpha: f32,
+}
 
 #[derive(Component)]
 pub struct TransientVfx {
@@ -296,9 +305,11 @@ fn spawn_chunk_floor_tiles(
         )),
     ));
 
-    let grid_color = Color::srgba(0.20, 0.52, 0.90, 0.22);
-    let grid_emissive = LinearRgba::rgb(0.18, 0.36, 0.86);
-    for col in 0..cols {
+    let grid_color = Color::srgba(0.20, 0.52, 0.90, 0.12);
+    let grid_emissive = LinearRgba::rgb(0.16, 0.30, 0.70);
+    let cols_usize = cols.max(0) as usize;
+    let rows_usize = rows.max(0) as usize;
+    for col in (0..cols_usize).step_by(2) {
         let x = start_x + col as f32 * tile_w;
         commands.spawn((
             ChunkMember,
@@ -306,19 +317,19 @@ fn spawn_chunk_floor_tiles(
             Mesh3d(nebula_mats.quad_mesh.clone()),
             MeshMaterial3d(materials.add(StandardMaterial {
                 base_color: grid_color,
-                emissive: grid_emissive * 1.6,
+                emissive: grid_emissive * 1.0,
                 unlit: true,
                 alpha_mode: AlphaMode::Add,
                 ..default()
             })),
             Transform::from_xyz(x, chunk_center_y, depth::BACKGROUND + 1.0).with_scale(Vec3::new(
-                2.4,
+                1.6,
                 chunk_height * 1.03,
                 1.0,
             )),
         ));
     }
-    for row in 0..rows {
+    for row in (0..rows_usize).step_by(2) {
         let y = start_y + row as f32 * tile_h;
         commands.spawn((
             ChunkMember,
@@ -326,14 +337,14 @@ fn spawn_chunk_floor_tiles(
             Mesh3d(nebula_mats.quad_mesh.clone()),
             MeshMaterial3d(materials.add(StandardMaterial {
                 base_color: grid_color,
-                emissive: grid_emissive * 1.6,
+                emissive: grid_emissive * 1.0,
                 unlit: true,
                 alpha_mode: AlphaMode::Add,
                 ..default()
             })),
             Transform::from_xyz(0.0, y, depth::BACKGROUND + 1.0).with_scale(Vec3::new(
                 GROUND_CHUNK_WIDTH * 1.03,
-                2.4,
+                1.6,
                 1.0,
             )),
         ));
@@ -419,6 +430,7 @@ fn spawn_chunk_energy_lanes(
     let lane_len = (chunk_height * 1.16).max(120.0);
     for (idx, x) in lane_positions.iter().enumerate() {
         let (lane_color, lane_emissive) = lane_palette[idx % lane_palette.len()];
+        let lane_emissive_linear = LinearRgba::from(lane_emissive) * 10.5;
         let width_scale = if idx % 2 == 0 {
             ENERGY_LANE_WIDTH
         } else {
@@ -427,10 +439,15 @@ fn spawn_chunk_energy_lanes(
         commands.spawn((
             ChunkMember,
             GroundVisual,
+            EnergyLaneVisual {
+                base_color: lane_color,
+                base_emissive: lane_emissive_linear,
+                base_alpha: ENERGY_LANE_ALPHA,
+            },
             Mesh3d(nebula_mats.quad_mesh.clone()),
             MeshMaterial3d(materials.add(StandardMaterial {
                 base_color: lane_color,
-                emissive: LinearRgba::from(lane_emissive) * 13.5,
+                emissive: lane_emissive_linear,
                 unlit: true,
                 alpha_mode: AlphaMode::Add,
                 ..default()
@@ -438,6 +455,36 @@ fn spawn_chunk_energy_lanes(
             Transform::from_xyz(*x, chunk_center_y, depth::BACKGROUND + 12.0)
                 .with_scale(Vec3::new(width_scale, lane_len, 1.0)),
         ));
+    }
+}
+
+pub fn update_energy_lane_suppression(
+    q_player: Query<&Transform, With<PlayerShip>>,
+    q_lanes: Query<(
+        &Transform,
+        &MeshMaterial3d<StandardMaterial>,
+        &EnergyLaneVisual,
+    )>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    let Some(player_transform) = q_player.iter().next() else {
+        return;
+    };
+    let player_pos = player_transform.translation.truncate();
+    let fade_span = (LANE_SAFE_BUBBLE_OUTER - LANE_SAFE_BUBBLE_INNER).max(1.0);
+
+    for (lane_transform, lane_material, lane_visual) in &q_lanes {
+        let dist = lane_transform.translation.truncate().distance(player_pos);
+        let fade = ((dist - LANE_SAFE_BUBBLE_INNER) / fade_span).clamp(0.0, 1.0);
+        let alpha_scale = 0.16 + 0.84 * fade;
+        let emissive_scale = 0.14 + 0.86 * fade;
+
+        if let Some(material) = materials.get_mut(&lane_material.0) {
+            material.base_color = lane_visual
+                .base_color
+                .with_alpha(lane_visual.base_alpha * alpha_scale);
+            material.emissive = lane_visual.base_emissive * emissive_scale;
+        }
     }
 }
 
@@ -572,72 +619,72 @@ pub fn setup_nebula_bouncer(
             ..default()
         }),
         hex_cap_material_t0: materials.add(StandardMaterial {
-            base_color: Color::srgba(0.24, 1.00, 0.64, 0.58),
-            emissive: LinearRgba::rgb(0.50, 2.40, 1.00),
+            base_color: Color::srgba(0.24, 1.00, 0.64, 0.34),
+            emissive: LinearRgba::rgb(0.92, 4.40, 1.84),
             base_color_texture: Some(hex_texture.clone()),
             unlit: true,
-            alpha_mode: AlphaMode::Blend,
+            alpha_mode: AlphaMode::Add,
             ..default()
         }),
         hex_cap_material_t1: materials.add(StandardMaterial {
-            base_color: Color::srgba(0.30, 1.00, 0.68, 0.60),
-            emissive: LinearRgba::rgb(0.66, 2.70, 1.12),
+            base_color: Color::srgba(0.30, 1.00, 0.68, 0.36),
+            emissive: LinearRgba::rgb(1.20, 4.90, 2.04),
             base_color_texture: Some(hex_texture.clone()),
             unlit: true,
-            alpha_mode: AlphaMode::Blend,
+            alpha_mode: AlphaMode::Add,
             ..default()
         }),
         hex_cap_material_t2: materials.add(StandardMaterial {
-            base_color: Color::srgba(0.36, 1.00, 0.74, 0.62),
-            emissive: LinearRgba::rgb(0.86, 3.06, 1.28),
+            base_color: Color::srgba(0.36, 1.00, 0.74, 0.40),
+            emissive: LinearRgba::rgb(1.56, 5.54, 2.30),
             base_color_texture: Some(hex_texture.clone()),
             unlit: true,
-            alpha_mode: AlphaMode::Blend,
+            alpha_mode: AlphaMode::Add,
             ..default()
         }),
         hex_cap_material_t3: materials.add(StandardMaterial {
-            base_color: Color::srgba(0.44, 1.00, 0.82, 0.66),
-            emissive: LinearRgba::rgb(1.06, 3.48, 1.46),
+            base_color: Color::srgba(0.44, 1.00, 0.82, 0.44),
+            emissive: LinearRgba::rgb(1.92, 6.30, 2.64),
             base_color_texture: Some(hex_texture.clone()),
             unlit: true,
-            alpha_mode: AlphaMode::Blend,
+            alpha_mode: AlphaMode::Add,
             ..default()
         }),
         hex_accent_material_cyan: materials.add(StandardMaterial {
-            base_color: Color::srgba(0.26, 0.98, 1.0, 0.62),
-            emissive: LinearRgba::rgb(0.94, 3.20, 4.20),
+            base_color: Color::srgba(0.26, 0.98, 1.0, 0.42),
+            emissive: LinearRgba::rgb(0.80, 2.60, 3.50),
             base_color_texture: Some(hex_texture.clone()),
             unlit: true,
             alpha_mode: AlphaMode::Add,
             ..default()
         }),
         hex_accent_material_magenta: materials.add(StandardMaterial {
-            base_color: Color::srgba(0.90, 0.34, 1.0, 0.56),
-            emissive: LinearRgba::rgb(3.10, 1.04, 3.84),
+            base_color: Color::srgba(0.90, 0.34, 1.0, 0.40),
+            emissive: LinearRgba::rgb(2.40, 0.84, 2.90),
             base_color_texture: Some(hex_texture.clone()),
             unlit: true,
             alpha_mode: AlphaMode::Add,
             ..default()
         }),
         hex_accent_material_amber: materials.add(StandardMaterial {
-            base_color: Color::srgba(1.0, 0.62, 0.20, 0.52),
-            emissive: LinearRgba::rgb(3.80, 1.72, 0.44),
+            base_color: Color::srgba(1.0, 0.62, 0.20, 0.38),
+            emissive: LinearRgba::rgb(2.80, 1.20, 0.32),
             base_color_texture: Some(hex_texture.clone()),
             unlit: true,
             alpha_mode: AlphaMode::Add,
             ..default()
         }),
         hex_accent_material_blue: materials.add(StandardMaterial {
-            base_color: Color::srgba(0.30, 0.56, 1.0, 0.58),
-            emissive: LinearRgba::rgb(1.26, 1.72, 4.40),
+            base_color: Color::srgba(0.30, 0.56, 1.0, 0.42),
+            emissive: LinearRgba::rgb(0.92, 1.40, 3.10),
             base_color_texture: Some(hex_texture.clone()),
             unlit: true,
             alpha_mode: AlphaMode::Add,
             ..default()
         }),
         hex_accent_material_lime: materials.add(StandardMaterial {
-            base_color: Color::srgba(0.72, 1.0, 0.30, 0.54),
-            emissive: LinearRgba::rgb(2.42, 3.20, 0.86),
+            base_color: Color::srgba(0.72, 1.0, 0.30, 0.40),
+            emissive: LinearRgba::rgb(1.82, 2.40, 0.62),
             base_color_texture: Some(hex_texture.clone()),
             unlit: true,
             alpha_mode: AlphaMode::Add,
@@ -739,13 +786,13 @@ pub fn setup_nebula_bouncer(
         Hdr,
         Tonemapping::TonyMcMapface,
         Bloom {
-            intensity: 0.40,
+            intensity: 0.32,
             low_frequency_boost: 0.85,
             low_frequency_boost_curvature: 0.95,
-            high_pass_frequency: 0.58,
+            high_pass_frequency: 0.68,
             prefilter: BloomPrefilter {
-                threshold: 0.16,
-                threshold_softness: 0.40,
+                threshold: 0.28,
+                threshold_softness: 0.34,
             },
             composite_mode: BloomCompositeMode::Additive,
             ..Bloom::NATURAL
@@ -757,10 +804,10 @@ pub fn setup_nebula_bouncer(
             ..default()
         }),
         DistanceFog {
-            color: Color::srgba(0.010, 0.016, 0.026, 0.74),
-            directional_light_color: Color::srgba(0.42, 0.62, 0.92, 0.24),
-            directional_light_exponent: 19.0,
-            falloff: FogFalloff::ExponentialSquared { density: 0.00125 },
+            color: Color::srgba(0.008, 0.012, 0.020, 0.56),
+            directional_light_color: Color::srgba(0.36, 0.54, 0.86, 0.16),
+            directional_light_exponent: 15.0,
+            falloff: FogFalloff::ExponentialSquared { density: 0.00095 },
         },
         Camera {
             order: 1,
@@ -800,7 +847,7 @@ pub fn setup_nebula_bouncer(
     // Forward cyan beam source to enhance lane/readability depth in the horizon.
     commands.spawn((
         PointLight {
-            intensity: 2_800_000.0,
+            intensity: 1_900_000.0,
             range: 3600.0,
             radius: 72.0,
             color: Color::srgb(0.24, 0.96, 1.0),
@@ -814,7 +861,7 @@ pub fn setup_nebula_bouncer(
     // Warm horizon glow to silhouette enemy swarm against the sky.
     commands.spawn((
         PointLight {
-            intensity: 1_800_000.0,
+            intensity: 1_100_000.0,
             range: 3200.0,
             radius: 84.0,
             color: Color::srgb(1.0, 0.48, 0.16),
