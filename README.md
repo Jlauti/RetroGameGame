@@ -55,3 +55,16 @@ cargo-safe check
 cargo-safe test
 cargo-safe run --bin retro-game-game
 ```
+
+## BRP MCP Smoke Test
+
+After building the game binary, run:
+
+```bash
+./scripts/test_bevy_brp_mcp.sh
+```
+
+This verifies:
+- Codex MCP server `bevy-brp` is registered
+- game boots with `BEVY_BRP_ENABLE=1`
+- BRP endpoint on `127.0.0.1:15702` responds to JSON-RPC
