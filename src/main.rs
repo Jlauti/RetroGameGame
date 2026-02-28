@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use bevy::remote::{RemotePlugin, http::RemoteHttpPlugin};
 use retro_game_game::RetroGameGamePlugin;
 use retro_game_game::core;
+use retro_game_game::core::states::{GameState, PlayingState};
 
 fn configure_wsl_winit_backend() {
     let is_wsl = cfg!(target_os = "linux") && std::env::var_os("WSL_DISTRO_NAME").is_some();
@@ -52,6 +53,9 @@ fn main() {
     );
     maybe_enable_brp(&mut app);
     app.add_plugins(RetroGameGamePlugin);
+    if should_boot_nebula_for_dev() {
+        app.add_systems(Update, force_dev_boot_nebula);
+    }
     app.run();
 }
 
@@ -70,6 +74,29 @@ fn maybe_enable_brp(app: &mut App) {
         RemoteHttpPlugin::default().with_port(port),
     ));
     println!("BRP enabled at http://127.0.0.1:{port}");
+}
+
+fn should_boot_nebula_for_dev() -> bool {
+    std::env::var("RETRO_DEV_BOOT")
+        .ok()
+        .map(|value| {
+            let normalized = value.trim().to_ascii_lowercase();
+            normalized == "nebula" || normalized == "future"
+        })
+        .unwrap_or(false)
+}
+
+fn force_dev_boot_nebula(
+    mut requested: Local<bool>,
+    mut next_game_state: ResMut<NextState<GameState>>,
+    mut next_playing_state: ResMut<NextState<PlayingState>>,
+) {
+    if !*requested {
+        next_playing_state.set(PlayingState::NebulaBouncer);
+        next_game_state.set(GameState::Playing);
+        println!("DEV boot override: entering Playing::NebulaBouncer");
+        *requested = true;
+    }
 }
 
 fn find_asset_root() -> Option<String> {

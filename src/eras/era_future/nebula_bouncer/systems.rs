@@ -12,6 +12,7 @@ use avian2d::prelude::*;
 use bevy::core_pipeline::tonemapping::Tonemapping;
 use bevy::ecs::message::MessageReader;
 use bevy::light::GlobalAmbientLight;
+use bevy::pbr::{DistanceFog, FogFalloff};
 use bevy::post_process::bloom::{Bloom, BloomCompositeMode, BloomPrefilter};
 use bevy::prelude::*;
 use bevy::render::view::Hdr;
@@ -603,7 +604,7 @@ pub fn setup_nebula_bouncer(
         Hdr,
         Tonemapping::TonyMcMapface,
         Bloom {
-            intensity: 0.24,
+            intensity: 0.34,
             low_frequency_boost: 0.85,
             low_frequency_boost_curvature: 0.95,
             high_pass_frequency: 0.66,
@@ -620,6 +621,12 @@ pub fn setup_nebula_bouncer(
             far: 10000.0,
             ..default()
         }),
+        DistanceFog {
+            color: Color::srgba(0.03, 0.10, 0.07, 0.82),
+            directional_light_color: Color::srgba(0.22, 0.95, 0.82, 0.40),
+            directional_light_exponent: 22.0,
+            falloff: FogFalloff::ExponentialSquared { density: 0.0014 },
+        },
         Camera {
             order: 1,
             clear_color: ClearColorConfig::Custom(Color::srgb(0.003, 0.004, 0.012)),
@@ -652,6 +659,34 @@ pub fn setup_nebula_bouncer(
             ..default()
         },
         Transform::from_xyz(420.0, 980.0, 680.0).looking_at(Vec3::new(0.0, 120.0, 0.0), Vec3::Z),
+        NebulaBouncerContext,
+    ));
+
+    // Forward cyan beam source to enhance lane/readability depth in the horizon.
+    commands.spawn((
+        PointLight {
+            intensity: 2_100_000.0,
+            range: 3400.0,
+            radius: 64.0,
+            color: Color::srgb(0.16, 0.92, 1.0),
+            shadows_enabled: false,
+            ..default()
+        },
+        Transform::from_xyz(0.0, CAMERA_LOOK_AHEAD + 280.0, 80.0),
+        NebulaBouncerContext,
+    ));
+
+    // Warm horizon glow to silhouette enemy swarm against the sky.
+    commands.spawn((
+        PointLight {
+            intensity: 1_350_000.0,
+            range: 3000.0,
+            radius: 72.0,
+            color: Color::srgb(1.0, 0.48, 0.16),
+            shadows_enabled: false,
+            ..default()
+        },
+        Transform::from_xyz(0.0, CAMERA_LOOK_AHEAD + 520.0, 220.0),
         NebulaBouncerContext,
     ));
 

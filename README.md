@@ -68,3 +68,15 @@ This verifies:
 - Codex MCP server `bevy-brp` is registered
 - game boots with `BEVY_BRP_ENABLE=1`
 - BRP endpoint on `127.0.0.1:15702` responds to JSON-RPC
+
+For a Nebula-specific MCP visual tuning probe:
+
+```bash
+./scripts/mcp_nebula_visual_round.sh
+```
+
+Optional live mutation during probe:
+
+```bash
+MUTATE_BLOOM=1 BLOOM_INTENSITY=0.34 ./scripts/mcp_nebula_visual_round.sh
+```
