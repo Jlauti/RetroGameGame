@@ -39,8 +39,6 @@ const SCOUT_SPRITE_SIZE: Vec2 = Vec2::new(62.0, 62.0);
 const HEAVY_SPRITE_SIZE: Vec2 = Vec2::new(78.0, 78.0);
 const INTERCEPTOR_SPRITE_SIZE: Vec2 = Vec2::new(70.0, 70.0);
 const BULWARK_SPRITE_SIZE: Vec2 = Vec2::new(86.0, 86.0);
-const WALL_VISUAL_THICKNESS: f32 = 36.0;
-const WALL_SEGMENT_MAX_LENGTH: f32 = 96.0;
 const BASE_ENEMY_COLLIDER_RADIUS: f32 = 15.0;
 const ORB_VISUAL_SCALE: f32 = 7.0;
 const PLAYER_MUZZLE_FORWARD_OFFSET: f32 = 22.0;
@@ -51,6 +49,9 @@ const CAMERA_BEHIND_OFFSET: f32 = -428.0;
 const CAMERA_LOOK_AHEAD: f32 = 1240.0;
 const CAMERA_FOLLOW_LERP: f32 = 6.2;
 const CAMERA_LOOK_LERP: f32 = 4.6;
+const HORIZON_CARD_AHEAD_Y: f32 = 2800.0;
+const HORIZON_CARD_X_FACTOR: f32 = 0.15;
+const HORIZON_CARD_Z_OFFSET: f32 = 666.0;
 const PREFILL_CHUNK_COUNT: usize = 6;
 
 fn enemy_sprite_size(archetype: EnemyArchetype) -> Vec2 {
@@ -115,6 +116,9 @@ pub struct GroundVisual;
 pub struct WallVisual;
 
 #[derive(Component)]
+pub struct HorizonBackdrop;
+
+#[derive(Component)]
 pub struct TransientVfx {
     ttl_secs: f32,
     shrink_per_sec: f32,
@@ -150,22 +154,6 @@ fn terrain_floor_emissive(theme: TerrainTheme) -> Color {
         TerrainTheme::Standard => Color::srgb(0.006, 0.042, 0.018),
         TerrainTheme::Cold => Color::srgb(0.008, 0.036, 0.074),
         TerrainTheme::Hazard => Color::srgb(0.066, 0.030, 0.009),
-    }
-}
-
-fn terrain_wall_color(theme: TerrainTheme) -> Color {
-    match theme {
-        TerrainTheme::Standard => Color::srgb(0.010, 0.035, 0.016),
-        TerrainTheme::Cold => Color::srgb(0.012, 0.036, 0.060),
-        TerrainTheme::Hazard => Color::srgb(0.062, 0.035, 0.016),
-    }
-}
-
-fn terrain_wall_emissive(theme: TerrainTheme) -> Color {
-    match theme {
-        TerrainTheme::Standard => Color::srgb(0.12, 0.92, 0.34),
-        TerrainTheme::Cold => Color::srgb(0.10, 0.68, 0.96),
-        TerrainTheme::Hazard => Color::srgb(0.88, 0.30, 0.11),
     }
 }
 
@@ -286,59 +274,6 @@ fn spawn_chunk_floor_tiles(
             1.0,
         )),
     ));
-}
-
-fn spawn_wall_visual_segments(
-    commands: &mut Commands,
-    _asset_server: &AssetServer,
-    _assets: &NebulaAssetManifest,
-    nebula_mats: &NebulaMaterials,
-    materials: &mut Assets<StandardMaterial>,
-    chunk_center_y: f32,
-    wall: &WallDef,
-    terrain_theme: TerrainTheme,
-) {
-    let major_is_x = wall.size.x >= wall.size.y;
-    let major_len = if major_is_x { wall.size.x } else { wall.size.y }.max(1.0);
-    let segment_target = WALL_SEGMENT_MAX_LENGTH.max(8.0);
-    let segment_count = (major_len / segment_target).ceil().max(1.0) as usize;
-    let segment_len = major_len / segment_count as f32;
-    let wall_center = Vec2::new(wall.position.x, chunk_center_y + wall.position.y);
-    let rotation = Mat2::from_angle(wall.rotation);
-    let visual_thickness = WALL_VISUAL_THICKNESS.max(1.0);
-
-    for idx in 0..segment_count {
-        let offset = -major_len * 0.5 + segment_len * (idx as f32 + 0.5);
-        let local_offset = if major_is_x {
-            Vec2::new(offset, 0.0)
-        } else {
-            Vec2::new(0.0, offset)
-        };
-        let world_pos = wall_center + rotation * local_offset;
-        let sprite_size = if major_is_x {
-            Vec2::new(segment_len, visual_thickness)
-        } else {
-            Vec2::new(visual_thickness, segment_len)
-        };
-
-        commands.spawn((
-            ChunkMember,
-            WallVisual,
-            Mesh3d(nebula_mats.quad_mesh.clone()),
-            MeshMaterial3d(materials.add(StandardMaterial {
-                base_color: terrain_wall_color(terrain_theme),
-                emissive: LinearRgba::from(terrain_wall_emissive(terrain_theme)) * 1.3,
-                metallic: 0.08,
-                perceptual_roughness: 0.62,
-                unlit: false,
-                alpha_mode: AlphaMode::Opaque,
-                ..default()
-            })),
-            Transform::from_xyz(world_pos.x, world_pos.y, depth::WALL)
-                .with_rotation(Quat::from_rotation_z(wall.rotation))
-                .with_scale(sprite_size.extend(1.0)),
-        ));
-    }
 }
 
 pub fn setup_nebula_bouncer(
@@ -663,9 +598,10 @@ pub fn setup_nebula_bouncer(
             cull_mode: None,
             ..default()
         })),
-        Transform::from_xyz(0.0, CAMERA_LOOK_AHEAD + 2800.0, 980.0)
+        Transform::from_xyz(0.0, CAMERA_LOOK_AHEAD + HORIZON_CARD_AHEAD_Y, 980.0)
             .with_rotation(Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2))
             .with_scale(Vec3::new(9600.0, 3000.0, 1.0)),
+        HorizonBackdrop,
         NebulaBouncerContext,
     ));
 
@@ -1242,11 +1178,13 @@ pub fn update_level_scrolling(
     mut validator_telemetry: ResMut<ProcgenValidatorTelemetry>,
     nebula_mats: Res<NebulaMaterials>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    q_player: Query<&Transform, (With<PlayerShip>, Without<ChunkMember>)>,
     mut q_chunks: Query<(Entity, &mut Transform, Option<&RigidBody>), With<ChunkMember>>,
 ) {
     const SCROLL_SPEED: f32 = 150.0;
     const VISUAL_DESPAWN_Y: f32 = -1800.0;
     const CHUNK_PREFETCH_LEAD_Y: f32 = 3000.0;
+    const MAX_SPAWN_CATCHUP_PER_TICK: usize = 8;
     // Delay despawn for physics bodies so we don't remove colliders near active contacts.
     // This mitigates rare Avian solver panics from stale manifold handles during cleanup.
     const PHYSICS_DESPAWN_Y: f32 = -5000.0;
@@ -1268,8 +1206,17 @@ pub fn update_level_scrolling(
 
     procgen_state.next_spawn_y -= delta_y;
 
-    // Spawn when needed
-    if procgen_state.next_spawn_y < CHUNK_PREFETCH_LEAD_Y {
+    // Spawn based on player progression as well as autoscroll, so flying forward can't outrun chunk creation.
+    let prefetch_target_y = q_player
+        .iter()
+        .next()
+        .map(|t| t.translation.y + CHUNK_PREFETCH_LEAD_Y)
+        .unwrap_or(CHUNK_PREFETCH_LEAD_Y);
+
+    let mut catchup_spawns = 0usize;
+    while procgen_state.next_spawn_y < prefetch_target_y
+        && catchup_spawns < MAX_SPAWN_CATCHUP_PER_TICK
+    {
         spawn_next_chunk(
             &mut commands,
             &asset_server,
@@ -1281,6 +1228,7 @@ pub fn update_level_scrolling(
             &nebula_mats,
             &mut materials,
         );
+        catchup_spawns += 1;
     }
 }
 
@@ -1379,31 +1327,7 @@ pub fn spawn_next_chunk(
         &topography,
     );
 
-    // Spawn walls
-    for wall in &selected.walls {
-        commands.spawn((
-            Wall,
-            ChunkMember,
-            Transform::from_xyz(wall.position.x, chunk_y + wall.position.y, depth::WALL)
-                .with_rotation(Quat::from_rotation_z(wall.rotation)),
-            RigidBody::Static,
-            Collider::rectangle(wall.size.x, wall.size.y),
-            Friction::new(0.0),
-            Restitution::new(1.0).with_combine_rule(CoefficientCombine::Max),
-            CollisionLayers::new(GameLayer::Wall, [GameLayer::Projectile, GameLayer::Player]),
-        ));
-
-        spawn_wall_visual_segments(
-            commands,
-            asset_server,
-            asset_manifest,
-            nebula_mats,
-            materials,
-            chunk_y,
-            wall,
-            terrain_theme,
-        );
-    }
+    // Legacy rectangular wall strips removed; floor hazards now come from topography extrusions.
 
     // Spawn ORE
     for (spawn_index, spawn) in selected.spawns.iter().enumerate() {
@@ -2090,6 +2014,21 @@ pub fn apply_shake(
             shake.last_offset = offset;
             shake.intensity = (shake.intensity - shake.decay * dt).max(0.0);
         }
+    }
+}
+
+pub fn update_horizon_backdrop(
+    q_camera: Query<&Transform, With<NebulaGameplayCamera>>,
+    mut q_backdrop: Query<&mut Transform, With<HorizonBackdrop>>,
+) {
+    let Some(camera_transform) = q_camera.iter().next() else {
+        return;
+    };
+
+    for mut backdrop_transform in &mut q_backdrop {
+        backdrop_transform.translation.x = camera_transform.translation.x * HORIZON_CARD_X_FACTOR;
+        backdrop_transform.translation.y = camera_transform.translation.y + HORIZON_CARD_AHEAD_Y;
+        backdrop_transform.translation.z = camera_transform.translation.z + HORIZON_CARD_Z_OFFSET;
     }
 }
 

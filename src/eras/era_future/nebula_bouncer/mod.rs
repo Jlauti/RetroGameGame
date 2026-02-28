@@ -93,6 +93,10 @@ impl Plugin for NebulaBouncerPlugin {
                 .run_if(in_state(PlayingState::NebulaBouncer)),
         );
         app.add_systems(
+            Update,
+            update_horizon_backdrop.run_if(in_state(PlayingState::NebulaBouncer)),
+        );
+        app.add_systems(
             OnExit(PlayingState::NebulaBouncer),
             (cleanup_orb_pool, cleanup_camera_shake),
         );
