@@ -112,8 +112,8 @@ pub fn spawn_chunk_topography(
             let footprint = 1.04;
             let side_ratio = (x.abs() / CANYON_HALF_WIDTH).clamp(0.0, 1.0);
             let side_curve = side_ratio.powf(1.45);
-            let canyon_lift = side_curve * 140.0;
-            let valley_sink = (1.0 - side_curve) * 26.0;
+            let canyon_lift = side_curve * 176.0;
+            let valley_sink = (1.0 - side_curve) * 34.0;
 
             let material = match tier {
                 0 => nebula_mats.hex_material_t0.clone(),
@@ -134,23 +134,22 @@ pub fn spawn_chunk_topography(
             // Each tier sits at a different Z level; Z-scale stretches the prism vertically.
             let tier_height = match tier {
                 0 => 0.0,
-                1 => 24.0,
-                2 => 54.0,
-                3 => 92.0,
+                1 => 30.0,
+                2 => 68.0,
+                3 => 118.0,
                 _ => 0.0,
             };
-            let z_scale = 1.1 + tier as f32 * 0.24; // taller prisms for higher tiers
+            let z_scale = 1.20 + tier as f32 * 0.32; // taller prisms for higher tiers
+            let prism_center_z =
+                depth::BACKGROUND + tier_height + elevation + canyon_lift - valley_sink - 42.0;
+            // Extrusion depth is 50 units around center, so top face sits at +25*scale.
+            let cap_z = prism_center_z + (25.0 * z_scale) + 1.2;
             commands.spawn((
                 ChunkMember,
                 TopographyHex,
                 Mesh3d(nebula_mats.hex_mesh.clone()),
                 MeshMaterial3d(material),
-                Transform::from_xyz(
-                    x,
-                    y,
-                    depth::BACKGROUND + tier_height + elevation + canyon_lift - valley_sink - 42.0,
-                )
-                .with_scale(Vec3::new(
+                Transform::from_xyz(x, y, prism_center_z).with_scale(Vec3::new(
                     hex_width * footprint,
                     hex_height * footprint,
                     z_scale,
@@ -163,12 +162,11 @@ pub fn spawn_chunk_topography(
                 TopographyHex,
                 Mesh3d(nebula_mats.quad_mesh.clone()),
                 MeshMaterial3d(cap_material),
-                Transform::from_xyz(
-                    x,
-                    y,
-                    depth::BACKGROUND + tier_height + elevation + canyon_lift - valley_sink + 34.0,
-                )
-                .with_scale(Vec3::new(hex_width * 1.01, hex_height * 1.01, 1.0)),
+                Transform::from_xyz(x, y, cap_z).with_scale(Vec3::new(
+                    hex_width * 1.01,
+                    hex_height * 1.01,
+                    1.0,
+                )),
             ));
         }
     }
