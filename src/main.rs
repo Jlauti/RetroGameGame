@@ -49,6 +49,12 @@ fn main() {
             .set(AssetPlugin {
                 file_path: asset_root,
                 ..default()
+            })
+            .set(bevy::log::LogPlugin {
+                // Suppress Avian island-sleeping warnings that flood stderr during
+                // batch entity cleanup, causing the game loop to stall/hang.
+                filter: "warn,avian2d::dynamics::solver::islands::sleeping=error".to_string(),
+                ..default()
             }),
     );
     maybe_enable_brp(&mut app);

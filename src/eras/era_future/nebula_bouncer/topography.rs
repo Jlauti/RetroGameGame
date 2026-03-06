@@ -179,14 +179,20 @@ pub fn spawn_chunk_topography(
                 chunk_center_y.to_bits() as u64,
             );
             let extrusion_roll = fold_hash(cell_seed, (tier as u64) << 1 | 1) % 100;
+            let in_corridor = x.abs() <= 220.0;
             let extrusion_threshold = if side_curve > 0.72 {
-                3
+                6
             } else if tier >= 2 {
-                2
+                4
             } else {
-                1
+                2
             };
-            if extrusion_roll < extrusion_threshold {
+
+            // Corridor Hittability Guarantee: Ensure central lane is not empty.
+            // We use the cell_seed to force a minimum density if the standard roll fails.
+            let is_forced_corridor = in_corridor && (fold_hash(cell_seed, 888) % 100 < 8);
+
+            if extrusion_roll < extrusion_threshold || is_forced_corridor {
                 let tier_height = match tier {
                     0 => 28.0_f32,
                     1 => 44.0_f32,
@@ -250,6 +256,7 @@ pub fn spawn_chunk_topography(
                     Transform::from_xyz(x, y, depth::WALL),
                     RigidBody::Static,
                     Collider::circle((hex_width * 0.26).clamp(12.0, 40.0)),
+                    CollisionEventsEnabled,
                     Friction::new(0.0),
                     Restitution::new(1.0).with_combine_rule(CoefficientCombine::Max),
                     CollisionLayers::new(

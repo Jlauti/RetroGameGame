@@ -4,8 +4,9 @@ use crate::eras::era_future::nebula_bouncer::procgen::*;
 use crate::eras::era_future::nebula_bouncer::resources::{
     ActiveLoadout, BOUNCE_MAX, CameraFeedbackSettings, ChunkAssignmentProfiles, EnemyArchetype,
     HitStop, KineticOrbPool, NebulaAssetManifest, NebulaMaterials, NebulaRunStats, OrbSpawnStats,
-    OrbSynergyMatrix, ProcgenValidatorTelemetry, SpriteOrientationConfig, TerrainTheme,
-    compute_hit_stop_duration, feedback_tuning, next_shake_intensity, resolve_orb_spawn_stats,
+    OrbSynergyMatrix, PendingCrashResult, ProcgenValidatorTelemetry, SpriteOrientationConfig,
+    TerrainTheme, compute_hit_stop_duration, feedback_tuning, next_shake_intensity,
+    resolve_orb_spawn_stats,
 };
 use crate::eras::era_future::nebula_bouncer::topography::spawn_chunk_topography;
 use crate::shared::components::Health;
@@ -18,6 +19,7 @@ use bevy::pbr::{DistanceFog, FogFalloff};
 use bevy::post_process::bloom::{Bloom, BloomCompositeMode, BloomPrefilter};
 use bevy::prelude::*;
 use bevy::render::view::Hdr;
+use std::collections::HashSet;
 use std::path::PathBuf;
 // use rand::prelude::*; // Use explicit random calls
 
@@ -33,8 +35,8 @@ const PREFLIGHT_SUMMARY_REL_PATH: &str =
     "agents/deliverables/codex_worker2/NB-CX-006_preflight_summary.txt";
 const FEEDBACK_TELEMETRY_COOLDOWN_SECS: f32 = 0.35;
 const MODEL_UNIT_TO_WORLD: f32 = 155.0;
-const PLAYER_MODEL_VISUAL_LIFT: f32 = 84.0;
-const PLAYER_HOVER_Z: f32 = depth::PLAYER + 18.0;
+const PLAYER_MODEL_VISUAL_LIFT: f32 = 52.0;
+const PLAYER_HOVER_Z: f32 = depth::PLAYER + 8.0;
 const SCOUT_SPRITE_SIZE: Vec2 = Vec2::new(62.0, 62.0);
 const HEAVY_SPRITE_SIZE: Vec2 = Vec2::new(78.0, 78.0);
 const INTERCEPTOR_SPRITE_SIZE: Vec2 = Vec2::new(70.0, 70.0);
@@ -44,9 +46,14 @@ const ORB_VISUAL_SCALE: f32 = 7.0;
 const PLAYER_MUZZLE_FORWARD_OFFSET: f32 = 22.0;
 const TRANSIENT_VFX_BASE_LIFETIME_SECS: f32 = 0.24;
 const TRANSIENT_VFX_BASE_SIZE: f32 = 70.0;
-const CAMERA_HEIGHT: f32 = 314.0;
-const CAMERA_BEHIND_OFFSET: f32 = -428.0;
-const CAMERA_LOOK_AHEAD: f32 = 1240.0;
+const CAMERA_HEIGHT: f32 = 270.0;
+const CAMERA_BEHIND_OFFSET: f32 = -396.0;
+const CAMERA_LOOK_AHEAD: f32 = 1100.0;
+const GROUND_GRID_STEP_X: f32 = 96.0;
+const GROUND_GRID_STEP_Y: f32 = 96.0;
+const GROUND_SEAM_THICKNESS: f32 = 3.0;
+const GROUND_PLANE_Z: f32 = depth::BACKGROUND + 0.1;
+const GROUND_SEAM_Z: f32 = depth::BACKGROUND + 0.2;
 const CAMERA_FOLLOW_LERP: f32 = 6.2;
 const CAMERA_LOOK_LERP: f32 = 4.6;
 const HORIZON_CARD_AHEAD_Y: f32 = 2800.0;
@@ -125,6 +132,11 @@ pub struct HorizonBackdrop;
 pub struct TransientVfx {
     ttl_secs: f32,
     shrink_per_sec: f32,
+}
+
+#[derive(Component, Default)]
+pub struct DeferredNebulaDespawn {
+    armed: bool,
 }
 
 fn facing_angle(direction: Vec2, forward_offset: f32) -> Option<f32> {
@@ -247,60 +259,60 @@ fn spawn_chunk_floor_tiles(
         GroundVisual,
         Mesh3d(nebula_mats.quad_mesh.clone()),
         MeshMaterial3d(nebula_mats.ground_base_material.clone()),
-        Transform::from_xyz(0.0, chunk_center_y, depth::BACKGROUND + 0.1).with_scale(Vec3::new(
-            GROUND_CHUNK_WIDTH * 1.12,
-            chunk_height * 1.18,
+        Transform::from_xyz(0.0, chunk_center_y, GROUND_PLANE_Z).with_scale(Vec3::new(
+            GROUND_CHUNK_WIDTH * 1.15,
+            chunk_height + 2.0, // Slight overlap for safety
             1.0,
         )),
     ));
 
-    // 2. Add deterministic panel subdivisions and thin emissive seams
-    let chunk_seed = (chunk_center_y.to_bits() as u64) ^ (chunk_height.to_bits() as u64);
+    // 2. World-Anchored Coherent Lattice Seams
+    let start_y = chunk_center_y - chunk_height * 0.5;
+    let end_y = chunk_center_y + chunk_height * 0.5;
 
-    let rows = 5;
-    let cols = 4;
-    let cell_w = GROUND_CHUNK_WIDTH * 1.12 / cols as f32;
-    let cell_h = chunk_height * 1.18 / rows as f32;
+    // Snap to global grid steps
+    let grid_start_y = (start_y / GROUND_GRID_STEP_Y).floor() as i32;
+    let grid_end_y = (end_y / GROUND_GRID_STEP_Y).ceil() as i32;
 
-    for r in 0..rows {
-        for c in 0..cols {
-            let cell_seed = fold_seed(chunk_seed, ((r as u64) << 16) | c as u64);
+    let cols = (GROUND_CHUNK_WIDTH / GROUND_GRID_STEP_X).ceil() as i32;
+    let grid_start_x = -cols / 2;
+    let grid_end_x = (cols + 1) / 2;
 
-            let offset_x = (((cell_seed % 100) as f32 / 100.0) - 0.5) * cell_w * 0.4;
-            let offset_y = ((((cell_seed >> 8) % 100) as f32 / 100.0) - 0.5) * cell_h * 0.4;
-
-            let center_x =
-                -(GROUND_CHUNK_WIDTH * 1.12) / 2.0 + (c as f32 + 0.5) * cell_w + offset_x;
-            let center_y =
-                chunk_center_y - (chunk_height * 1.18) / 2.0 + (r as f32 + 0.5) * cell_h + offset_y;
-
-            let panel_w = cell_w * (0.6 + ((cell_seed >> 16) % 40) as f32 / 100.0);
-            let panel_h = cell_h * (0.6 + ((cell_seed >> 24) % 40) as f32 / 100.0);
-
-            let seam_mat = match cell_seed % 3 {
-                0 => nebula_mats.hex_accent_material_cyan.clone(),
-                1 => nebula_mats.hex_accent_material_magenta.clone(),
-                _ => nebula_mats.hex_accent_material_amber.clone(),
-            };
-
-            // Thin horizontal seam strip
-            commands.spawn((
-                ChunkMember,
-                Mesh3d(nebula_mats.quad_mesh.clone()),
-                MeshMaterial3d(seam_mat.clone()),
-                Transform::from_xyz(center_x, center_y, depth::BACKGROUND + 0.2)
-                    .with_scale(Vec3::new(panel_w, 4.0, 1.0)),
-            ));
-
-            // Thin vertical seam strip
-            commands.spawn((
-                ChunkMember,
-                Mesh3d(nebula_mats.quad_mesh.clone()),
-                MeshMaterial3d(seam_mat),
-                Transform::from_xyz(center_x, center_y, depth::BACKGROUND + 0.2)
-                    .with_scale(Vec3::new(4.0, panel_h, 1.0)),
-            ));
+    for gy in grid_start_y..=grid_end_y {
+        let world_y = gy as f32 * GROUND_GRID_STEP_Y;
+        if world_y < start_y || world_y > end_y {
+            continue;
         }
+
+        // Horizontal Seams
+        commands.spawn((
+            ChunkMember,
+            GroundSeam,
+            Mesh3d(nebula_mats.quad_mesh.clone()),
+            MeshMaterial3d(nebula_mats.hex_accent_material_magenta.clone()),
+            Transform::from_xyz(0.0, world_y, GROUND_SEAM_Z).with_scale(Vec3::new(
+                GROUND_CHUNK_WIDTH,
+                GROUND_SEAM_THICKNESS,
+                1.0,
+            )),
+        ));
+    }
+
+    for gx in grid_start_x..=grid_end_x {
+        let world_x = gx as f32 * GROUND_GRID_STEP_X;
+
+        // Vertical Seams (full height of chunk)
+        commands.spawn((
+            ChunkMember,
+            GroundSeam,
+            Mesh3d(nebula_mats.quad_mesh.clone()),
+            MeshMaterial3d(nebula_mats.hex_accent_material_cyan.clone()),
+            Transform::from_xyz(world_x, chunk_center_y, GROUND_SEAM_Z).with_scale(Vec3::new(
+                GROUND_SEAM_THICKNESS,
+                chunk_height,
+                1.0,
+            )),
+        ));
     }
 }
 
@@ -475,9 +487,15 @@ pub fn setup_nebula_bouncer(
             PlayerShip,
             RigidBody::Dynamic,
             Collider::circle(15.0),
+            CollisionEventsEnabled,
+            CollidingEntities::default(),
             LinearVelocity::ZERO,
             AngularVelocity::ZERO,
             Transform::from_xyz(0.0, -200.0, PLAYER_HOVER_Z),
+            GlobalTransform::default(),
+            Visibility::Visible,
+            InheritedVisibility::default(),
+            ViewVisibility::default(),
             CollisionLayers::new(
                 GameLayer::Player,
                 [GameLayer::Enemy, GameLayer::Wall, GameLayer::Projectile],
@@ -497,6 +515,10 @@ pub fn setup_nebula_bouncer(
                             * Quat::from_rotation_x(std::f32::consts::FRAC_PI_2),
                     )
                     .with_scale(Vec3::splat(MODEL_UNIT_TO_WORLD)),
+                GlobalTransform::default(),
+                Visibility::Visible,
+                InheritedVisibility::default(),
+                ViewVisibility::default(),
             ));
         });
 
@@ -629,6 +651,8 @@ pub fn setup_nebula_bouncer(
             },
             BackgroundColor(Color::srgba(0.04, 0.05, 0.08, 0.82)),
             Visibility::Hidden,
+            InheritedVisibility::default(),
+            ViewVisibility::default(),
         ))
         .with_children(|parent| {
             parent.spawn((
@@ -936,28 +960,61 @@ pub fn cleanup_orb_pool(
     q_overlay: Query<Entity, With<NebulaDebugOverlayRoot>>,
     q_vfx: Query<Entity, With<TransientVfx>>,
     q_context: Query<Entity, With<NebulaBouncerContext>>,
+    q_chunk_members: Query<Entity, With<ChunkMember>>,
+    q_rigid: Query<(), With<RigidBody>>,
+    q_collider: Query<(), With<Collider>>,
+    q_layers: Query<(), With<CollisionLayers>>,
+    q_events: Query<(), With<CollisionEventsEnabled>>,
 ) {
-    // Optional: Despawn all orbs on exit to clean up memory
-    for entity in q_orbs.iter() {
-        commands.entity(entity).despawn();
+    // On exit, defer despawn by one frame after stripping physics to avoid
+    // Avian island wake-up warnings/hangs from same-tick body invalidation.
+    let mut to_cleanup = HashSet::new();
+    to_cleanup.extend(q_orbs.iter());
+    to_cleanup.extend(q_player.iter());
+    to_cleanup.extend(q_overlay.iter());
+    to_cleanup.extend(q_vfx.iter());
+    to_cleanup.extend(q_context.iter());
+    to_cleanup.extend(q_chunk_members.iter());
+
+    for entity in to_cleanup.iter().copied() {
+        let has_physics = q_rigid.contains(entity)
+            || q_collider.contains(entity)
+            || q_layers.contains(entity)
+            || q_events.contains(entity);
+
+        let mut ecmd = commands.entity(entity);
+        if has_physics {
+            // Prefer disabling to hard-removing physics components; this follows
+            // Avian's intended lifecycle and avoids wake-on-removed-body races.
+            ecmd.insert((RigidBodyDisabled, ColliderDisabled));
+        }
+        ecmd.insert(DeferredNebulaDespawn::default());
     }
-    for entity in q_player.iter() {
-        commands.entity(entity).despawn();
-    }
-    for entity in q_overlay.iter() {
-        commands.entity(entity).despawn_children();
-        commands.entity(entity).despawn();
-    }
-    for entity in q_vfx.iter() {
-        commands.entity(entity).despawn();
-    }
-    for entity in q_context.iter() {
-        commands.entity(entity).despawn_children();
-        commands.entity(entity).despawn();
-    }
+
     orb_pool.inactive.clear();
     orb_pool.active_count = 0;
-    info!("Cleaned up Nebula Bouncer entities");
+    info!(
+        "Queued deferred Nebula cleanup for {} entities (physics stripped where present)",
+        to_cleanup.len()
+    );
+}
+
+pub fn finalize_nebula_despawn(
+    mut commands: Commands,
+    mut q_pending: Query<(Entity, &mut DeferredNebulaDespawn)>,
+    q_children: Query<(), With<Children>>,
+) {
+    for (entity, mut pending) in &mut q_pending {
+        if !pending.armed {
+            pending.armed = true;
+            continue;
+        }
+
+        if q_children.contains(entity) {
+            commands.entity(entity).despawn_children();
+        }
+        commands.entity(entity).despawn();
+    }
 }
 
 pub fn cleanup_camera_shake(
@@ -992,33 +1049,86 @@ pub fn attach_screen_shake_to_cameras(
 }
 
 pub fn handle_player_extrusion_collisions(
-    mut collision_events: MessageReader<CollisionStart>,
-    q_player: Query<Entity, With<PlayerShip>>,
+    mut q_player: Query<(&Transform, &mut LinearVelocity, &CollidingEntities), With<PlayerShip>>,
     q_extrusions: Query<(), With<HexExtrusion>>,
+    q_walls: Query<(), With<Wall>>,
+    mut pending_crash: ResMut<PendingCrashResult>,
+    mut commands: Commands,
+    nebula_mats: Res<NebulaMaterials>,
+) {
+    if pending_crash.active {
+        return;
+    }
+    let Some((player_transform, mut velocity, colliding)) = q_player.iter_mut().next() else {
+        return;
+    };
+
+    for &other in colliding.iter() {
+        // Crash is required for pillar-like blockers, whether spawned as procedural
+        // hex extrusions or authored wall entities in chunk schemas.
+        let hit_crash_blocker = q_extrusions.contains(other) || q_walls.contains(other);
+        if !hit_crash_blocker {
+            continue;
+        }
+
+        // Trigger crash sequence
+        pending_crash.active = true;
+        pending_crash.timer_secs = 0.28;
+        pending_crash.impact_pos = player_transform.translation;
+
+        // Zero player velocity
+        velocity.0 = Vec2::ZERO;
+
+        spawn_neon_vector_crash_burst(&mut commands, &nebula_mats, pending_crash.impact_pos);
+        break;
+    }
+}
+
+pub fn spawn_neon_vector_crash_burst(
+    commands: &mut Commands,
+    nebula_mats: &NebulaMaterials,
+    pos: Vec3,
+) {
+    let shard_mats = [
+        nebula_mats.hex_accent_material_cyan.clone(),
+        nebula_mats.hex_accent_material_magenta.clone(),
+        nebula_mats.hex_accent_material_amber.clone(),
+    ];
+
+    for i in 0..18 {
+        let angle = (i as f32 / 18.0) * std::f32::consts::TAU;
+        let ttl_secs = 0.20 + (i as f32 * 0.007) % 0.14;
+        let size = 48.0;
+
+        commands.spawn((
+            CrashVectorShard,
+            Mesh3d(nebula_mats.quad_mesh.clone()),
+            MeshMaterial3d(shard_mats[i % 3].clone()),
+            Transform::from_xyz(pos.x, pos.y, depth::PARTICLES + 5.0)
+                .with_rotation(Quat::from_rotation_z(angle))
+                .with_scale(Vec3::new(size, 2.0, 1.0)),
+            TransientVfx {
+                ttl_secs,
+                shrink_per_sec: (size * 0.85) / ttl_secs,
+            },
+        ));
+    }
+}
+
+pub fn advance_player_crash_sequence(
+    time: Res<Time<Real>>,
+    mut pending_crash: ResMut<PendingCrashResult>,
     mut run_stats: ResMut<NebulaRunStats>,
     mut results: ResMut<GameResults>,
     mut next_game_state: ResMut<NextState<GameState>>,
 ) {
-    let Some(player_entity) = q_player.iter().next() else {
+    if !pending_crash.active {
         return;
-    };
+    }
 
-    for event in collision_events.read() {
-        let collided_with_player =
-            event.collider1 == player_entity || event.collider2 == player_entity;
-        if !collided_with_player {
-            continue;
-        }
-        let other = if event.collider1 == player_entity {
-            event.collider2
-        } else {
-            event.collider1
-        };
-
-        if !q_extrusions.contains(other) {
-            continue;
-        }
-
+    pending_crash.timer_secs -= time.delta_secs();
+    if pending_crash.timer_secs <= 0.0 {
+        // Complete the Results transition
         run_stats.extrusion_crashes = run_stats.extrusion_crashes.saturating_add(1);
         results.game_name = "Nebula Bouncer".to_string();
         results.score = run_stats.ricochet_bonus_score;
@@ -1027,8 +1137,9 @@ pub fn handle_player_extrusion_collisions(
         results.tokens_earned = (results.score / 50).max(run_stats.extrusion_bounces / 4);
         results.completed = false;
         results.newly_completed = false;
+
+        pending_crash.active = false;
         next_game_state.set(GameState::Results);
-        break;
     }
 }
 
@@ -1197,9 +1308,6 @@ pub fn update_level_scrolling(
     const VISUAL_DESPAWN_Y: f32 = -1800.0;
     const CHUNK_PREFETCH_LEAD_Y: f32 = 3000.0;
     const MAX_SPAWN_CATCHUP_PER_TICK: usize = 8;
-    // Delay despawn for physics bodies so we don't remove colliders near active contacts.
-    // This mitigates rare Avian solver panics from stale manifold handles during cleanup.
-    const PHYSICS_DESPAWN_Y: f32 = -5000.0;
     let dt = time.delta_secs();
     let delta_y = SCROLL_SPEED * dt;
 
@@ -1208,13 +1316,17 @@ pub fn update_level_scrolling(
         let mut q_chunks = queries.p1();
         for (entity, mut transform, rigid_body) in &mut q_chunks {
             transform.translation.y -= delta_y;
-            let despawn_y = if rigid_body.is_some() {
-                PHYSICS_DESPAWN_Y
-            } else {
-                VISUAL_DESPAWN_Y
-            };
-            if transform.translation.y < despawn_y {
-                commands.entity(entity).despawn();
+            if transform.translation.y < VISUAL_DESPAWN_Y {
+                if rigid_body.is_some() {
+                    // Disable physics first, then despawn on the next frame.
+                    // This avoids hard-removing body/collider state in the same
+                    // tick as collision/island graph updates.
+                    commands
+                        .entity(entity)
+                        .insert((RigidBodyDisabled, ColliderDisabled, DeferredNebulaDespawn::default()));
+                } else {
+                    commands.entity(entity).despawn();
+                }
             }
         }
     }
@@ -1375,6 +1487,10 @@ pub fn spawn_next_chunk(
                             depth::ENEMY,
                         )
                         .with_scale(Vec3::ONE),
+                        GlobalTransform::default(),
+                        Visibility::Visible,
+                        InheritedVisibility::default(),
+                        ViewVisibility::default(),
                         RigidBody::Dynamic,
                         Collider::circle(BASE_ENEMY_COLLIDER_RADIUS * scale_factor),
                         CollisionLayers::new(
@@ -1394,6 +1510,10 @@ pub fn spawn_next_chunk(
                                     * Quat::from_rotation_x(std::f32::consts::FRAC_PI_2),
                             )
                             .with_scale(Vec3::splat(model_scale)),
+                            GlobalTransform::default(),
+                            Visibility::Visible,
+                            InheritedVisibility::default(),
+                            ViewVisibility::default(),
                         ));
                         parent.spawn((
                             Mesh3d(nebula_mats.quad_mesh.clone()),
@@ -1403,6 +1523,10 @@ pub fn spawn_next_chunk(
                                 enemy_size.y * 1.3,
                                 1.0,
                             )),
+                            GlobalTransform::default(),
+                            Visibility::Visible,
+                            InheritedVisibility::default(),
+                            ViewVisibility::default(),
                         ));
                     });
             }

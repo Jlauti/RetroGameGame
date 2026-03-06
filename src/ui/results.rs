@@ -51,7 +51,15 @@ enum ResultsButton {
 
 // ─── Setup ─────────────────────────────────────────────────────────
 
-fn setup_results(mut commands: Commands, results: Res<GameResults>) {
+fn setup_results(
+    mut commands: Commands,
+    results: Res<GameResults>,
+    camera_query: Query<Entity, With<Camera2d>>,
+) {
+    if camera_query.is_empty() {
+        commands.spawn(Camera2d);
+    }
+
     commands
         .spawn((
             ResultsRoot,

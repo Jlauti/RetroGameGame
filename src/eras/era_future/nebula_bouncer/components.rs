@@ -143,6 +143,14 @@ pub struct NebulaBouncerContext;
 
 #[derive(Component, Reflect, Default)]
 #[reflect(Component)]
+pub struct GroundSeam;
+
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
+pub struct CrashVectorShard;
+
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
 pub struct NebulaGameplayCamera;
 
 #[derive(Component, Reflect, Default)]

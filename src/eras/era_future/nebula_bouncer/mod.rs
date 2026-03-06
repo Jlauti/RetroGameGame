@@ -43,11 +43,14 @@ impl Plugin for NebulaBouncerPlugin {
             .register_type::<HexExtrusion>()
             .register_type::<NebulaGameplayCamera>()
             .register_type::<PlayerVisualRoot>()
+            .register_type::<GroundSeam>()
+            .register_type::<CrashVectorShard>()
             .register_type::<TopographyHex>();
 
         // Initialize resources
         app.insert_resource(KineticOrbPool::new(KineticOrbPool::DEFAULT_CAPACITY))
             .insert_resource(Gravity(Vec2::ZERO)) // ensure 2D gravity is zero
+            .insert_resource(PendingCrashResult::default())
             .insert_resource(ProcgenValidatorTelemetry::default())
             .insert_resource(ChunkLibrary::default())
             .insert_resource(ProcGenState::default())
@@ -72,14 +75,22 @@ impl Plugin for NebulaBouncerPlugin {
                 attach_screen_shake_to_cameras,
                 update_active_loadout_hotkeys,
                 toggle_camera_shake,
-                cycle_feedback_profile,
-                feedback_telemetry_hotkey,
                 debug_telemetry_hotkey,
                 toggle_debug_asset_overlay,
                 update_debug_asset_overlay_text,
                 handle_player_extrusion_collisions,
+                advance_player_crash_sequence,
                 handle_orb_collisions,
                 update_enemy_status_effects,
+            )
+                .run_if(in_state(PlayingState::NebulaBouncer)),
+        );
+
+        app.add_systems(
+            Update,
+            (
+                cycle_feedback_profile,
+                feedback_telemetry_hotkey,
                 systems::update_level_scrolling,
                 player_movement,
                 orient_player_to_cursor,
@@ -96,6 +107,7 @@ impl Plugin for NebulaBouncerPlugin {
             Update,
             update_horizon_backdrop.run_if(in_state(PlayingState::NebulaBouncer)),
         );
+        app.add_systems(Update, finalize_nebula_despawn);
         app.add_systems(
             OnExit(PlayingState::NebulaBouncer),
             (cleanup_orb_pool, cleanup_camera_shake),

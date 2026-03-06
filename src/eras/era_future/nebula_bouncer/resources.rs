@@ -447,7 +447,15 @@ pub fn load_sprite_orientation_config() -> SpriteOrientationConfig {
     }
 }
 
-#[derive(Resource, Default)]
+#[derive(Resource, Reflect, Default)]
+#[reflect(Resource)]
+pub struct PendingCrashResult {
+    pub active: bool,
+    pub timer_secs: f32,
+    pub impact_pos: Vec3,
+}
+
+#[derive(Resource, Default, Reflect)]
 pub struct KineticOrbPool {
     pub inactive: Vec<Entity>,
     pub active_count: usize,
