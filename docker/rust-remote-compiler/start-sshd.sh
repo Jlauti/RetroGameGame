@@ -9,6 +9,8 @@ if [[ ! -f /root/.ssh/authorized_keys ]]; then
   exit 1
 fi
 
-chmod 600 /root/.ssh/authorized_keys
+if [[ -w /root/.ssh/authorized_keys ]]; then
+  chmod 600 /root/.ssh/authorized_keys
+fi
 
 exec /usr/sbin/sshd -D -e

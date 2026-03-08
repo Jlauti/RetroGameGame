@@ -3,7 +3,9 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 
-use crate::eras::era_future::nebula_bouncer::components::{OrbElement, OrbModifier};
+use crate::eras::era_future::nebula_bouncer::components::{
+    OrbElement, OrbModifier, PlayerSurfaceRole, SurfaceArchetype,
+};
 use crate::eras::era_future::nebula_bouncer::procgen::{
     ChunkPacing, ProcgenPreflightSummary, ValidationCounters,
 };
@@ -453,6 +455,7 @@ pub struct PendingCrashResult {
     pub active: bool,
     pub timer_secs: f32,
     pub impact_pos: Vec3,
+    pub source: Option<SurfaceArchetype>,
 }
 
 #[derive(Resource, Default, Reflect)]
@@ -460,6 +463,42 @@ pub struct KineticOrbPool {
     pub inactive: Vec<Entity>,
     pub active_count: usize,
     pub capacity: usize,
+}
+
+#[derive(Resource, Reflect)]
+#[reflect(Resource)]
+pub struct CombatTokenPool {
+    pub max_tokens: u32,
+    pub active_tokens: u32,
+}
+
+impl Default for CombatTokenPool {
+    fn default() -> Self {
+        Self {
+            max_tokens: 3,
+            active_tokens: 0,
+        }
+    }
+}
+
+#[derive(Resource, Reflect)]
+#[reflect(Resource)]
+pub struct HostileFireConfig {
+    pub max_projectiles_on_screen: u32,
+    pub projectile_speed: f32,
+    pub telegraph_duration: f32,
+    pub attack_cooldown: f32,
+}
+
+impl Default for HostileFireConfig {
+    fn default() -> Self {
+        Self {
+            max_projectiles_on_screen: 12,
+            projectile_speed: 150.0,
+            telegraph_duration: 0.5,
+            attack_cooldown: 1.5,
+        }
+    }
 }
 
 impl KineticOrbPool {
@@ -503,6 +542,123 @@ pub struct NebulaRunStats {
     pub ricochet_bonus_score: u64,
     pub extrusion_bounces: u64,
     pub extrusion_crashes: u64,
+}
+
+#[derive(Reflect, Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq, Default)]
+#[reflect(Serialize, Deserialize)]
+pub enum ProjectileEventKind {
+    #[default]
+    None,
+    DirectHit,
+    RicochetBounce,
+    RicochetHit,
+    ProjectileAbsorbed,
+    HardCrash,
+}
+
+#[derive(Resource, Reflect, Serialize, Deserialize, Clone, Debug)]
+#[reflect(Resource, Serialize, Deserialize)]
+pub struct NebulaRuntimeTelemetry {
+    pub terrain_follow_samples: u64,
+    pub last_skim_height: f32,
+    pub max_skim_height: f32,
+    pub traversal_contacts: u64,
+    pub soft_boundary_contacts: u64,
+    pub hard_blocker_contacts: u64,
+    pub hard_blocker_extrusion_crashes: u64,
+    pub hard_blocker_boundary_crashes: u64,
+    pub direct_enemy_hits: u64,
+    pub direct_enemy_kills: u64,
+    pub ricochet_attempts: u64,
+    pub ricochet_surface_hits: u64,
+    pub ricochet_enemy_hits: u64,
+    pub ricochet_enemy_kills: u64,
+    pub ricochet_bonus_score: u64,
+    pub absorbed_projectiles: u64,
+    pub last_surface_role: Option<PlayerSurfaceRole>,
+    pub last_surface_archetype: Option<SurfaceArchetype>,
+    pub last_projectile_event: ProjectileEventKind,
+    pub last_projectile_speed: f32,
+}
+
+impl Default for NebulaRuntimeTelemetry {
+    fn default() -> Self {
+        Self {
+            terrain_follow_samples: 0,
+            last_skim_height: 0.0,
+            max_skim_height: 0.0,
+            traversal_contacts: 0,
+            soft_boundary_contacts: 0,
+            hard_blocker_contacts: 0,
+            hard_blocker_extrusion_crashes: 0,
+            hard_blocker_boundary_crashes: 0,
+            direct_enemy_hits: 0,
+            direct_enemy_kills: 0,
+            ricochet_attempts: 0,
+            ricochet_surface_hits: 0,
+            ricochet_enemy_hits: 0,
+            ricochet_enemy_kills: 0,
+            ricochet_bonus_score: 0,
+            absorbed_projectiles: 0,
+            last_surface_role: None,
+            last_surface_archetype: None,
+            last_projectile_event: ProjectileEventKind::None,
+            last_projectile_speed: 0.0,
+        }
+    }
+}
+
+#[derive(Resource, Reflect, Serialize, Deserialize, Clone, Debug, Default)]
+#[reflect(Resource, Serialize, Deserialize)]
+pub struct NebulaValidationCommand {
+    pub teleport_player: Option<[f32; 3]>,
+    pub fire_world_origin: Option<[f32; 3]>,
+    pub fire_world_target: Option<[f32; 3]>,
+}
+
+impl NebulaRuntimeTelemetry {
+    pub fn record_surface_contact(
+        &mut self,
+        player_role: PlayerSurfaceRole,
+        archetype: SurfaceArchetype,
+    ) {
+        self.last_surface_role = Some(player_role);
+        self.last_surface_archetype = Some(archetype);
+        match player_role {
+            PlayerSurfaceRole::TraversalSurface => {
+                self.traversal_contacts = self.traversal_contacts.saturating_add(1);
+            }
+            PlayerSurfaceRole::SoftPressureBoundary => {
+                self.soft_boundary_contacts = self.soft_boundary_contacts.saturating_add(1);
+            }
+            PlayerSurfaceRole::HardCrashBlocker => {
+                self.hard_blocker_contacts = self.hard_blocker_contacts.saturating_add(1);
+            }
+        }
+    }
+
+    pub fn record_crash(&mut self, archetype: SurfaceArchetype) {
+        self.last_surface_role = Some(PlayerSurfaceRole::HardCrashBlocker);
+        self.last_surface_archetype = Some(archetype);
+        self.last_projectile_event = ProjectileEventKind::HardCrash;
+        match archetype {
+            SurfaceArchetype::HardCrashExtrusion => {
+                self.hard_blocker_extrusion_crashes =
+                    self.hard_blocker_extrusion_crashes.saturating_add(1);
+            }
+            SurfaceArchetype::TerrainBoundary => {
+                self.hard_blocker_boundary_crashes =
+                    self.hard_blocker_boundary_crashes.saturating_add(1);
+            }
+            SurfaceArchetype::RicochetExtrusion => {}
+        }
+    }
+
+    pub fn record_skim_height(&mut self, height: f32) {
+        self.terrain_follow_samples = self.terrain_follow_samples.saturating_add(1);
+        self.last_skim_height = height;
+        self.max_skim_height = self.max_skim_height.max(height.abs());
+    }
 }
 
 #[derive(Resource, Clone, Copy, Debug, PartialEq)]

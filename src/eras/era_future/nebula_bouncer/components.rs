@@ -1,5 +1,6 @@
 use avian2d::prelude::*;
 use bevy::prelude::*;
+use serde::{Deserialize, Serialize};
 
 #[derive(Component, Reflect)]
 #[reflect(Component)]
@@ -7,6 +8,7 @@ pub struct KineticOrb {
     pub active: bool,
     pub damage: f32,
     pub bounces_remaining: u32,
+    pub ricochet_count: u32,
     pub element: OrbElement,
     pub modifier: OrbModifier,
     pub radius_scale: f32,
@@ -23,6 +25,7 @@ impl Default for KineticOrb {
             active: false,
             damage: 0.0,
             bounces_remaining: 0,
+            ricochet_count: 0,
             element: OrbElement::default(),
             modifier: OrbModifier::default(),
             radius_scale: 1.0,
@@ -133,6 +136,74 @@ pub struct Enemy;
 #[reflect(Component)]
 pub struct Wall;
 
+#[derive(Reflect, Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq, Hash, Default)]
+#[reflect(Serialize, Deserialize)]
+pub enum EnemyRole {
+    #[default]
+    Blocker,
+    Flanker,
+    Sniper,
+}
+
+#[derive(Reflect, Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq, Hash, Default)]
+#[reflect(Serialize, Deserialize)]
+pub enum EnemyState {
+    #[default]
+    Idle,
+    Positioning,
+    Telegraphing,
+    Firing,
+    Cooldown,
+}
+
+#[derive(Component, Reflect)]
+#[reflect(Component)]
+pub struct EnemyAI {
+    pub role: EnemyRole,
+    pub state: EnemyState,
+    pub state_timer: f32,
+    pub engagement_distance: f32,
+    pub preferred_horizontal_offset: f32,
+    pub has_line_of_sight: bool,
+    pub combat_token_active: bool,
+}
+
+impl Default for EnemyAI {
+    fn default() -> Self {
+        Self {
+            role: EnemyRole::default(),
+            state: EnemyState::default(),
+            state_timer: 0.0,
+            engagement_distance: 600.0,
+            preferred_horizontal_offset: 0.0,
+            has_line_of_sight: false,
+            combat_token_active: false,
+        }
+    }
+}
+
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
+pub struct HostileProjectile;
+
+#[derive(Component, Reflect)]
+#[reflect(Component)]
+pub struct HostileFireSource {
+    pub burst_count: u32,
+    pub burst_timer: f32,
+    pub shots_left_in_burst: u32,
+}
+
+impl Default for HostileFireSource {
+    fn default() -> Self {
+        Self {
+            burst_count: 1,
+            burst_timer: 0.0,
+            shots_left_in_burst: 0,
+        }
+    }
+}
+
 #[derive(Component, Reflect, Default)]
 #[reflect(Component)]
 pub struct HexExtrusion;
@@ -156,6 +227,68 @@ pub struct NebulaGameplayCamera;
 #[derive(Component, Reflect, Default)]
 #[reflect(Component)]
 pub struct PlayerVisualRoot;
+
+#[derive(Reflect, Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq, Hash, Default)]
+#[reflect(Serialize, Deserialize)]
+pub enum PlayerSurfaceRole {
+    #[default]
+    TraversalSurface,
+    SoftPressureBoundary,
+    HardCrashBlocker,
+}
+
+#[derive(Reflect, Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq, Hash, Default)]
+#[reflect(Serialize, Deserialize)]
+pub enum SurfaceArchetype {
+    #[default]
+    TerrainBoundary,
+    RicochetExtrusion,
+    HardCrashExtrusion,
+}
+
+#[derive(Component, Reflect, Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq, Hash)]
+#[reflect(Component, Serialize, Deserialize)]
+pub struct SurfaceRole {
+    pub player_role: PlayerSurfaceRole,
+    pub ricochet: bool,
+    pub archetype: SurfaceArchetype,
+}
+
+impl Default for SurfaceRole {
+    fn default() -> Self {
+        Self {
+            player_role: PlayerSurfaceRole::TraversalSurface,
+            ricochet: false,
+            archetype: SurfaceArchetype::TerrainBoundary,
+        }
+    }
+}
+
+#[derive(Component, Reflect, Serialize, Deserialize, Clone, Copy, Debug, Default)]
+#[reflect(Component, Serialize, Deserialize)]
+pub struct SurfaceNormal {
+    pub x: f32,
+    pub y: f32,
+}
+
+impl SurfaceNormal {
+    pub fn new(vector: Vec2) -> Self {
+        Self {
+            x: vector.x,
+            y: vector.y,
+        }
+    }
+
+    pub fn vec2(self) -> Vec2 {
+        Vec2::new(self.x, self.y)
+    }
+}
+
+#[derive(Component, Reflect, Serialize, Deserialize, Clone, Copy, Debug, Default)]
+#[reflect(Component, Serialize, Deserialize)]
+pub struct TerrainContourSample {
+    pub height: f32,
+}
 
 /// Marker for entities that should participate in specific collision layers
 #[derive(PhysicsLayer, Default)]

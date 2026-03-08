@@ -1,7 +1,8 @@
 # Backlog
 
-Ticket definitions for all work items. Each ticket has scope, acceptance criteria, and deliverables.
+This folder holds implementation-ready tickets.
 
-**Naming**: `<GAME>-<AGENT>-<SEQ>.md` (e.g., `NB-A4-007.md`)
-
-**Read a ticket only** when your `brief.md` directs you to it.
+- Create a ticket only when work is ready to execute.
+- Do not use backlog files as a second status board.
+- Read a ticket only when `agents/status/current_focus.md` or your active assignment points to it.
+- New tickets should use the standard metadata format from `agents/templates/ticket.md`, including `Complexity`, `Recommended Specialist`, and `Preferred Model`.

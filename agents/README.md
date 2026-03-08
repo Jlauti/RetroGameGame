@@ -1,5 +1,5 @@
 # Agent Control Plane
 
-> **Start here**: Read `agents/INDEX.md` for the full document map.
+Start with `AGENTS.md`, then read `agents/INDEX.md`.
 
-This folder contains the operational control plane for the AI agent team. See `INDEX.md` for what each subfolder contains and when to read it.
+`agents/status/current_focus.md` is the live source of truth for current Nebula work.

@@ -1,26 +1,23 @@
-# QA Checklist Template
+# Release QA Checklist Template
 
-## Ticket Information
-- Ticket ID: {{TICKET_ID}}
-- Agent: {{AGENT_ID}}
-- Status: PENDING_FINAL_GATE
+## Checkpoint Information
+- Checkpoint: {{CHECKPOINT_ID}}
+- Scope: {{SCOPE}}
+- Status: PENDING_REVIEW
 
-## Preflight Checks
-- [ ] Code compiles (cargo check)
-- [ ] Tests pass (cargo test)
-- [ ] Code format is correct (cargo fmt -- --check)
-- [ ] Required report/deliverable is present and reviewed
-- [ ] No regression in core gameplay loops
+## Core Checks
+- [ ] `cargo check`
+- [ ] `cargo fmt -- --check`
+- [ ] required scoped verification command
+- [ ] integrated Nebula build reviewed
 
-## Evidence Expectations
-- [ ] Log output from successful `cargo test`
-- [ ] Screenshot or log trace of the specific feature/fix in action
-- [ ] Confirmation of no lint/format errors
+## Evidence
+- [ ] command results captured
+- [ ] gameplay/HITL notes captured when required
+- [ ] residual risks documented
 
-## Blockers
-- [ ] Blocker: {{BLOCKER_ID}} (Status: {{BLOCKER_STATUS}})
-
-## Signoff
-- [ ] QA Gatekeeper PASS/FAIL
-- Date: 
-- Note: 
+## Verdict
+- [ ] PASS
+- [ ] FAIL
+- Date:
+- Note:

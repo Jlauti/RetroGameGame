@@ -1,14 +1,12 @@
-# Agentic Docs Index
+# Agentic Docs
 
-This folder contains stable process documentation for the agentic delivery loop.
+The old multi-file agentic loop docs were archived out of the repo to keep bootstrap context clean.
 
-## Documents
+Use these active files instead:
 
-- `docs/agentic/AGENTIC_LOOP.md`: canonical loop contract and completion rules.
-- `docs/agentic/WORKER_ACTIVATION_MATRIX.md`: explicit worker activation conditions.
-- `docs/agentic/CONTROL_PLANE_MAP.md`: where operational artifacts live.
-- `docs/agentic/RUNBOOK.md`: day-to-day principal workflow.
-- `docs/agentic/MACHINE_SWITCH.md`: machine-to-machine handoff and resume protocol.
-- `docs/agentic/CHANGELOG.md`: process-level documentation changes.
+- `AGENTS.md`
+- `agents/INDEX.md`
+- `agents/status/current_focus.md`
+- `agents/principal_engineer/OPERATING_PROTOCOL.md`
 
-Operational state and execution artifacts remain under `agents/`.
+Historical process docs live outside the repo at `C:\Users\jlaut\agent-archive\RetroGameGame\docs\agentic\`.

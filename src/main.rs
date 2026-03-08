@@ -1,5 +1,4 @@
 use bevy::prelude::*;
-use bevy::remote::{RemotePlugin, http::RemoteHttpPlugin};
 use retro_game_game::RetroGameGamePlugin;
 use retro_game_game::core;
 use retro_game_game::core::states::{GameState, PlayingState};
@@ -75,8 +74,8 @@ fn maybe_enable_brp(app: &mut App) {
         .and_then(|raw| raw.parse::<u16>().ok())
         .unwrap_or(15702);
 
-    app.add_plugins(bevy_brp_extras::BrpExtrasPlugin);
-    println!("BRP and Extras enabled.");
+    app.add_plugins(bevy_brp_extras::BrpExtrasPlugin::with_port(port));
+    println!("BRP and Extras enabled on http://127.0.0.1:{port}");
 }
 
 fn should_boot_nebula_for_dev() -> bool {

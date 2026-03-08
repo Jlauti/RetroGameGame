@@ -1,5 +1,7 @@
 # Archive
 
-Superseded tickets, retired prompts, and historical artifacts. Kept for reference only.
+In-repo archive for historical material that is still useful to keep close at hand.
 
-**Do not read** unless you need to understand past decisions. These docs are no longer active.
+- Legacy prompts and superseded operational docs were moved out of the repo to `C:\Users\jlaut\agent-archive\RetroGameGame\`.
+- Material kept here is historical reference only.
+- Do not use archive contents for normal bootstrap or current task context.

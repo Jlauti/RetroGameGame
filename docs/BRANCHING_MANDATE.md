@@ -31,10 +31,6 @@ Before promoting `develop` into `main`:
 
 ## Daily Practice
 
-Run branch normalization at session start:
+Run branch normalization at session start only if you explicitly need it for a merge workflow.
 
-```bash
-bash /home/jl/git/RetroGameGame/agents/scripts/sync_core_branches.sh
-```
-
-This keeps local `main` synced to `origin/main` and ensures `develop` is tracking `origin/develop`.
+Use the Windows-local repo path when invoking repo scripts.

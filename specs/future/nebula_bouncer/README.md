@@ -2,13 +2,8 @@
 
 Primary design spec:
 
-- `/home/jl/git/RetroGameGame/specs/nebula_bouncer.md`
+- `specs/nebula_bouncer.md`
 
-This folder is reserved for Future-era game-specific implementation notes, balance sheets,
-and rollout checklists tied to the Nebula Bouncer scaffolding.
+This folder is for Nebula-specific supporting configs and notes that are still relevant to the current 3D implementation.
 
-Runtime integration configs:
-
-- `/home/jl/git/RetroGameGame/specs/future/nebula_bouncer/sprite_orientation.json`
-- `/home/jl/git/RetroGameGame/specs/future/nebula_bouncer/asset_manifest.json`
-- `/home/jl/git/RetroGameGame/specs/future/nebula_bouncer/chunk_assignment_profiles.json`
+Read only the specific file your active task needs.

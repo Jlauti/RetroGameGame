@@ -6,11 +6,11 @@
 
 ## What We Are Building
 
-**RetroGameGame** is a personal love letter to the history of video games — not a nostalgia product, not a retro gimmick. It is one person's curated journey through the decades that shaped them as a gamer, brought to life as a collection of mini-games that *feel* the way those old games feel in memory.
+**RetroGameGame** is a personal love letter to the history of video games. The long-term frame is still a curated collection of games inspired by classics across eras.
 
-The player travels through time — from DOS-era 80s through the golden 90s and beyond — experiencing mini-games inspired by the real classics. Everything evolves along the way: the visuals, the gameplay complexity, the UI framing, even the "hardware" around the screen.
+**The active delivery lane is Nebula Bouncer.** Right now the practical goal is to make Nebula Bouncer a strong modern 3D third-person roguelite space shooter that channels the spirit of *Star Goose* without turning the broader collection vision into active process overhead.
 
-**This is a personal project with a personal voice.** The CTO's taste in games, art, and feel is the final arbiter of quality. When in doubt, optimize for what *feels right* — not what's technically correct or comprehensive.
+**This is a personal project with a personal voice.** The CTO's taste in games, art, feel, and chapter identity is the final arbiter of quality. When in doubt, optimize for what feels right and flag gaps instead of filling them with default process or generic design.
 
 ---
 

@@ -24,6 +24,12 @@ Persistent orchestration memory for continuity across sessions.
 
 ## Review Notes
 
+### Control Plane Simplification
+- Recorded: 2026-03-07
+- Context: The old loop accumulated too many overlapping "current state" artifacts and too much bootstrap noise.
+- Decision: Active principal bootstrap now flows through `AGENTS.md`, `agents/INDEX.md`, `agents/principal_engineer/OPERATING_PROTOCOL.md`, and `agents/status/current_focus.md`.
+- Reason: Keep Nebula-first delivery tight and prevent stale operational docs from competing with live status.
+
 ### Bootstrap Note
 - Recorded: 2026-02-15
 - Context: Established per-agent folders, personal memories, and milestone-driven control plane.
@@ -31,8 +37,16 @@ Persistent orchestration memory for continuity across sessions.
 
 ### Model Tiering Policy Confirmed
 - Recorded: 2026-02-15
-- Context: Team now has Gemini 3 Flash and optional Pro access.
-- Decision: Default to Flash; escalate selected hard/debug/architecture tickets to Pro.
+- Context: Team now routes work across Gemini Flash, Gemini Pro, and Codex, with manual handoff between harnesses.
+- Decision:
+  - every new ticket declares `Complexity`, `Recommended Specialist`, and `Preferred Model`
+  - `Simple` defaults to `Gemini Flash`
+  - `Medium` defaults to `Codex`
+  - `Complex` defaults to `Codex`
+  - `Gemini Pro` is used for creative-first, graphical, and out-of-the-box ideation tasks
+  - `Codex` is used for troubleshooting, precision work, and scoped implementation
+  - `Opus` is escalation-only and not part of normal ticket metadata
+- Reason: Manual dispatch must make both the target specialist and the recommended harness obvious without opening additional docs.
 
 ### Windows Migration
 - Recorded: 2026-02-21

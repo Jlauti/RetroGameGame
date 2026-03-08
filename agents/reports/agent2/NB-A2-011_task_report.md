@@ -1,25 +1,47 @@
-# NB-A2-011 Task Report: Nebula Bouncer Ground Overhaul
+# NB-A2-011 Task Report
 
-## What Changed
-- **Procedural Ground System:** Rewrote `spawn_chunk_floor_tiles` to generate a layout of dark panels with thin, deterministic neon emissive seams.
-- **Topography Visuals:** Refactored `topography.rs` to render hexes as a composite of dark bodies and neon rim caps. This replaces the previous single-color prism look.
-- **Physics Safety Fix:** Identified and fixed a critical bug in the random number generator (`fold_hash`) that was causing 4,000+ unnecessary `HexExtrusion` entities to spawn, effectively blocking the game screen and stalling performance.
-- **Resource Management:** Added `ground_base_material` and multiple accent materials to `NebulaMaterials` and `setup_nebula_bouncer` to centralize the Tri-Neon palette.
+## Scope Delivered
 
-## Gates Run and Outcomes
-- **Compilation:** Passed on remote server `10.0.0.10`.
-- **Procedural Metrics (MCP):**
-    - `TopographyHex` count: ~2400 (Requirement: >= 200) -> **PASS**
-    - `HexExtrusion` count: ~50 (Requirement: 8..120) -> **PASS**
-- **Verification Protocol:** 3 consecutive rounds of screenshot capture and metric analysis completed successfully.
-- **Invariants:** 
-    - `HexExtrusion` entities still carry the `Wall` component and collision layers (GameLayer::Wall).
-    - Player movement and projectile interaction remains functional as collision math was preserved.
+- Added explicit surface-role metadata for Nebula terrain, soft boundaries, ricochet extrusions, and hard-crash extrusions.
+- Added terrain-follow visual response on the player visual root without changing the gameplay plane, cursor aiming path, or camera framing logic.
+- Reworked player/runtime collision handling so traversal remains non-lethal, soft boundaries pressure/steer the ship, and only explicit hard blockers can end the run.
+- Reworked projectile/runtime collision handling so only approved surfaces ricochet, direct fire remains the baseline path, ricochet rewards stay bounded, and bounce loops/speed escalation are clamped.
+- Added `NebulaRuntimeTelemetry` and `NebulaValidationCommand` so BRP can validate terrain follow, direct fire, ricochet behavior, and blocker outcomes against live runtime state.
 
-## Risks and Follow-ups
-- **Complexity:** The number of small quads used for panel seams is relatively low, but if floor density increases, we may want to switch the seams to a single texture shader in the future.
-- **Bloom Variance:** Depending on the user's specific monitor/gamma settings, the magenta/cyan balance might need slight intensity tweaks in `nebula_mats.hex_cap_material_t[n]`.
-- **Environment:** Remote compiler server `10.0.0.10` experienced a brief SSH hang during the build phase; build was successful after a retry.
+## Validation
 
-## Conclusion
-The ground pass successfully achieves the dark, glossy, neon-pulsed aesthetic requested. Gameplay metrics are back within specification limits, and visual-read of the player character is optimized against the new background contrast.
+- `cargo check`: passed
+- `cargo build --bin retro-game-game`: passed
+- `cargo test --lib nebula_bouncer`: passed
+- `cargo fmt -- --check`: passed
+
+- BRP boot used `RETRO_DEV_BOOT=nebula`, `BEVY_BRP_ENABLE=1`, `BEVY_BRP_PORT=15702`.
+- Terrain-follow/control proof:
+  - BRP key injection moved the ship from `[17.2254, -1208.7845, 38.0]` to `[126.0199, -1245.0757, 38.0]`.
+  - Telemetry recorded `max_skim_height = 0.2508809`.
+  - Screenshot saved to `agents/deliverables/agent2/NB-A2-011_terrain_follow.png`.
+- Direct-fire proof:
+  - BRP reactivated a pooled orb on a live enemy with `ricochet_count = 0` to isolate the direct-hit runtime path.
+  - Telemetry recorded `direct_enemy_hits = 1`, `ricochet_surface_hits = 0`, `last_projectile_event = DirectHit`.
+- Ricochet proof:
+  - BRP validation-command shot captured `ricochet_attempts = 1`, `ricochet_surface_hits = 1`, `ricochet_enemy_hits = 1`, `last_projectile_event = RicochetHit`.
+- Hard-blocker proof:
+  - Earlier BRP capture from this same ticket run recorded `hard_blocker_extrusion_crashes = 1`, `last_projectile_event = HardCrash`, `last_surface_archetype = HardCrashExtrusion`.
+  - Later reruns could query hard blockers reliably, but teleport/input reproduction was inconsistent because BRP teleports do not reliably recreate collision-start timing.
+
+## Deliverables
+
+- Runtime notes: `agents/deliverables/agent2/NB-A2-011_runtime_notes.md`
+- BRP screenshots/logs:
+  - `agents/deliverables/agent2/NB-A2-011_terrain_follow.png`
+  - `agents/deliverables/agent2/NB-A2-011_initial.png`
+  - `agents/deliverables/agent2/NB-A2-011_after_retry.png`
+  - `agents/deliverables/agent2/NB-A2-011_live.png`
+  - `agents/deliverables/agent2/NB-A2-011_later.png`
+  - `agents/deliverables/agent2/NB-A2-011_brp_run.out.log`
+  - `agents/deliverables/agent2/NB-A2-011_brp_run.err.log`
+
+## Notes
+
+- One BRP session panicked when a stale despawned enemy entity was mutated. The code under test was unchanged; validation was rerun on a fresh process and the final code gates stayed green.
+- I did not add extra runtime hooks beyond the ticket scope. The validation path used the telemetry/resource support added by this ticket plus BRP component/resource mutation where cursor-driven aiming proved unreliable.

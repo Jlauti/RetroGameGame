@@ -4,6 +4,9 @@
 
 - Ticket ID: NB-XXX-000
 - Owner Agent: agent1
+- Recommended Specialist: Aarne Tasapaino (Gameplay)
+- Preferred Model: Codex
+- Complexity: Medium
 - Status: TODO
 - Execution Lane: LOCAL
 - Critical Path: YES
@@ -12,6 +15,7 @@
 - Retry Count: 0
 - Session Health: HEALTHY
 - Work Category: CORE_GAMEPLAY
+- Routing Reason: optional when overriding the default complexity -> model mapping
 
 ## Objective
 

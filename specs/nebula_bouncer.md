@@ -1,88 +1,80 @@
-# Nebula Bouncer (Working Title)
+# Nebula Bouncer
 
 ## Concept
-A **Top-Down Scrolling Roguelite Shooter** that blends the terrain-navigation of *Star Goose* with the physics-based combat of a brick-breaker and the build-crafting of a modern roguelite.
 
-**Core Hook**: Your bullets don't just disappear—they **bounce**. Mastery of angles and geometry is as important as reflexes.
+Nebula Bouncer is a modern 3D third-person roguelite space shooter inspired by *Star Goose* (1988).
 
-## Aesthetic & Era
-- **Proposed Era**: Era 4 (Future) — "Dark Synthwave"
-- **Tone**: Grimmer and more intense than the cheerful original Star Goose.
-- **Music**: Dark synthwave — driving basslines, analog synth arpeggios, cinematic pads.
-- **Visual Style**:
-    - **Rendering**: 3D `.glb` models rendered with an orthographic "Chase-Camera" (Pitch -30°, Yaw 15°). Viewport scaled to 15 world units vertically. Ship sits in the lower screen third. See [Camera/Topography Contract](file:///c:/Users/jlaut/git/RetroGameGame/agents/deliverables/agent1/NB-A1-006_camera_topography_contract.md).
-    - **Gameplay Plane**: All physics and logic occur strictly on the XZ plane (Y = 0). +X is Right, -Z is Forward.
-    - **Cursor Mapping**: Raycast from camera to the Y=0 plane to establish the world target for aiming.
-    - **Depth Policy**: Floor at Y < 0.0, Entities at Y = 0.0, Projectiles at Y = 0.5, VFX at Y = 1.0+.
-    - **Palette**:
-        - Deep space black (`#0a0a12`) — background
-        - Neon cyan (`#00ffff`) — player, friendly elements, UI highlights
-        - Hot magenta (`#ff00ff`) — enemies, danger, hostile elements
-        - Electric purple (`#9b59f0`) — terrain accents, special items
-        - Hazard orange (`#ff6600`) — warnings, heavy enemies, explosions
-    - **Terrain**: Tiered "Neon-Hex" topography. Elevation is mapped to 4 discrete tiers (Floor, Platform, High, Wall) with neon edge glows. Topography conveys tiered hazards and movement zones inspired by *Star Goose*.
-    - **Ships/Enemies**: Silhouette-readable at game scale with neon edge glow. Each archetype must be instantly distinguishable by shape alone.
-    - **VFX**: Additive-blend neon trails, bounce sparks, status-effect auras. Screen shake on heavy impacts, particle trails for bouncing orbs.
-    - **Asset Pipeline**: Models created as `.glb` (glTF binary), placed in `assets/models/era_2010s/nebula_bouncer/`. Materials embedded. Y-up, facing +Z. 1 unit = 1 game tile.
-    - **Animation**: Code-driven (rotation, pulsing, color shifts) rather than frame-by-frame. Thruster glow, idle bob, impact squash handled in shaders/systems.
+The goal is not to recreate the original literally. The goal is to capture its forward-driving space-combat spirit and reinterpret it as a modern, chapter-based roguelite with stronger movement, stronger combat readability, and stronger faction identity.
 
-## Controls
-- **Movement**: `WASD` / `Arrow Keys` — Control ship position relative to the scrolling screen.
-- **Aiming**: `Mouse` — Controls a targeting reticle.
-- **Fire**: `Left Click` — Launch Kinetic Orbs (bullets).
-- **Skill**: `Right Click` / `Space` — Active ship skill (Dash, Shield, etc.).
-- **Settings/Pause**: `Esc` — Opens Global Settings (see [Settings Contract](file:///c:/Users/jlaut/git/RetroGameGame/agents/deliverables/agent1/NB-A1-005_settings_contract.md)).
+## Current Design Pillars
 
-## Core Mechanics
+- third-person ship combat that feels deliberate and readable
+- a battlefield where ground and environment matter
+- chapters with distinct faction and terrain identity
+- progression that supports replayability without diluting combat clarity
+- visual and audio direction that support a coherent chapter mood
 
-### 1. The Kinetic Orb (Weapon)
-Unlike standard shmups where bullets fly straight:
-- **Bouncing**: Basic projectiles bounce off terrain and screen edges 1-3 times before expiring.
-- **Skill Shots**: Damage increases with each bounce (Ricochet Bonus).
-- **Physicality**: Projectiles have mass; they can push small debris or be deflected by shielded enemies.
+## Active Product Direction
 
-### 2. Terrain & Scrolling
-- Vertical scrolling (like *Star Goose*).
-- **Narrow Passages**: Terrain isn't just an obstacle; it's a **weapon**. Player shoots effectively *into* walls to bounce shots around corners or hit shielded enemies from behind.
-- **Hazards**: Bumper walls (add velocity), Dampener fields (slow shots), Prisms (split shots).
+Nebula is the active product lane for this repository.
 
-### 3. Roguelike Evolution (The Build)
-Enemies drop **Essence** (XP). Leveling up offers a choice of 3 random upgrades:
+Carousel, launcher, and broader collection framing are background backlog unless they directly block Nebula work.
 
-#### Weapon Elements (The "What")
-- **Plasma**: Standard damage, medium speed.
-- **Cryo**: Slows enemies on hit.
-- **Tesla**: Chains lightning to nearby foes on impact.
-- **Void**: Gravitational pull, damaging aura.
+## Chapter Planning Baseline
 
-#### Weapon Modifiers (The "How")
-- **Elasticity**: Increases max bounces.
-- **Splinter**: Projectile splits into 2 smaller ones on first bounce.
-- **Mass**: Projectile is slower but larger, pierces enemies, pushes them back.
-- **Velocity**: Faster shots (harder to aim, higher DPS).
+Current chapter planning starts from three factions:
 
-#### Synergies (The "Combo")
-Combining specific elements and modifiers unlocks **Evolved Weapons**:
-- *Tesla* + *Splinter* = **Storm Cloud**: On bounce, releases a nova of lightning bolts.
-- *Cryo* + *Mass* = **Avalanche**: A giant snowball that rolls over enemies, growing larger.
-- *Plasma* + *Elasticity* = **Photon Pinball**: Extremely fast, high-bounce laser that lasts 10s.
+1. scrapper faction building ships from junk
+2. biomechanical alien faction
+3. sleek futuristic faction
 
-### 4. Ship Evolution (RPG Element)
-Every boss defeat allows a permanent **Hull Evolution** for the run:
-- **Interceptor Class**: High speed, Fire rate bonus, low HP.
-- **Frigate Class**: High HP, Shield regen, slower.
-- **Cruiser Class**: Dual weapon slots, massive hitbox.
+Each chapter brief should define:
 
-## Game Loop
-1.  **Launch**: Start run with basic kit (e.g., standard Orb).
-2.  **Sector 1**: Navigate terrain, bounce shots to kill bugs/ships.
-3.  **Level Up**: Draft cards/upgrades.
-4.  **Boss**: Multi-stage fight requiring precise bounce angles.
-5.  **Evolution**: Evolve ship hull.
-6.  **Loop**: Harder sectors, more complex terrain.
-7.  **Death**: Unlock new starting pilots/loadouts based on achievements.
+- faction owner
+- enemy families
+- ground identity
+- encounter intent
+- art concept needs
+- music brief
 
-## Technical Requirements (Bevy)
-- **Physics**: Simple AABB/Circle cast for performance, custom reflection logic.
-- **Inputs**: Mouse to World coordinate mapping.
-- **ProcGen**: Since it's a scroller, terrain needs to be assembled from chunks to ensure "bounceable" geometry.
+## Implementation Priorities
+
+- strengthen the core playable combat loop after the completed 3D migration
+- support third-person readability in camera, movement, spawning, and encounters
+- turn chapter planning into implementation-ready faction and enemy direction
+- use 2D concept planning to support later 3D asset creation
+
+## Directional Constraints
+
+- final 3D gameplay assets are human-created
+- art direction work should support later 3D modeling, not replace it
+- QA is release-only by default, not part of every ticket
+- specialist agents should only read the context directly relevant to their role
+
+## Approved Terrain And Ricochet Contract
+
+`NB-A1-007` establishes Nebula's next combat-pass rules for terrain, boundaries, and projectile behavior.
+
+- Ground follow is `visual skim`: the ship should read as following terrain contours, but player movement, aiming, and projectile origin stay on a stable gameplay plane.
+- Only explicit `hard crash blockers` end the run. Terrain contour, traversal surfaces, and soft pressure boundaries do not.
+- Boundary semantics are split into four authored roles: traversal surface, soft pressure boundary, hard crash blocker, and ricochet surface.
+- Hex extrusions are no longer one generic hazard type. Some remain hard blockers for commitment checks; others become ricochet-first geometry that shapes lanes and creates optional bank-shot value.
+- Direct fire remains the primary combat answer. Ricochet is a readable, skillful bonus that can add damage, score, or pressure relief without becoming mandatory encounter tech.
+
+## Approved Terrain Pattern And Boundary Read Contract
+
+`NB-A1-008` establishes the structural rules for ground motifs, extrusions, and boundary presentation.
+
+- Playable space is divided into a 60% minimal-hazard Core Lane and 40% flanking Shoulders where extrusions press the lane to create ricochet banks and cover.
+- Terrain generation must prioritize structured motifs (lanes, ridges, side pockets, ricochet banks, and traversal-safe valleys) over random noise. Randomness is bounded to minor visual greebling on out-of-bounds geometry.
+- Boundary walls use a "neon wire/cage" aesthetic, providing a transparent, high-energy containment surface that allows background depth to read while exerting a soft push-back on the player.
+- Generative structures (extrusions) are anchored to ground terrain patterns so the space feels authored, connected, and deliberate.
+
+## Approved Enemy Combat AI And Return-Fire Contract
+
+`NB-A1-009` defines the core enemy behavior and projectile rules so enemies exert readable, fair pressure.
+
+- Enemies occupy distinct combat roles: Blockers (core lane space control), Flankers (shoulder harassment), and Snipers (backline burst damage).
+- Aiming and firing prioritize readability: all shots must be telegraphed, firing occurs in distinct bursts with cooldowns, and continuous/omniscient tracking is forbidden.
+- Hostile projectiles are highly visible, dodgeable, and strictly destroyed on contact with terrain or boundaries (no enemy ricochets).
+- Combat maintains fairness through a simultaneous attacker limit (max 3 at once) and restricting engagements to the player's forward-facing 180-degree camera arc.

@@ -782,7 +782,88 @@ pub fn generate_chunk_topography(
     global_seed: u64,
     sequence_index: usize,
 ) -> ChunkTopography {
-    const TERRAIN_WIDTH: f32 = 1360.0;
+    use crate::eras::era_future::nebula_bouncer::topography::{
+        CORE_LANE_HALF_WIDTH, SOFT_BOUNDARY_X, TERRAIN_WIDTH,
+    };
+
+    fn smoothstep(edge0: f32, edge1: f32, value: f32) -> f32 {
+        if (edge1 - edge0).abs() <= f32::EPSILON {
+            return if value < edge0 { 0.0 } else { 1.0 };
+        }
+
+        let t = ((value - edge0) / (edge1 - edge0)).clamp(0.0, 1.0);
+        t * t * (3.0 - 2.0 * t)
+    }
+
+    fn structured_height_value(x: f32, y: f32, chunk_seed: u64) -> f32 {
+        let abs_x = x.abs();
+        let side_sign = if x < 0.0 { -1.0 } else { 1.0 };
+        let primary_phase =
+            (crate::eras::era_future::nebula_bouncer::topography::fold_hash(chunk_seed, 0xA2_12)
+                % 4096) as f32
+                / 4096.0
+                * std::f32::consts::TAU;
+        let secondary_phase =
+            (crate::eras::era_future::nebula_bouncer::topography::fold_hash(chunk_seed, 0xB0_12)
+                % 4096) as f32
+                / 4096.0
+                * std::f32::consts::TAU;
+        let pocket_phase =
+            (crate::eras::era_future::nebula_bouncer::topography::fold_hash(chunk_seed, 0xC0_12)
+                % 4096) as f32
+                / 4096.0
+                * std::f32::consts::TAU;
+
+        let lane_weight = 1.0
+            - smoothstep(
+                CORE_LANE_HALF_WIDTH - 64.0,
+                CORE_LANE_HALF_WIDTH + 96.0,
+                abs_x,
+            );
+        let shoulder_weight =
+            smoothstep(CORE_LANE_HALF_WIDTH - 88.0, SOFT_BOUNDARY_X - 28.0, abs_x);
+        let boundary_weight = smoothstep(SOFT_BOUNDARY_X - 28.0, TERRAIN_WIDTH * 0.5, abs_x);
+        let inner_bank_weight = smoothstep(
+            CORE_LANE_HALF_WIDTH - 48.0,
+            CORE_LANE_HALF_WIDTH + 128.0,
+            abs_x,
+        ) * (1.0 - boundary_weight);
+        let outer_ridge_weight =
+            smoothstep(CORE_LANE_HALF_WIDTH + 120.0, SOFT_BOUNDARY_X + 20.0, abs_x);
+
+        let lane_rib = lane_weight
+            * (0.04 + 0.10 * (0.5 + 0.5 * ((y / 228.0) + (abs_x / 420.0) + primary_phase).sin()));
+        let inner_bank = inner_bank_weight
+            * (0.15 + 0.18 * (0.5 + 0.5 * ((y / 214.0) + primary_phase + side_sign * 0.72).sin()));
+        let shoulder_ridge = shoulder_weight
+            * (0.18
+                + 0.22 * (0.5 + 0.5 * ((y / 356.0) + secondary_phase + side_sign * 0.48).cos()));
+        let side_pocket = shoulder_weight
+            * (1.0 - boundary_weight)
+            * (0.16 + 0.18 * (0.5 + 0.5 * ((y / 436.0) + pocket_phase + side_sign * 1.15).cos()));
+        let boundary_wall = boundary_weight
+            * (0.36
+                + 0.18 * (0.5 + 0.5 * ((y / 172.0) + secondary_phase + side_sign * 0.35).sin()));
+
+        let mut height = 0.04;
+        height += lane_rib;
+        height += inner_bank;
+        height += shoulder_ridge;
+        height += outer_ridge_weight * 0.16;
+        height += boundary_wall;
+        height -= side_pocket * 0.24;
+
+        if abs_x > SOFT_BOUNDARY_X {
+            let greeble_seed = crate::eras::era_future::nebula_bouncer::topography::fold_hash(
+                chunk_seed,
+                (x.to_bits() as u64) ^ ((y.to_bits() as u64) << 1),
+            );
+            height += ((greeble_seed % 1000) as f32 / 1000.0) * 0.06;
+        }
+
+        height.clamp(0.0, 0.999)
+    }
+
     let hex_radius = 48.0;
     let hex_width = hex_radius * 1.732; // sqrt(3)
     let hex_height = hex_radius * 2.0;
@@ -807,26 +888,9 @@ pub fn generate_chunk_topography(
             let offset_x = if r % 2 == 1 { hex_width * 0.5 } else { 0.0 };
             let x = start_x + c as f32 * hex_width + offset_x;
             let y = start_y + r as f32 * (hex_height * 0.75);
-
-            let x_int = (x / hex_width) as i32;
-            let y_int = (y / (hex_height * 0.75)) as i32;
-
-            let h = crate::eras::era_future::nebula_bouncer::topography::fold_hash(
-                chunk_seed,
-                x_int as u64,
-            );
-            let h = crate::eras::era_future::nebula_bouncer::topography::fold_hash(h, y_int as u64);
-            let height = (h as f64 / u64::MAX as f64) as f32;
-
-            let tier = if height < 0.65 {
-                0
-            } else if height < 0.82 {
-                1
-            } else if height < 0.94 {
-                2
-            } else {
-                3
-            };
+            let height = structured_height_value(x, y, chunk_seed);
+            let tier =
+                crate::eras::era_future::nebula_bouncer::topography::quantize_height(height) as u8;
 
             tiers.push(tier);
         }
@@ -1179,6 +1243,52 @@ mod tests {
         for &tier in &topo.tiers {
             assert!(tier <= 3, "Tier {} is out of bounds (0-3)", tier);
         }
+    }
+
+    #[test]
+    fn structured_topography_keeps_shoulders_higher_than_core_lane() {
+        let topo = super::generate_chunk_topography(800.0, 77, 3);
+        let start_x = -crate::eras::era_future::nebula_bouncer::topography::TERRAIN_WIDTH * 0.5;
+        let mut core_total: f32 = 0.0;
+        let mut core_count: f32 = 0.0;
+        let mut shoulder_total: f32 = 0.0;
+        let mut shoulder_count: f32 = 0.0;
+
+        for r in 0..topo.rows {
+            for c in 0..topo.cols {
+                let offset_x = if r % 2 == 1 {
+                    topo.hex_width * 0.5
+                } else {
+                    0.0
+                };
+                let x = start_x + c as f32 * topo.hex_width + offset_x;
+                let idx = (r * topo.cols + c) as usize;
+                let tier = topo.tiers[idx] as f32;
+                if x.abs()
+                    <= crate::eras::era_future::nebula_bouncer::topography::CORE_LANE_HALF_WIDTH
+                        * 0.45
+                {
+                    core_total += tier;
+                    core_count += 1.0;
+                } else if x.abs()
+                    >= crate::eras::era_future::nebula_bouncer::topography::CORE_LANE_HALF_WIDTH
+                        + 72.0
+                    && x.abs()
+                        <= crate::eras::era_future::nebula_bouncer::topography::SOFT_BOUNDARY_X
+                            - 24.0
+                {
+                    shoulder_total += tier;
+                    shoulder_count += 1.0;
+                }
+            }
+        }
+
+        let core_avg = core_total / core_count.max(1.0_f32);
+        let shoulder_avg = shoulder_total / shoulder_count.max(1.0_f32);
+        assert!(
+            shoulder_avg > core_avg,
+            "expected structured shoulders higher than core; core_avg={core_avg}, shoulder_avg={shoulder_avg}"
+        );
     }
 }
 

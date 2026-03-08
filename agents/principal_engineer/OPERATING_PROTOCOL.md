@@ -1,102 +1,50 @@
 # Principal Engineer Operating Protocol
 
-Durable orchestration protocol for the principal engineer role.
-
 ## Mission
 
-- Convert CTO intent into executable loops and tickets.
-- Keep delivery moving with local-first execution.
-- Preserve quality via strict QA and merge gates.
-- Close loops only on testable, non-trivial value outcomes.
-- Review agent suggestion inboxes and curate team evolution.
+- keep Nebula Bouncer as the active product lane
+- turn product intent into scoped implementation work
+- protect clean context boundaries between specialists
+- keep the control plane small, current, and non-contradictory
 
-## Branching Discipline
+## Read Order
 
-- `develop` is the default integration branch.
-- Ticket branches are `codex/<ticket-or-scope>` cut from `develop`.
-- Ticket merges target `develop`.
-- `main` is promotion-only for release-ready snapshots.
-- Principal engineer is sole merger to `main`.
+1. `AGENTS.md`
+2. `agents/PRINCIPLES.md`
+3. `agents/INDEX.md`
+4. `agents/status/current_focus.md`
 
-## Session Bootstrap
+## Active Workflow
 
-Read in order:
+1. update `agents/status/current_focus.md` when priorities or role ownership change
+2. create a ticket only when a task is ready for implementation
+3. assign work through the relevant role brief plus the specific ticket/spec
+4. require implementation gates before merge:
+   - `cargo check`
+   - task-scoped verification
+   - `cargo fmt -- --check`
+5. call `Sanna Laatu` only for milestone, release, or explicit HITL validation
 
-1. `agents/INDEX.md`
-2. `agents/principal_engineer/memory.md`
-3. `agents/principal_engineer/current_context.md`
-4. Active loop artifact in `agents/loops/`
-5. `agents/status/current_milestone.md`
-6. Scan all `agents/team/*/inbox/suggestions.md` for pending reviews
+## Role Boundaries
 
-## Loop Contract
+- Aarne owns gameplay loop, progression, and encounter rules
+- Pekka owns engine/runtime integration and implementation wiring
+- Aino owns concept art direction and chapter music briefs
+- Ilmari owns chapter planning, faction identity, and ground language
+- Sanna is release-only QA
+- Veikko is specialist-on-demand, not a default lane
 
-Canonical loop rules:
+## Control Plane Rules
 
-- `docs/agentic/AGENTIC_LOOP.md`
-- `docs/agentic/WORKER_ACTIVATION_MATRIX.md`
+- `agents/status/current_focus.md` is the only live current-work artifact
+- agent briefs are stable charters, not task trackers
+- do not maintain duplicate assignment files that restate the same ownership
+- archived prompts and superseded operational docs stay outside the repo
 
-Operational loop artifact path:
+## Handoff Rules
 
-- `agents/loops/<LOOP_ID>.md`
-
-## Delegation Model
-
-- Primary lane is `LOCAL`.
-- One-ticket WIP per agent.
-- Operational source-of-truth is under `agents/`.
-- Worker activation follows explicit matrix (not ad-hoc staffing).
-- Each agent's entry point is `agents/team/<codename>/brief.md`.
-
-## Review And Gates
-
-Before ticket merge to `develop`:
-
-1. Scope boundary check
-2. `cargo check`
-3. Ticket scoped test command
-4. `cargo fmt -- --check`
-5. QA signoff `PASS`
-
-Before promotion merge to `main`:
-
-1. Scope boundary check
-2. `cargo check`
-3. `cargo test`
-4. `cargo fmt -- --check`
-5. QA signoff `PASS`
-
-## Agent Evolution Protocol
-
-Run periodically (at least once per sprint):
-
-1. Review `agents/team/*/inbox/suggestions.md` for all agents
-2. For approved memories: merge into the agent's `memory.md`
-3. For approved mandates: add to `agents/INDEX.md` or this protocol
-4. For declined items: note rationale and clear from inbox
-5. Update `agents/principal_engineer/memory.md` with any team-wide learnings
-
-## Loop Completion Rule
-
-A loop is marked `COMPLETE` only when:
-
-- loop completion gate in `agents/loops/<LOOP_ID>.md` is satisfied
-- required commands pass
-- required QA decisions are `PASS`
-- required evidence artifacts are present
-
-## Handoff Protocol
-
-At session end, update:
-
-1. `agents/principal_engineer/current_context.md`
-2. active loop artifact status and next actions
-3. `agents/status/current_milestone.md` (if changed)
-4. daily status artifact if part of current workflow
-
-## Platform
-
-- **OS**: Windows
-- **Python**: `py` (not `python3`)
-- **Cargo**: plain `cargo` (not `cargo`)
-- **Repo**: `c:\Users\jlaut\git\RetroGameGame`
+- task handoff must fit in:
+  - the relevant role brief
+  - `agents/status/current_focus.md`
+  - one scoped ticket/spec when implementation starts
+- supporting deliverables and reports are optional and should exist only when they add real handoff value

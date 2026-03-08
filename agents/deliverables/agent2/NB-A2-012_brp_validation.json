@@ -1,0 +1,118 @@
+{
+  "captured_at": "2026-03-07T12:57:57Z",
+  "player_initial_translation": [
+    0.0,
+    -200.10214233398438,
+    38.0
+  ],
+  "player_boundary_translation": [
+    421.8750305175781,
+    -200.10214233398438,
+    38.0
+  ],
+  "extrusion_limit_x": 542.79296,
+  "extrusion_count": 215,
+  "max_extrusion_abs_x": 525.4720458984375,
+  "bounds_violation_count": 0,
+  "surface_role_counts": {
+    "RicochetExtrusion": 215
+  },
+  "sample_extrusions": [
+    {
+      "translation": [
+        525.4720458984375,
+        -231.8196563720703,
+        5.0
+      ],
+      "archetype": "RicochetExtrusion"
+    },
+    {
+      "translation": [
+        -430.59197998046875,
+        -1479.8199462890625,
+        5.0
+      ],
+      "archetype": "RicochetExtrusion"
+    },
+    {
+      "translation": [
+        483.904052734375,
+        -15.819592475891113,
+        5.0
+      ],
+      "archetype": "RicochetExtrusion"
+    },
+    {
+      "translation": [
+        525.4720458984375,
+        568.1819458007812,
+        5.0
+      ],
+      "archetype": "RicochetExtrusion"
+    },
+    {
+      "translation": [
+        442.3360595703125,
+        568.1819458007812,
+        5.0
+      ],
+      "archetype": "RicochetExtrusion"
+    },
+    {
+      "translation": [
+        -430.59197998046875,
+        -879.815673828125,
+        5.0
+      ],
+      "archetype": "RicochetExtrusion"
+    },
+    {
+      "translation": [
+        442.3360595703125,
+        -519.819091796875,
+        5.0
+      ],
+      "archetype": "RicochetExtrusion"
+    },
+    {
+      "translation": [
+        -472.1600341796875,
+        -807.816650390625,
+        5.0
+      ],
+      "archetype": "RicochetExtrusion"
+    },
+    {
+      "translation": [
+        -389.02398681640625,
+        -87.8191146850586,
+        5.0
+      ],
+      "archetype": "RicochetExtrusion"
+    },
+    {
+      "translation": [
+        -472.1600341796875,
+        -1407.8175048828125,
+        5.0
+      ],
+      "archetype": "RicochetExtrusion"
+    },
+    {
+      "translation": [
+        525.4720458984375,
+        -519.819091796875,
+        5.0
+      ],
+      "archetype": "RicochetExtrusion"
+    },
+    {
+      "translation": [
+        -472.1600341796875,
+        2192.18212890625,
+        5.0
+      ],
+      "archetype": "RicochetExtrusion"
+    }
+  ]
+}

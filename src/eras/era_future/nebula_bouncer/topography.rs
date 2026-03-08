@@ -1,4 +1,7 @@
-use crate::eras::era_future::nebula_bouncer::components::{GameLayer, HexExtrusion, Wall, depth};
+use crate::eras::era_future::nebula_bouncer::components::{
+    GameLayer, HexExtrusion, PlayerSurfaceRole, SurfaceArchetype, SurfaceRole,
+    TerrainContourSample, Wall, depth,
+};
 use crate::eras::era_future::nebula_bouncer::procgen::{ChunkMember, ChunkTopography};
 use crate::eras::era_future::nebula_bouncer::resources::NebulaMaterials;
 use avian2d::prelude::*;
@@ -12,8 +15,18 @@ pub struct TopographyHex;
 pub const HEX_RADIUS: f32 = 48.0;
 pub const HEX_WIDTH: f32 = HEX_RADIUS * 1.732; // sqrt(3)
 pub const HEX_HEIGHT: f32 = HEX_RADIUS * 2.0;
-const TERRAIN_WIDTH: f32 = 1360.0;
+pub const TERRAIN_WIDTH: f32 = 1360.0;
 const CANYON_HALF_WIDTH: f32 = TERRAIN_WIDTH * 0.5;
+pub const SOFT_BOUNDARY_X: f32 = CANYON_HALF_WIDTH - 84.0;
+pub const CORE_LANE_HALF_WIDTH: f32 = SOFT_BOUNDARY_X * 0.6;
+pub const SHOULDER_WIDTH: f32 = SOFT_BOUNDARY_X - CORE_LANE_HALF_WIDTH;
+const EXTRUSION_CENTER_LIMIT_X: f32 = SOFT_BOUNDARY_X - (HEX_WIDTH * 0.64);
+const INNER_BANK_MIN_X: f32 = CORE_LANE_HALF_WIDTH - 52.0;
+const INNER_BANK_MAX_X: f32 = CORE_LANE_HALF_WIDTH + 132.0;
+const OUTER_RIDGE_MIN_X: f32 = CORE_LANE_HALF_WIDTH + 124.0;
+const LATE_GATE_MIN_X: f32 = CORE_LANE_HALF_WIDTH * 0.34;
+const LATE_GATE_MAX_X: f32 = CORE_LANE_HALF_WIDTH * 0.58;
+const MOTIF_BAND_HEIGHT: f32 = HEX_HEIGHT * 2.25;
 
 /// Hex outline texture path (generated procedural asset).
 pub const HEX_OUTLINE_TEXTURE: &str = "sprites/future/nebula_bouncer/hex_outline.png";
@@ -46,6 +59,132 @@ pub fn fold_hash(seed: u64, value: u64) -> u64 {
     z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
     z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
     z ^ (z >> 31)
+}
+
+fn classify_extrusion_surface(
+    tier: usize,
+    abs_x: f32,
+    late_gate_band: bool,
+    chunk_center_y: f32,
+) -> SurfaceRole {
+    let hard_blocker = chunk_center_y > 3200.0
+        && late_gate_band
+        && tier >= 2
+        && abs_x >= LATE_GATE_MIN_X
+        && abs_x <= LATE_GATE_MAX_X;
+
+    if hard_blocker {
+        SurfaceRole {
+            player_role: PlayerSurfaceRole::HardCrashBlocker,
+            ricochet: false,
+            archetype: SurfaceArchetype::HardCrashExtrusion,
+        }
+    } else {
+        SurfaceRole {
+            player_role: PlayerSurfaceRole::SoftPressureBoundary,
+            ricochet: true,
+            archetype: SurfaceArchetype::RicochetExtrusion,
+        }
+    }
+}
+
+fn motif_band_index(y: f32) -> i32 {
+    (y / MOTIF_BAND_HEIGHT).floor() as i32
+}
+
+fn structured_extrusion_role(
+    tier: usize,
+    c: i32,
+    r: i32,
+    x: f32,
+    y: f32,
+    chunk_center_y: f32,
+) -> Option<SurfaceRole> {
+    let abs_x = x.abs();
+    if abs_x > EXTRUSION_CENTER_LIMIT_X {
+        return None;
+    }
+
+    let band = motif_band_index(y);
+    let motif_cycle = band.rem_euclid(6);
+    let side_sign = if x < 0.0 { -1 } else { 1 };
+    let lattice = (c - r).rem_euclid(3);
+    let post_lattice = (c + r).rem_euclid(2);
+
+    let preferred_side = match motif_cycle {
+        1 | 4 => -1,
+        2 | 5 => 1,
+        _ => 0,
+    };
+    let pocket_side = match motif_cycle {
+        4 => -1,
+        5 => 1,
+        _ => 0,
+    };
+    let late_gate_band = band.rem_euclid(8) == 3;
+    let hard_gate =
+        late_gate_band && post_lattice == 0 && abs_x >= LATE_GATE_MIN_X && abs_x <= LATE_GATE_MAX_X;
+    if hard_gate {
+        return Some(classify_extrusion_surface(
+            tier.max(1),
+            abs_x,
+            true,
+            chunk_center_y,
+        ));
+    }
+
+    if tier == 0 {
+        return None;
+    }
+
+    let chicane_cycle = motif_cycle == 3;
+    let favored_side = preferred_side == 0 || preferred_side == side_sign || chicane_cycle;
+    let inner_min_x = if chicane_cycle {
+        CORE_LANE_HALF_WIDTH - 86.0
+    } else if preferred_side == side_sign || preferred_side == 0 {
+        INNER_BANK_MIN_X
+    } else {
+        CORE_LANE_HALF_WIDTH + 18.0
+    };
+    let inner_max_x = if preferred_side == side_sign {
+        INNER_BANK_MAX_X + 18.0
+    } else if chicane_cycle {
+        CORE_LANE_HALF_WIDTH + 108.0
+    } else {
+        CORE_LANE_HALF_WIDTH + 84.0
+    };
+
+    let inner_bank = abs_x >= inner_min_x && abs_x <= inner_max_x;
+    let outer_ridge = abs_x > OUTER_RIDGE_MIN_X && abs_x <= EXTRUSION_CENTER_LIMIT_X;
+    let pocket_gap = pocket_side == side_sign && outer_ridge;
+    let bank_lattice = if chicane_cycle {
+        (band + side_sign).rem_euclid(3)
+    } else {
+        band.rem_euclid(3)
+    };
+    let ridge_lattice = if chicane_cycle {
+        (band + 2).rem_euclid(3)
+    } else {
+        (band + 1).rem_euclid(3)
+    };
+    let pressure_bank = inner_bank && favored_side && lattice == bank_lattice;
+    let ridge_post = outer_ridge && !pocket_gap && tier >= 2 && lattice == ridge_lattice;
+    let chicane_post = chicane_cycle
+        && tier >= 2
+        && abs_x >= CORE_LANE_HALF_WIDTH * 0.56
+        && abs_x <= CORE_LANE_HALF_WIDTH + 28.0
+        && post_lattice == if side_sign < 0 { 0 } else { 1 };
+
+    if pressure_bank || ridge_post || chicane_post {
+        Some(classify_extrusion_surface(
+            tier,
+            abs_x,
+            false,
+            chunk_center_y,
+        ))
+    } else {
+        None
+    }
 }
 
 fn tier_at(topography: &ChunkTopography, cols: i32, rows: i32, c: i32, r: i32) -> Option<f32> {
@@ -136,6 +275,16 @@ pub fn spawn_chunk_topography(
             let base_outline_z =
                 depth::BACKGROUND + 1.0 + (elevation * 0.22) + (canyon_lift * 0.08)
                     - (valley_sink * 0.05);
+            let terrain_sample_height = (base_outline_z - depth::BACKGROUND).max(0.0);
+
+            commands.spawn((
+                ChunkMember,
+                TerrainContourSample {
+                    height: terrain_sample_height,
+                },
+                Transform::from_xyz(x, y, base_outline_z),
+                GlobalTransform::default(),
+            ));
 
             let rim_scale = 0.96;
             let body_scale = 0.88;
@@ -171,28 +320,10 @@ pub fn spawn_chunk_topography(
             }
 
             // Keep tile read clean: no flat accent overlays on non-extruded tiles.
-            let accent_selector = fold_hash(((r as u64) << 32) | c as u64, tier as u64) % 29;
+            let accent_selector = ((motif_band_index(y) + c - r).rem_euclid(4)) as usize;
 
-            // Occasional physical hazard pillars: collision kills player, orb ricochets for bonus.
-            let cell_seed = fold_hash(
-                ((r as u64) << 32) | c as u64,
-                chunk_center_y.to_bits() as u64,
-            );
-            let extrusion_roll = fold_hash(cell_seed, (tier as u64) << 1 | 1) % 100;
-            let in_corridor = x.abs() <= 220.0;
-            let extrusion_threshold = if side_curve > 0.72 {
-                6
-            } else if tier >= 2 {
-                4
-            } else {
-                2
-            };
-
-            // Corridor Hittability Guarantee: Ensure central lane is not empty.
-            // We use the cell_seed to force a minimum density if the standard roll fails.
-            let is_forced_corridor = in_corridor && (fold_hash(cell_seed, 888) % 100 < 8);
-
-            if extrusion_roll < extrusion_threshold || is_forced_corridor {
+            if let Some(surface_role) = structured_extrusion_role(tier, c, r, x, y, chunk_center_y)
+            {
                 let tier_height = match tier {
                     0 => 28.0_f32,
                     1 => 44.0_f32,
@@ -203,13 +334,26 @@ pub fn spawn_chunk_topography(
                 let z_scale = (tier_height / 50.0_f32).max(0.36_f32);
                 let prism_center_z = base_outline_z + 8.0 + (25.0 * z_scale) + (side_curve * 8.0);
                 let cap_z = prism_center_z + (25.0 * z_scale) + 0.5;
-                let extrusion_rim_material = match accent_selector % 5 {
-                    0 => nebula_mats.hex_accent_material_cyan.clone(),
-                    1 => nebula_mats.hex_accent_material_magenta.clone(),
-                    2 => nebula_mats.hex_accent_material_amber.clone(),
-                    3 => nebula_mats.hex_accent_material_blue.clone(),
-                    _ => nebula_mats.hex_accent_material_lime.clone(),
+                let extrusion_rim_material = match surface_role.archetype {
+                    SurfaceArchetype::HardCrashExtrusion => {
+                        nebula_mats.hex_accent_material_amber.clone()
+                    }
+                    SurfaceArchetype::RicochetExtrusion => match accent_selector % 4 {
+                        0 => nebula_mats.hex_accent_material_cyan.clone(),
+                        1 => nebula_mats.hex_accent_material_magenta.clone(),
+                        2 => nebula_mats.hex_accent_material_blue.clone(),
+                        _ => nebula_mats.hex_accent_material_lime.clone(),
+                    },
+                    SurfaceArchetype::TerrainBoundary => {
+                        nebula_mats.hex_accent_material_cyan.clone()
+                    }
                 };
+                let collider_radius =
+                    if surface_role.player_role == PlayerSurfaceRole::HardCrashBlocker {
+                        (hex_width * 0.31).clamp(14.0, 44.0)
+                    } else {
+                        (hex_width * 0.24).clamp(12.0, 36.0)
+                    };
 
                 // Pillar body
                 commands.spawn((
@@ -252,13 +396,15 @@ pub fn spawn_chunk_topography(
                 commands.spawn((
                     Wall,
                     HexExtrusion,
+                    surface_role,
                     ChunkMember,
                     Transform::from_xyz(x, y, depth::WALL),
+                    GlobalTransform::default(),
                     RigidBody::Static,
-                    Collider::circle((hex_width * 0.26).clamp(12.0, 40.0)),
+                    Collider::circle(collider_radius),
                     CollisionEventsEnabled,
                     Friction::new(0.0),
-                    Restitution::new(1.0).with_combine_rule(CoefficientCombine::Max),
+                    Restitution::new(0.0).with_combine_rule(CoefficientCombine::Min),
                     CollisionLayers::new(
                         GameLayer::Wall,
                         [GameLayer::Projectile, GameLayer::Player],
@@ -266,5 +412,46 @@ pub fn spawn_chunk_topography(
                 ));
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn late_gate_band_produces_hard_blocker_role() {
+        let role = classify_extrusion_surface(3, 160.0, true, 4000.0);
+        assert_eq!(role.player_role, PlayerSurfaceRole::HardCrashBlocker);
+        assert!(!role.ricochet);
+        assert_eq!(role.archetype, SurfaceArchetype::HardCrashExtrusion);
+    }
+
+    #[test]
+    fn flank_extrusions_default_to_ricochet_geometry() {
+        let role = classify_extrusion_surface(2, CORE_LANE_HALF_WIDTH + 40.0, false, 4000.0);
+        assert_eq!(role.player_role, PlayerSurfaceRole::SoftPressureBoundary);
+        assert!(role.ricochet);
+        assert_eq!(role.archetype, SurfaceArchetype::RicochetExtrusion);
+    }
+
+    #[test]
+    fn extrusion_envelope_rejects_out_of_bounds_cells() {
+        let role = structured_extrusion_role(3, 0, 0, SOFT_BOUNDARY_X + 12.0, 0.0, 2000.0);
+        assert!(role.is_none());
+    }
+
+    #[test]
+    fn shoulder_bands_emit_structured_ricochet_roles() {
+        let role = structured_extrusion_role(
+            2,
+            4,
+            0,
+            -(CORE_LANE_HALF_WIDTH + 72.0),
+            MOTIF_BAND_HEIGHT,
+            1600.0,
+        );
+        assert!(role.is_some());
+        assert_eq!(role.unwrap().archetype, SurfaceArchetype::RicochetExtrusion);
     }
 }

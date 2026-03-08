@@ -2,18 +2,22 @@ use crate::core::states::GameState;
 use crate::eras::era_future::nebula_bouncer::components::*;
 use crate::eras::era_future::nebula_bouncer::procgen::*;
 use crate::eras::era_future::nebula_bouncer::resources::{
-    ActiveLoadout, BOUNCE_MAX, CameraFeedbackSettings, ChunkAssignmentProfiles, EnemyArchetype,
-    HitStop, KineticOrbPool, NebulaAssetManifest, NebulaMaterials, NebulaRunStats, OrbSpawnStats,
-    OrbSynergyMatrix, PendingCrashResult, ProcgenValidatorTelemetry, SpriteOrientationConfig,
-    TerrainTheme, compute_hit_stop_duration, feedback_tuning, next_shake_intensity,
-    resolve_orb_spawn_stats,
+    ActiveLoadout, BOUNCE_MAX, CameraFeedbackSettings, ChunkAssignmentProfiles, CombatTokenPool,
+    EnemyArchetype, HitStop, HostileFireConfig, KineticOrbPool, NebulaAssetManifest,
+    NebulaMaterials, NebulaRunStats, NebulaRuntimeTelemetry, NebulaValidationCommand,
+    OrbSpawnStats, OrbSynergyMatrix, PendingCrashResult, ProcgenValidatorTelemetry,
+    ProjectileEventKind, SpriteOrientationConfig, TerrainTheme, compute_hit_stop_duration,
+    feedback_tuning, next_shake_intensity, resolve_orb_spawn_stats,
 };
-use crate::eras::era_future::nebula_bouncer::topography::spawn_chunk_topography;
+use crate::eras::era_future::nebula_bouncer::topography::{
+    CORE_LANE_HALF_WIDTH, SHOULDER_WIDTH, SOFT_BOUNDARY_X, TERRAIN_WIDTH, spawn_chunk_topography,
+};
 use crate::shared::components::Health;
 use crate::ui::results::GameResults;
 use avian2d::prelude::*;
 use bevy::core_pipeline::tonemapping::Tonemapping;
 use bevy::ecs::message::MessageReader;
+use bevy::ecs::query::QueryFilter;
 use bevy::light::GlobalAmbientLight;
 use bevy::pbr::{DistanceFog, FogFalloff};
 use bevy::post_process::bloom::{Bloom, BloomCompositeMode, BloomPrefilter};
@@ -29,7 +33,7 @@ const BASE_ORB_SPEED: f32 = 500.0;
 const BASE_ORB_BOUNCES: u32 = 3;
 const BASE_ORB_RADIUS: f32 = 5.0;
 const BASE_ORB_TRAIL_WIDTH: f32 = 4.0;
-const GROUND_CHUNK_WIDTH: f32 = 1360.0;
+const ORB_IMPACT_OFFSET: f32 = 8.0;
 const VOID_DOT_TICK_INTERVAL_SECS: f32 = 0.5;
 const PREFLIGHT_SUMMARY_REL_PATH: &str =
     "agents/deliverables/codex_worker2/NB-CX-006_preflight_summary.txt";
@@ -49,11 +53,32 @@ const TRANSIENT_VFX_BASE_SIZE: f32 = 70.0;
 const CAMERA_HEIGHT: f32 = 270.0;
 const CAMERA_BEHIND_OFFSET: f32 = -396.0;
 const CAMERA_LOOK_AHEAD: f32 = 1100.0;
-const GROUND_GRID_STEP_X: f32 = 96.0;
-const GROUND_GRID_STEP_Y: f32 = 96.0;
-const GROUND_SEAM_THICKNESS: f32 = 3.0;
+const GROUND_PATTERN_BAND_HEIGHT: f32 = 216.0;
+const GROUND_RIDGE_THICKNESS: f32 = 4.0;
+const GROUND_POCKET_CONNECTOR_THICKNESS: f32 = 3.0;
+const GROUND_BANK_BRACE_LENGTH: f32 = 58.0;
+const GROUND_BANK_BRACE_ANGLE: f32 = 0.42;
 const GROUND_PLANE_Z: f32 = depth::BACKGROUND + 0.1;
 const GROUND_SEAM_Z: f32 = depth::BACKGROUND + 0.2;
+const SOFT_BOUNDARY_HALF_THICKNESS: f32 = 26.0;
+const SOFT_BOUNDARY_HEIGHT: f32 = 110.0;
+const SOFT_BOUNDARY_PUSH: f32 = 140.0;
+const BOUNDARY_WIRE_PANEL_THICKNESS: f32 = 0.55;
+const BOUNDARY_WIRE_POST_SPACING: f32 = 96.0;
+const BOUNDARY_WIRE_POST_HEIGHT: f32 = 94.0;
+const BOUNDARY_WIRE_INSET: f32 = 10.0;
+const BOUNDARY_WIRE_RAIL_THICKNESS: f32 = 1.8;
+const RICOCHET_SPEED_RETAIN: f32 = 0.94;
+const RICOCHET_DAMAGE_RETAIN: f32 = 0.96;
+const RICOCHET_MIN_SPEED: f32 = 260.0;
+const SKIM_SAMPLE_RADIUS: f32 = 220.0;
+const SKIM_FORWARD_SAMPLE: f32 = 120.0;
+const SKIM_LATERAL_SAMPLE: f32 = 90.0;
+const PLAYER_SKIM_LIFT_SCALE: f32 = 0.28;
+const PLAYER_SKIM_MAX_LIFT: f32 = 22.0;
+const PLAYER_SKIM_PITCH_SCALE: f32 = 0.0022;
+const PLAYER_SKIM_ROLL_SCALE: f32 = 0.0026;
+const PLAYER_SKIM_MAX_ANGLE: f32 = 0.16;
 const CAMERA_FOLLOW_LERP: f32 = 6.2;
 const CAMERA_LOOK_LERP: f32 = 4.6;
 const HORIZON_CARD_AHEAD_Y: f32 = 2800.0;
@@ -93,6 +118,35 @@ fn fold_seed(seed: u64, value: u64) -> u64 {
     z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
     z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
     z ^ (z >> 31)
+}
+
+fn archetype_to_role(archetype: EnemyArchetype) -> EnemyRole {
+    match archetype {
+        EnemyArchetype::Scout | EnemyArchetype::Interceptor => EnemyRole::Flanker,
+        EnemyArchetype::Heavy => EnemyRole::Blocker,
+        EnemyArchetype::Bulwark => EnemyRole::Sniper,
+    }
+}
+
+fn default_ai_for_role(role: EnemyRole) -> EnemyAI {
+    match role {
+        EnemyRole::Blocker => EnemyAI {
+            role,
+            engagement_distance: 500.0,
+            ..default()
+        },
+        EnemyRole::Flanker => EnemyAI {
+            role,
+            engagement_distance: 600.0,
+            preferred_horizontal_offset: 150.0,
+            ..default()
+        },
+        EnemyRole::Sniper => EnemyAI {
+            role,
+            engagement_distance: 850.0,
+            ..default()
+        },
+    }
 }
 
 fn assignment_seed(chunk: &ChunkSchema, spawn: &SpawnDef, chunk_y: f32, spawn_index: usize) -> u64 {
@@ -154,6 +208,70 @@ fn element_trail_color(element: OrbElement) -> Color {
         OrbElement::Tesla => Color::srgb(0.82, 0.95, 1.0),
         OrbElement::Void => Color::srgb(0.62, 0.45, 1.0),
     }
+}
+
+fn surface_contact_normal(
+    point: Vec2,
+    surface_position: Vec2,
+    explicit_normal: Option<Vec2>,
+) -> Vec2 {
+    let normal = explicit_normal.unwrap_or_else(|| point - surface_position);
+    let normal = normal.normalize_or_zero();
+    if normal.length_squared() <= f32::EPSILON {
+        Vec2::Y
+    } else {
+        normal
+    }
+}
+
+fn remove_into_surface_velocity(velocity: Vec2, normal: Vec2, push_strength: f32) -> Vec2 {
+    let mut adjusted = velocity;
+    let into_surface = adjusted.dot(normal);
+    if into_surface < 0.0 {
+        adjusted -= normal * into_surface;
+    }
+    adjusted + normal * push_strength
+}
+
+fn reflect_velocity(velocity: Vec2, normal: Vec2) -> Vec2 {
+    let normal = normal.normalize_or_zero();
+    if normal.length_squared() <= f32::EPSILON {
+        -velocity
+    } else {
+        velocity - 2.0 * velocity.dot(normal) * normal
+    }
+}
+
+fn sample_terrain_height<F>(
+    samples: &Query<(&Transform, &TerrainContourSample), F>,
+    point: Vec2,
+) -> Option<f32>
+where
+    F: QueryFilter,
+{
+    let mut best_dist_sq = SKIM_SAMPLE_RADIUS * SKIM_SAMPLE_RADIUS;
+    let mut best_height = None;
+
+    for (transform, sample) in samples.iter() {
+        let delta = transform.translation.truncate() - point;
+        let dist_sq = delta.length_squared();
+        if dist_sq <= best_dist_sq {
+            best_dist_sq = dist_sq;
+            best_height = Some(sample.height);
+        }
+    }
+
+    best_height
+}
+
+fn deactivate_orb(commands: &mut Commands, orb_pool: &mut KineticOrbPool, entity: Entity) {
+    commands
+        .entity(entity)
+        .insert(Visibility::Hidden)
+        .insert(LinearVelocity::ZERO)
+        .insert(AngularVelocity::ZERO)
+        .insert(Transform::from_xyz(9999.0, 9999.0, depth::PROJECTILE));
+    orb_pool.push(entity);
 }
 
 fn apply_enemy_status_effects(status: &mut EnemyStatusEffects, orb: &KineticOrb) {
@@ -243,12 +361,82 @@ fn spawn_transient_vfx(
     ));
 }
 
+fn spawn_ground_pattern_piece(
+    commands: &mut Commands,
+    mesh: &Handle<Mesh>,
+    material: Handle<StandardMaterial>,
+    translation: Vec3,
+    scale: Vec3,
+) {
+    commands.spawn((
+        ChunkMember,
+        GroundSeam,
+        Mesh3d(mesh.clone()),
+        MeshMaterial3d(material),
+        Transform::from_translation(translation).with_scale(scale),
+    ));
+}
+
+fn spawn_ground_pattern_piece_rotated(
+    commands: &mut Commands,
+    mesh: &Handle<Mesh>,
+    material: Handle<StandardMaterial>,
+    translation: Vec3,
+    scale: Vec3,
+    rotation_radians: f32,
+) {
+    commands.spawn((
+        ChunkMember,
+        GroundSeam,
+        Mesh3d(mesh.clone()),
+        MeshMaterial3d(material),
+        Transform::from_translation(translation)
+            .with_rotation(Quat::from_rotation_z(rotation_radians))
+            .with_scale(scale),
+    ));
+}
+
+fn spawn_boundary_wire_piece(
+    commands: &mut Commands,
+    mesh: &Handle<Mesh>,
+    material: Handle<StandardMaterial>,
+    translation: Vec3,
+    scale: Vec3,
+) {
+    commands.spawn((
+        ChunkMember,
+        WallVisual,
+        Mesh3d(mesh.clone()),
+        MeshMaterial3d(material),
+        Transform::from_translation(translation).with_scale(scale),
+    ));
+}
+
+fn spawn_boundary_wire_piece_rotated(
+    commands: &mut Commands,
+    mesh: &Handle<Mesh>,
+    material: Handle<StandardMaterial>,
+    translation: Vec3,
+    scale: Vec3,
+    rotation: Quat,
+) {
+    commands.spawn((
+        ChunkMember,
+        WallVisual,
+        Mesh3d(mesh.clone()),
+        MeshMaterial3d(material),
+        Transform::from_translation(translation)
+            .with_rotation(rotation)
+            .with_scale(scale),
+    ));
+}
+
 fn spawn_chunk_floor_tiles(
     commands: &mut Commands,
     _asset_server: &AssetServer,
     _assets: &NebulaAssetManifest,
     nebula_mats: &NebulaMaterials,
-    _materials: &mut Assets<StandardMaterial>,
+    materials: &mut Assets<StandardMaterial>,
     chunk_center_y: f32,
     chunk_height: f32,
     _terrain_theme: TerrainTheme,
@@ -260,59 +448,291 @@ fn spawn_chunk_floor_tiles(
         Mesh3d(nebula_mats.quad_mesh.clone()),
         MeshMaterial3d(nebula_mats.ground_base_material.clone()),
         Transform::from_xyz(0.0, chunk_center_y, GROUND_PLANE_Z).with_scale(Vec3::new(
-            GROUND_CHUNK_WIDTH * 1.15,
+            TERRAIN_WIDTH * 1.15,
             chunk_height + 2.0, // Slight overlap for safety
             1.0,
         )),
     ));
 
-    // 2. World-Anchored Coherent Lattice Seams
     let start_y = chunk_center_y - chunk_height * 0.5;
     let end_y = chunk_center_y + chunk_height * 0.5;
+    let bank_connector_material = materials.add(StandardMaterial {
+        base_color: Color::srgba(0.16, 0.92, 1.0, 0.44),
+        emissive: LinearRgba::rgb(0.16, 0.92, 1.0) * 1.2,
+        alpha_mode: AlphaMode::Blend,
+        unlit: true,
+        ..default()
+    });
+    let shoulder_ridge_material = materials.add(StandardMaterial {
+        base_color: Color::srgba(1.0, 0.28, 0.74, 0.66),
+        emissive: LinearRgba::rgb(1.0, 0.28, 0.74) * 1.9,
+        alpha_mode: AlphaMode::Blend,
+        unlit: true,
+        ..default()
+    });
 
-    // Snap to global grid steps
-    let grid_start_y = (start_y / GROUND_GRID_STEP_Y).floor() as i32;
-    let grid_end_y = (end_y / GROUND_GRID_STEP_Y).ceil() as i32;
-
-    let cols = (GROUND_CHUNK_WIDTH / GROUND_GRID_STEP_X).ceil() as i32;
-    let grid_start_x = -cols / 2;
-    let grid_end_x = (cols + 1) / 2;
-
-    for gy in grid_start_y..=grid_end_y {
-        let world_y = gy as f32 * GROUND_GRID_STEP_Y;
-        if world_y < start_y || world_y > end_y {
+    let band_start = (start_y / GROUND_PATTERN_BAND_HEIGHT).floor() as i32;
+    let band_end = (end_y / GROUND_PATTERN_BAND_HEIGHT).ceil() as i32;
+    for band in band_start..=band_end {
+        let band_mid_y =
+            band as f32 * GROUND_PATTERN_BAND_HEIGHT + (GROUND_PATTERN_BAND_HEIGHT * 0.5);
+        if band_mid_y < start_y - GROUND_PATTERN_BAND_HEIGHT
+            || band_mid_y > end_y + GROUND_PATTERN_BAND_HEIGHT
+        {
             continue;
         }
 
-        // Horizontal Seams
-        commands.spawn((
-            ChunkMember,
-            GroundSeam,
-            Mesh3d(nebula_mats.quad_mesh.clone()),
-            MeshMaterial3d(nebula_mats.hex_accent_material_magenta.clone()),
-            Transform::from_xyz(0.0, world_y, GROUND_SEAM_Z).with_scale(Vec3::new(
-                GROUND_CHUNK_WIDTH,
-                GROUND_SEAM_THICKNESS,
-                1.0,
-            )),
-        ));
+        let motif_cycle = band.rem_euclid(6);
+        let preferred_side = match motif_cycle {
+            1 | 4 => -1,
+            2 | 5 => 1,
+            _ => 0,
+        };
+        let pocket_side = match motif_cycle {
+            4 => -1,
+            5 => 1,
+            _ => 0,
+        };
+        let chicane_cycle = motif_cycle == 3;
+
+        for side in [-1, 1] {
+            let side_sign = side as f32;
+            let inner_x = side_sign * (CORE_LANE_HALF_WIDTH + SHOULDER_WIDTH * 0.34);
+            let outer_x = side_sign * (CORE_LANE_HALF_WIDTH + SHOULDER_WIDTH * 0.74);
+            let side_active = preferred_side == 0 || preferred_side == side;
+            let pocket_active = pocket_side == side;
+            let inner_length = if chicane_cycle {
+                GROUND_PATTERN_BAND_HEIGHT * 0.62
+            } else if side_active {
+                GROUND_PATTERN_BAND_HEIGHT * 0.84
+            } else {
+                GROUND_PATTERN_BAND_HEIGHT * 0.48
+            };
+            let outer_length = if pocket_active {
+                GROUND_PATTERN_BAND_HEIGHT * 0.34
+            } else {
+                GROUND_PATTERN_BAND_HEIGHT * 0.72
+            };
+            let outer_y = if pocket_active {
+                band_mid_y - (GROUND_PATTERN_BAND_HEIGHT * 0.18)
+            } else {
+                band_mid_y
+            };
+            let inner_y = if chicane_cycle {
+                band_mid_y + (side_sign * GROUND_PATTERN_BAND_HEIGHT * 0.12)
+            } else {
+                band_mid_y
+            };
+
+            spawn_ground_pattern_piece(
+                commands,
+                &nebula_mats.quad_mesh,
+                shoulder_ridge_material.clone(),
+                Vec3::new(inner_x, inner_y, GROUND_SEAM_Z),
+                Vec3::new(GROUND_RIDGE_THICKNESS, inner_length, 1.0),
+            );
+            spawn_ground_pattern_piece(
+                commands,
+                &nebula_mats.quad_mesh,
+                shoulder_ridge_material.clone(),
+                Vec3::new(outer_x, outer_y, GROUND_SEAM_Z),
+                Vec3::new(GROUND_RIDGE_THICKNESS, outer_length, 1.0),
+            );
+
+            if pocket_active || (side_active && motif_cycle >= 3) {
+                let brace_y = if pocket_active {
+                    band_mid_y + (GROUND_PATTERN_BAND_HEIGHT * 0.14)
+                } else {
+                    band_mid_y - (GROUND_PATTERN_BAND_HEIGHT * 0.12)
+                };
+                let brace_x = side_sign * (CORE_LANE_HALF_WIDTH + SHOULDER_WIDTH * 0.54);
+                let brace_angle = if side_sign < 0.0 {
+                    -GROUND_BANK_BRACE_ANGLE
+                } else {
+                    GROUND_BANK_BRACE_ANGLE
+                };
+                spawn_ground_pattern_piece_rotated(
+                    commands,
+                    &nebula_mats.quad_mesh,
+                    bank_connector_material.clone(),
+                    Vec3::new(brace_x, brace_y, GROUND_SEAM_Z),
+                    Vec3::new(
+                        GROUND_POCKET_CONNECTOR_THICKNESS,
+                        GROUND_BANK_BRACE_LENGTH,
+                        1.0,
+                    ),
+                    brace_angle,
+                );
+
+                if pocket_active {
+                    spawn_ground_pattern_piece_rotated(
+                        commands,
+                        &nebula_mats.quad_mesh,
+                        bank_connector_material.clone(),
+                        Vec3::new(
+                            brace_x + (side_sign * 10.0),
+                            brace_y - (GROUND_PATTERN_BAND_HEIGHT * 0.16),
+                            GROUND_SEAM_Z,
+                        ),
+                        Vec3::new(
+                            GROUND_POCKET_CONNECTOR_THICKNESS,
+                            GROUND_BANK_BRACE_LENGTH * 0.86,
+                            1.0,
+                        ),
+                        -brace_angle,
+                    );
+                }
+            }
+
+            if chicane_cycle && side_active {
+                let chicane_x = side_sign * (CORE_LANE_HALF_WIDTH + SHOULDER_WIDTH * 0.22);
+                let chicane_y = band_mid_y + (side_sign * GROUND_PATTERN_BAND_HEIGHT * 0.10);
+                let chicane_angle = if side_sign < 0.0 {
+                    GROUND_BANK_BRACE_ANGLE
+                } else {
+                    -GROUND_BANK_BRACE_ANGLE
+                };
+                spawn_ground_pattern_piece_rotated(
+                    commands,
+                    &nebula_mats.quad_mesh,
+                    bank_connector_material.clone(),
+                    Vec3::new(chicane_x, chicane_y, GROUND_SEAM_Z),
+                    Vec3::new(
+                        GROUND_POCKET_CONNECTOR_THICKNESS,
+                        GROUND_BANK_BRACE_LENGTH * 0.82,
+                        1.0,
+                    ),
+                    chicane_angle,
+                );
+            }
+        }
     }
 
-    for gx in grid_start_x..=grid_end_x {
-        let world_x = gx as f32 * GROUND_GRID_STEP_X;
+    let boundary_role = SurfaceRole {
+        player_role: PlayerSurfaceRole::SoftPressureBoundary,
+        ricochet: true,
+        archetype: SurfaceArchetype::TerrainBoundary,
+    };
+    let boundary_specs = [
+        (-SOFT_BOUNDARY_X, SurfaceNormal::new(Vec2::X)),
+        (SOFT_BOUNDARY_X, SurfaceNormal::new(-Vec2::X)),
+    ];
 
-        // Vertical Seams (full height of chunk)
+    for (x, normal) in boundary_specs {
         commands.spawn((
             ChunkMember,
-            GroundSeam,
-            Mesh3d(nebula_mats.quad_mesh.clone()),
-            MeshMaterial3d(nebula_mats.hex_accent_material_cyan.clone()),
-            Transform::from_xyz(world_x, chunk_center_y, GROUND_SEAM_Z).with_scale(Vec3::new(
-                GROUND_SEAM_THICKNESS,
-                chunk_height,
-                1.0,
-            )),
+            Wall,
+            boundary_role,
+            normal,
+            Transform::from_xyz(x, chunk_center_y, depth::WALL - 0.5),
+            GlobalTransform::default(),
+            RigidBody::Static,
+            Collider::rectangle(SOFT_BOUNDARY_HALF_THICKNESS * 2.0, chunk_height),
+            CollisionEventsEnabled,
+            Friction::new(0.0),
+            Restitution::new(0.0).with_combine_rule(CoefficientCombine::Min),
+            CollisionLayers::new(GameLayer::Wall, [GameLayer::Projectile, GameLayer::Player]),
         ));
+
+        let inward_x = x + (normal.vec2().x * BOUNDARY_WIRE_INSET);
+        let boundary_glow_material = materials.add(StandardMaterial {
+            base_color: Color::srgba(0.34, 0.96, 1.0, 0.03),
+            emissive: LinearRgba::rgb(0.34, 0.96, 1.0) * 0.4,
+            alpha_mode: AlphaMode::Blend,
+            unlit: true,
+            ..default()
+        });
+        let boundary_wire_material = materials.add(StandardMaterial {
+            base_color: Color::srgba(0.34, 0.96, 1.0, 0.72),
+            emissive: LinearRgba::rgb(0.34, 0.96, 1.0) * 2.4,
+            alpha_mode: AlphaMode::Blend,
+            unlit: true,
+            ..default()
+        });
+        let boundary_cross_material = materials.add(StandardMaterial {
+            base_color: Color::srgba(0.96, 0.76, 0.22, 0.72),
+            emissive: LinearRgba::rgb(0.96, 0.76, 0.22) * 1.8,
+            alpha_mode: AlphaMode::Blend,
+            unlit: true,
+            ..default()
+        });
+
+        spawn_boundary_wire_piece(
+            commands,
+            &nebula_mats.lane_mesh,
+            boundary_glow_material.clone(),
+            Vec3::new(x, chunk_center_y, depth::WALL + 28.0),
+            Vec3::new(0.18, chunk_height, SOFT_BOUNDARY_HEIGHT * 0.56),
+        );
+
+        for rail_height in [14.0, 32.0, 50.0, 68.0, 86.0] {
+            spawn_boundary_wire_piece(
+                commands,
+                &nebula_mats.lane_mesh,
+                boundary_wire_material.clone(),
+                Vec3::new(inward_x, chunk_center_y, depth::WALL + rail_height),
+                Vec3::new(
+                    BOUNDARY_WIRE_PANEL_THICKNESS,
+                    chunk_height,
+                    BOUNDARY_WIRE_RAIL_THICKNESS,
+                ),
+            );
+        }
+
+        let post_start = (start_y / BOUNDARY_WIRE_POST_SPACING).floor() as i32;
+        let post_end = (end_y / BOUNDARY_WIRE_POST_SPACING).ceil() as i32;
+        for post in post_start..=post_end {
+            let post_y = post as f32 * BOUNDARY_WIRE_POST_SPACING;
+            if post_y < start_y - 24.0 || post_y > end_y + 24.0 {
+                continue;
+            }
+
+            spawn_boundary_wire_piece(
+                commands,
+                &nebula_mats.lane_mesh,
+                boundary_wire_material.clone(),
+                Vec3::new(inward_x, post_y, depth::WALL + 34.0),
+                Vec3::new(
+                    BOUNDARY_WIRE_PANEL_THICKNESS,
+                    8.0,
+                    BOUNDARY_WIRE_POST_HEIGHT,
+                ),
+            );
+
+            if post < post_end {
+                let next_post_y = (post + 1) as f32 * BOUNDARY_WIRE_POST_SPACING;
+                if next_post_y <= end_y + 24.0 {
+                    let mid_y = (post_y + next_post_y) * 0.5;
+                    let lean_sign = if post.rem_euclid(2) == 0 { 1.0 } else { -1.0 };
+                    spawn_boundary_wire_piece_rotated(
+                        commands,
+                        &nebula_mats.lane_mesh,
+                        boundary_wire_material.clone(),
+                        Vec3::new(inward_x, mid_y, depth::WALL + 56.0),
+                        Vec3::new(
+                            BOUNDARY_WIRE_PANEL_THICKNESS,
+                            BOUNDARY_WIRE_POST_SPACING * 0.68,
+                            BOUNDARY_WIRE_RAIL_THICKNESS,
+                        ),
+                        Quat::from_rotation_x(lean_sign * 0.36),
+                    );
+                }
+            }
+
+            if post.rem_euclid(2) == 0 {
+                spawn_boundary_wire_piece(
+                    commands,
+                    &nebula_mats.lane_mesh,
+                    boundary_cross_material.clone(),
+                    Vec3::new(
+                        x + (normal.vec2().x * (BOUNDARY_WIRE_INSET + 12.0)),
+                        post_y,
+                        depth::WALL + 60.0,
+                    ),
+                    Vec3::new(2.0, 48.0, BOUNDARY_WIRE_RAIL_THICKNESS),
+                );
+            }
+        }
     }
 }
 
@@ -328,12 +748,18 @@ pub fn setup_nebula_bouncer(
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut orb_pool: ResMut<KineticOrbPool>,
     mut run_stats: ResMut<NebulaRunStats>,
+    mut runtime_telemetry: ResMut<NebulaRuntimeTelemetry>,
+    mut validation_command: ResMut<NebulaValidationCommand>,
+    mut pending_crash: ResMut<PendingCrashResult>,
     q_stale_camera2d: Query<Entity, With<Camera2d>>,
 ) {
     info!("Nebula Bouncer scaffold loaded (Avian 2D integrated).");
     // Ensure gravity is zero for top-down physics
     commands.insert_resource(Gravity(Vec2::ZERO));
     *run_stats = NebulaRunStats::default();
+    *runtime_telemetry = NebulaRuntimeTelemetry::default();
+    *validation_command = NebulaValidationCommand::default();
+    *pending_crash = PendingCrashResult::default();
 
     // Despawn leftover Camera2d from previous screens (menu / era-select)
     // to prevent 2D sprite pass from conflicting with 3D isometric view.
@@ -485,6 +911,7 @@ pub fn setup_nebula_bouncer(
     commands
         .spawn((
             PlayerShip,
+            Health::new(100),
             RigidBody::Dynamic,
             Collider::circle(15.0),
             CollisionEventsEnabled,
@@ -496,6 +923,8 @@ pub fn setup_nebula_bouncer(
             Visibility::Visible,
             InheritedVisibility::default(),
             ViewVisibility::default(),
+        ))
+        .insert((
             CollisionLayers::new(
                 GameLayer::Player,
                 [GameLayer::Enemy, GameLayer::Wall, GameLayer::Projectile],
@@ -911,7 +1340,7 @@ pub fn spawn_orb_pool(
                     KineticOrb::default(),
                     RigidBody::Dynamic,
                     Collider::circle(BASE_ORB_RADIUS),
-                    Restitution::new(1.0).with_combine_rule(CoefficientCombine::Max),
+                    Restitution::new(0.0).with_combine_rule(CoefficientCombine::Min),
                     Friction::new(0.0), // No friction in space
                     Mass(1.0),
                     Transform::from_xyz(9999.0, 9999.0, depth::PROJECTILE)
@@ -1049,35 +1478,43 @@ pub fn attach_screen_shake_to_cameras(
 }
 
 pub fn handle_player_extrusion_collisions(
-    mut q_player: Query<(&Transform, &mut LinearVelocity, &CollidingEntities), With<PlayerShip>>,
-    q_extrusions: Query<(), With<HexExtrusion>>,
-    q_walls: Query<(), With<Wall>>,
+    mut collision_events: MessageReader<CollisionStart>,
+    q_player: Query<(Entity, &Transform), With<PlayerShip>>,
+    q_surfaces: Query<&SurfaceRole>,
     mut pending_crash: ResMut<PendingCrashResult>,
+    mut runtime_telemetry: ResMut<NebulaRuntimeTelemetry>,
     mut commands: Commands,
     nebula_mats: Res<NebulaMaterials>,
 ) {
     if pending_crash.active {
         return;
     }
-    let Some((player_transform, mut velocity, colliding)) = q_player.iter_mut().next() else {
+    let Some((player_entity, player_transform)) = q_player.iter().next() else {
         return;
     };
 
-    for &other in colliding.iter() {
-        // Crash is required for pillar-like blockers, whether spawned as procedural
-        // hex extrusions or authored wall entities in chunk schemas.
-        let hit_crash_blocker = q_extrusions.contains(other) || q_walls.contains(other);
-        if !hit_crash_blocker {
+    for event in collision_events.read() {
+        let other = if event.collider1 == player_entity {
+            event.collider2
+        } else if event.collider2 == player_entity {
+            event.collider1
+        } else {
+            continue;
+        };
+        let Ok(surface_role) = q_surfaces.get(other) else {
+            continue;
+        };
+
+        runtime_telemetry.record_surface_contact(surface_role.player_role, surface_role.archetype);
+        if surface_role.player_role != PlayerSurfaceRole::HardCrashBlocker {
             continue;
         }
 
-        // Trigger crash sequence
         pending_crash.active = true;
         pending_crash.timer_secs = 0.28;
         pending_crash.impact_pos = player_transform.translation;
-
-        // Zero player velocity
-        velocity.0 = Vec2::ZERO;
+        pending_crash.source = Some(surface_role.archetype);
+        runtime_telemetry.record_crash(surface_role.archetype);
 
         spawn_neon_vector_crash_burst(&mut commands, &nebula_mats, pending_crash.impact_pos);
         break;
@@ -1129,7 +1566,12 @@ pub fn advance_player_crash_sequence(
     pending_crash.timer_secs -= time.delta_secs();
     if pending_crash.timer_secs <= 0.0 {
         // Complete the Results transition
-        run_stats.extrusion_crashes = run_stats.extrusion_crashes.saturating_add(1);
+        if matches!(
+            pending_crash.source,
+            Some(SurfaceArchetype::HardCrashExtrusion)
+        ) {
+            run_stats.extrusion_crashes = run_stats.extrusion_crashes.saturating_add(1);
+        }
         results.game_name = "Nebula Bouncer".to_string();
         results.score = run_stats.ricochet_bonus_score;
         results.is_new_high = results.score > results.high_score;
@@ -1139,6 +1581,7 @@ pub fn advance_player_crash_sequence(
         results.newly_completed = false;
 
         pending_crash.active = false;
+        pending_crash.source = None;
         next_game_state.set(GameState::Results);
     }
 }
@@ -1148,14 +1591,15 @@ pub fn handle_orb_collisions(
     mut collision_events: MessageReader<CollisionStart>,
     asset_server: Res<AssetServer>,
     asset_manifest: Res<NebulaAssetManifest>,
-    mut orbs: Query<(Entity, &mut KineticOrb, &Transform, &mut LinearVelocity)>,
+    mut orbs: Query<(Entity, &mut KineticOrb, &mut Transform, &mut LinearVelocity)>,
     mut orb_pool: ResMut<KineticOrbPool>,
     mut run_stats: ResMut<NebulaRunStats>,
+    mut runtime_telemetry: ResMut<NebulaRuntimeTelemetry>,
     feedback_settings: Res<CameraFeedbackSettings>,
     mut shake: Query<&mut ScreenShake, With<NebulaGameplayCamera>>,
     mut hit_stop: ResMut<HitStop>,
     mut enemies: Query<(Entity, &mut Health, &mut EnemyStatusEffects), With<Enemy>>,
-    extrusions: Query<(), With<HexExtrusion>>,
+    surfaces: Query<(&SurfaceRole, &Transform, Option<&SurfaceNormal>), Without<KineticOrb>>,
     nebula_mats: Res<NebulaMaterials>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
@@ -1174,11 +1618,12 @@ pub fn handle_orb_collisions(
         };
 
         if let Some(entity) = orb_entity {
-            if let Ok((e, mut orb, orb_transform, mut orb_velocity)) = orbs.get_mut(entity) {
-                // Determine what we hit
+            if let Ok((e, mut orb, mut orb_transform, mut orb_velocity)) = orbs.get_mut(entity) {
                 let other = if entity == e1 { e2 } else { e1 };
+                if !orb.active {
+                    continue;
+                }
 
-                // Check if hit enemy
                 if let Ok((enemy_entity, mut hp, mut status_effects)) = enemies.get_mut(other) {
                     hp.damage(orb.damage as i32);
                     apply_enemy_status_effects(&mut status_effects, &orb);
@@ -1205,7 +1650,6 @@ pub fn handle_orb_collisions(
                         TRANSIENT_VFX_BASE_LIFETIME_SECS * 1.15,
                     );
 
-                    // Trigger Hit Feedback
                     hit_stop.timer =
                         (orb.damage * 0.005 + orb.void_dot_duration_secs * 0.03).clamp(0.05, 0.3);
                     hit_stop.timer = hit_stop
@@ -1222,13 +1666,42 @@ pub fn handle_orb_collisions(
                         s.decay = profile_tuning.shake_decay;
                     }
 
+                    let was_ricochet = orb.ricochet_count > 0;
+                    if was_ricochet {
+                        runtime_telemetry.ricochet_enemy_hits =
+                            runtime_telemetry.ricochet_enemy_hits.saturating_add(1);
+                        runtime_telemetry.last_projectile_event = ProjectileEventKind::RicochetHit;
+                        let conversion_bonus = 10 + (orb.ricochet_count.min(3) as u64 * 4);
+                        run_stats.ricochet_bonus_score = run_stats
+                            .ricochet_bonus_score
+                            .saturating_add(conversion_bonus);
+                        runtime_telemetry.ricochet_bonus_score = run_stats.ricochet_bonus_score;
+                    } else {
+                        runtime_telemetry.direct_enemy_hits =
+                            runtime_telemetry.direct_enemy_hits.saturating_add(1);
+                        runtime_telemetry.last_projectile_event = ProjectileEventKind::DirectHit;
+                    }
+
                     if hp.is_dead() {
+                        if was_ricochet {
+                            runtime_telemetry.ricochet_enemy_kills =
+                                runtime_telemetry.ricochet_enemy_kills.saturating_add(1);
+                        } else {
+                            runtime_telemetry.direct_enemy_kills =
+                                runtime_telemetry.direct_enemy_kills.saturating_add(1);
+                        }
                         commands.entity(enemy_entity).despawn();
                     }
-                } else {
-                    // Hit something else (Wall?)
-                    let hit_extrusion = extrusions.contains(other);
-                    // Minor shake for wall hits
+                    // Note: combat token reclaim for dead enemies is handled by
+                    // combat_token_system which detects missing entities each frame.
+
+                    runtime_telemetry.last_projectile_speed = orb_velocity.0.length();
+                    orb.active = false;
+                    deactivate_orb(&mut commands, &mut orb_pool, e);
+                    continue;
+                }
+
+                if let Ok((surface_role, surface_transform, surface_normal)) = surfaces.get(other) {
                     if let Some(mut s) = shake.iter_mut().next() {
                         s.intensity = next_shake_intensity(
                             s.intensity,
@@ -1239,6 +1712,80 @@ pub fn handle_orb_collisions(
                         );
                         s.decay = profile_tuning.shake_decay;
                     }
+
+                    let impact_normal = surface_contact_normal(
+                        orb_transform.translation.truncate(),
+                        surface_transform.translation.truncate(),
+                        surface_normal.map(|normal| normal.vec2()),
+                    );
+                    let can_ricochet = surface_role.ricochet && orb.bounces_remaining > 0;
+
+                    if can_ricochet {
+                        runtime_telemetry.ricochet_attempts =
+                            runtime_telemetry.ricochet_attempts.saturating_add(1);
+                        runtime_telemetry.ricochet_surface_hits =
+                            runtime_telemetry.ricochet_surface_hits.saturating_add(1);
+                        runtime_telemetry.last_surface_role = Some(surface_role.player_role);
+                        runtime_telemetry.last_surface_archetype = Some(surface_role.archetype);
+                        runtime_telemetry.last_projectile_event =
+                            ProjectileEventKind::RicochetBounce;
+
+                        let bounce_color =
+                            if surface_role.archetype == SurfaceArchetype::RicochetExtrusion {
+                                Color::srgba(0.52, 1.0, 0.96, 0.92)
+                            } else {
+                                Color::srgba(0.78, 0.92, 1.0, 0.86)
+                            };
+                        spawn_transient_vfx(
+                            &mut commands,
+                            &asset_server,
+                            &nebula_mats,
+                            &mut materials,
+                            &asset_manifest.vfx_projectile_core,
+                            orb_transform.translation,
+                            bounce_color,
+                            TRANSIENT_VFX_BASE_SIZE * 0.7,
+                            TRANSIENT_VFX_BASE_LIFETIME_SECS * 0.75,
+                        );
+                        spawn_transient_vfx(
+                            &mut commands,
+                            &asset_server,
+                            &nebula_mats,
+                            &mut materials,
+                            &asset_manifest.vfx_hit_ring,
+                            orb_transform.translation,
+                            bounce_color,
+                            TRANSIENT_VFX_BASE_SIZE * 0.85,
+                            TRANSIENT_VFX_BASE_LIFETIME_SECS * 0.8,
+                        );
+
+                        let reflected = reflect_velocity(orb_velocity.0, impact_normal);
+                        let retained_speed = (orb_velocity.0.length() * RICOCHET_SPEED_RETAIN)
+                            .clamp(RICOCHET_MIN_SPEED, BASE_ORB_SPEED * 1.05);
+                        orb_velocity.0 = reflected.normalize_or_zero() * retained_speed;
+                        orb_transform.translation +=
+                            impact_normal.extend(0.0) * (ORB_IMPACT_OFFSET + orb.damage * 0.05);
+                        orb.damage =
+                            (orb.damage * RICOCHET_DAMAGE_RETAIN).max(BASE_ORB_DAMAGE * 0.72);
+                        orb.bounces_remaining -= 1;
+                        orb.ricochet_count = (orb.ricochet_count + 1).min(BOUNCE_MAX as u32);
+                        runtime_telemetry.last_projectile_speed = retained_speed;
+
+                        let ricochet_bonus =
+                            if surface_role.archetype == SurfaceArchetype::RicochetExtrusion {
+                                run_stats.extrusion_bounces =
+                                    run_stats.extrusion_bounces.saturating_add(1);
+                                8
+                            } else {
+                                4
+                            };
+                        run_stats.ricochet_bonus_score = run_stats
+                            .ricochet_bonus_score
+                            .saturating_add(ricochet_bonus);
+                        runtime_telemetry.ricochet_bonus_score = run_stats.ricochet_bonus_score;
+                        continue;
+                    }
+
                     spawn_transient_vfx(
                         &mut commands,
                         &asset_server,
@@ -1246,42 +1793,17 @@ pub fn handle_orb_collisions(
                         &mut materials,
                         &asset_manifest.vfx_hit_ring,
                         orb_transform.translation,
-                        if hit_extrusion {
-                            Color::srgba(0.52, 1.0, 0.96, 0.82)
-                        } else {
-                            Color::srgba(0.94, 0.98, 1.0, 0.7)
-                        },
+                        Color::srgba(0.96, 0.98, 1.0, 0.74),
                         TRANSIENT_VFX_BASE_SIZE * 0.9,
-                        TRANSIENT_VFX_BASE_LIFETIME_SECS * 0.85,
+                        TRANSIENT_VFX_BASE_LIFETIME_SECS * 0.75,
                     );
-                    if hit_extrusion {
-                        run_stats.extrusion_bounces = run_stats.extrusion_bounces.saturating_add(1);
-                        let ricochet_bonus = 12 + ((orb.bounces_remaining.min(8) as u64) * 3);
-                        run_stats.ricochet_bonus_score = run_stats
-                            .ricochet_bonus_score
-                            .saturating_add(ricochet_bonus);
-                        let max_bounces = BOUNCE_MAX.max(1) as u32;
-                        orb.bounces_remaining =
-                            (orb.bounces_remaining.saturating_add(2)).min(max_bounces);
-                        orb.damage *= 1.20;
-                        orb_velocity.0 *= 1.08;
-                    }
-                }
-
-                if orb.bounces_remaining > 0 {
-                    orb.bounces_remaining -= 1;
-                    orb.damage *= 1.10 + ((orb.speed_scale - 1.0) * 0.2);
-                } else {
-                    // Deactivate safely by teleporting away and halting velocity
-                    commands
-                        .entity(e)
-                        .insert(Visibility::Hidden)
-                        .insert(LinearVelocity::ZERO)
-                        .insert(AngularVelocity::ZERO)
-                        .insert(Transform::from_xyz(9999.0, 9999.0, depth::PROJECTILE));
-
+                    runtime_telemetry.absorbed_projectiles =
+                        runtime_telemetry.absorbed_projectiles.saturating_add(1);
+                    runtime_telemetry.last_projectile_event =
+                        ProjectileEventKind::ProjectileAbsorbed;
+                    runtime_telemetry.last_projectile_speed = orb_velocity.0.length();
                     orb.active = false;
-                    orb_pool.push(e);
+                    deactivate_orb(&mut commands, &mut orb_pool, e);
                 }
             }
         }
@@ -1321,9 +1843,11 @@ pub fn update_level_scrolling(
                     // Disable physics first, then despawn on the next frame.
                     // This avoids hard-removing body/collider state in the same
                     // tick as collision/island graph updates.
-                    commands
-                        .entity(entity)
-                        .insert((RigidBodyDisabled, ColliderDisabled, DeferredNebulaDespawn::default()));
+                    commands.entity(entity).insert((
+                        RigidBodyDisabled,
+                        ColliderDisabled,
+                        DeferredNebulaDespawn::default(),
+                    ));
                 } else {
                     commands.entity(entity).despawn();
                 }
@@ -1480,7 +2004,8 @@ pub fn spawn_next_chunk(
                 commands
                     .spawn((
                         Enemy,
-                        ChunkMember,
+                        // NOT a ChunkMember — enemies locomote independently through world space
+                        // and must not be scrolled by the terrain scroll system.
                         Transform::from_xyz(
                             spawn.position.x,
                             chunk_y + spawn.position.y,
@@ -1499,16 +2024,24 @@ pub fn spawn_next_chunk(
                         ),
                         Health::new(enemy_hp),
                         EnemyStatusEffects::default(),
+                        {
+                            let role = archetype_to_role(archetype);
+                            default_ai_for_role(role)
+                        },
+                        HostileFireSource::default(),
                     ))
                     .with_children(|parent| {
                         parent.spawn((
                             SceneRoot(
                                 asset_server.load(asset_manifest.enemy_model_default.clone()),
                             ),
-                            Transform::from_rotation(
-                                Quat::from_rotation_z(std::f32::consts::PI)
-                                    * Quat::from_rotation_x(std::f32::consts::FRAC_PI_2),
-                            )
+                            // Enemies face TOWARD the player (-Y). The player ship uses
+                            // Z(PI)*X(FRAC_PI_2) which tilts the Y-up model into the XY plane
+                            // and rotates it to face +Y (forward). Enemies omit the Z(PI) spin
+                            // so they face -Y (toward the player, coming from ahead).
+                            Transform::from_rotation(Quat::from_rotation_x(
+                                std::f32::consts::FRAC_PI_2,
+                            ))
                             .with_scale(Vec3::splat(model_scale)),
                             GlobalTransform::default(),
                             Visibility::Visible,
@@ -1548,9 +2081,16 @@ pub fn spawn_next_chunk(
 pub fn player_movement(
     _time: Res<Time>,
     keyboard: Res<ButtonInput<KeyCode>>,
-    mut query: Query<(&mut LinearVelocity, &mut Transform), With<PlayerShip>>,
+    pending_crash: Res<PendingCrashResult>,
+    q_surfaces: Query<(&SurfaceRole, &Transform, Option<&SurfaceNormal>)>,
+    mut query: Query<(&mut LinearVelocity, &Transform, &CollidingEntities), With<PlayerShip>>,
 ) {
-    for (mut velocity, mut _transform) in &mut query {
+    for (mut velocity, transform, colliding) in &mut query {
+        if pending_crash.active {
+            velocity.0 = Vec2::ZERO;
+            continue;
+        }
+
         let mut direction = Vec2::ZERO;
         if keyboard.pressed(KeyCode::KeyW) || keyboard.pressed(KeyCode::ArrowUp) {
             direction.y += 1.0;
@@ -1569,7 +2109,86 @@ pub fn player_movement(
             direction = direction.normalize();
         }
 
-        velocity.0 = direction * 300.0;
+        let mut desired_velocity = direction * 300.0;
+        let player_pos = transform.translation.truncate();
+
+        for &other in colliding.iter() {
+            let Ok((surface_role, surface_transform, surface_normal)) = q_surfaces.get(other)
+            else {
+                continue;
+            };
+            if surface_role.player_role != PlayerSurfaceRole::SoftPressureBoundary {
+                continue;
+            }
+
+            let normal = surface_contact_normal(
+                player_pos,
+                surface_transform.translation.truncate(),
+                surface_normal.map(|normal| normal.vec2()),
+            );
+            desired_velocity =
+                remove_into_surface_velocity(desired_velocity, normal, SOFT_BOUNDARY_PUSH);
+        }
+
+        velocity.0 = desired_velocity;
+    }
+}
+
+pub fn apply_visual_terrain_follow(
+    mut runtime_telemetry: ResMut<NebulaRuntimeTelemetry>,
+    q_samples: Query<
+        (&Transform, &TerrainContourSample),
+        (With<TerrainContourSample>, Without<PlayerVisualRoot>),
+    >,
+    mut player_and_visuals: ParamSet<(
+        Query<(&Transform, &Children), With<PlayerShip>>,
+        Query<&mut Transform, With<PlayerVisualRoot>>,
+    )>,
+) {
+    let (player_translation, player_rotation, player_children) = {
+        let player_query = player_and_visuals.p0();
+        let Some((player_transform, children)) = player_query.iter().next() else {
+            return;
+        };
+        (
+            player_transform.translation,
+            player_transform.rotation,
+            children.iter().collect::<Vec<_>>(),
+        )
+    };
+
+    let forward = player_rotation
+        .mul_vec3(Vec3::Y)
+        .truncate()
+        .normalize_or_zero();
+    let lateral = Vec2::new(-forward.y, forward.x);
+    let player_pos = player_translation.truncate();
+    let center_height = sample_terrain_height(&q_samples, player_pos).unwrap_or(0.0);
+    let forward_height =
+        sample_terrain_height(&q_samples, player_pos + forward * SKIM_FORWARD_SAMPLE)
+            .unwrap_or(center_height);
+    let left_height = sample_terrain_height(&q_samples, player_pos - lateral * SKIM_LATERAL_SAMPLE)
+        .unwrap_or(center_height);
+    let right_height =
+        sample_terrain_height(&q_samples, player_pos + lateral * SKIM_LATERAL_SAMPLE)
+            .unwrap_or(center_height);
+
+    let skim_lift = (center_height * PLAYER_SKIM_LIFT_SCALE).clamp(0.0, PLAYER_SKIM_MAX_LIFT);
+    let pitch = ((forward_height - center_height) * PLAYER_SKIM_PITCH_SCALE)
+        .clamp(-PLAYER_SKIM_MAX_ANGLE, PLAYER_SKIM_MAX_ANGLE);
+    let roll = ((right_height - left_height) * PLAYER_SKIM_ROLL_SCALE)
+        .clamp(-PLAYER_SKIM_MAX_ANGLE, PLAYER_SKIM_MAX_ANGLE);
+
+    runtime_telemetry.record_skim_height(skim_lift);
+
+    let mut visual_query = player_and_visuals.p1();
+    for child in player_children {
+        let Ok(mut visual_transform) = visual_query.get_mut(child) else {
+            continue;
+        };
+        visual_transform.translation.z = PLAYER_MODEL_VISUAL_LIFT + skim_lift;
+        visual_transform.rotation = Quat::from_rotation_z(std::f32::consts::PI + roll)
+            * Quat::from_rotation_x(std::f32::consts::FRAC_PI_2 + pitch);
     }
 }
 
@@ -2024,6 +2643,124 @@ pub fn player_shoot(
     }
 }
 
+pub fn apply_validation_commands(
+    mut commands: Commands,
+    mut validation: ResMut<NebulaValidationCommand>,
+    mut q_player: Query<(&mut Transform, &mut LinearVelocity, &Children), With<PlayerShip>>,
+    q_player_visual: Query<&GlobalTransform, With<PlayerVisualRoot>>,
+    mut orb_pool: ResMut<KineticOrbPool>,
+    loadout: Res<ActiveLoadout>,
+    synergy_matrix: Res<OrbSynergyMatrix>,
+    sprite_orientation: Res<SpriteOrientationConfig>,
+    nebula_mats: Res<NebulaMaterials>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    let Some((mut player_transform, mut player_velocity, player_children)) =
+        q_player.iter_mut().next()
+    else {
+        validation.teleport_player = None;
+        validation.fire_world_origin = None;
+        validation.fire_world_target = None;
+        return;
+    };
+
+    if let Some([x, y, z]) = validation.teleport_player.take() {
+        player_transform.translation = Vec3::new(x, y, z);
+        player_velocity.0 = Vec2::ZERO;
+    }
+
+    let fire_origin = validation.fire_world_origin.take();
+    let Some([target_x, target_y, _target_z]) = validation.fire_world_target.take() else {
+        return;
+    };
+    let Some(orb_entity) = orb_pool.pop() else {
+        return;
+    };
+
+    let player_origin = fire_origin
+        .map(|origin| Vec2::new(origin[0], origin[1]))
+        .unwrap_or_else(|| {
+            player_children
+                .iter()
+                .find_map(|child| {
+                    q_player_visual
+                        .get(child)
+                        .ok()
+                        .map(|visual| visual.translation().truncate())
+                })
+                .unwrap_or(player_transform.translation.truncate())
+        });
+    let mut direction = Vec2::new(target_x, target_y) - player_origin;
+    direction = direction.normalize_or_zero();
+    if direction.length_squared() <= f32::EPSILON {
+        orb_pool.push(orb_entity);
+        return;
+    }
+
+    let orb_spawn_origin = if fire_origin.is_some() {
+        player_origin
+    } else {
+        player_origin + direction * 96.0
+    };
+    let profile = synergy_matrix.get(loadout.element, loadout.modifier);
+    let resolved_stats = resolve_orb_spawn_stats(
+        OrbSpawnStats::new(
+            BASE_ORB_DAMAGE,
+            BASE_ORB_SPEED,
+            BASE_ORB_BOUNCES,
+            BASE_ORB_RADIUS,
+        ),
+        profile,
+    );
+    let orb_rotation = facing_angle(direction, sprite_orientation.orb_forward_offset_radians())
+        .map(Quat::from_rotation_z)
+        .unwrap_or_default();
+
+    commands.entity(orb_entity).insert((
+        Collider::circle(resolved_stats.radius),
+        Transform::from_xyz(orb_spawn_origin.x, orb_spawn_origin.y, depth::PROJECTILE)
+            .with_rotation(orb_rotation)
+            .with_scale(Vec3::new(
+                resolved_stats.radius * ORB_VISUAL_SCALE * 1.4,
+                resolved_stats.radius * ORB_VISUAL_SCALE,
+                resolved_stats.radius * ORB_VISUAL_SCALE * 0.9,
+            )),
+        LinearVelocity(direction * resolved_stats.speed),
+        Visibility::Visible,
+        RigidBody::Dynamic,
+        Mesh3d(nebula_mats.orb_mesh.clone()),
+        MeshMaterial3d(materials.add(StandardMaterial {
+            base_color: element_trail_color(loadout.element),
+            emissive: LinearRgba::from(element_trail_color(loadout.element)) * 3.2,
+            metallic: 0.06,
+            perceptual_roughness: 0.24,
+            unlit: false,
+            alpha_mode: AlphaMode::Opaque,
+            ..default()
+        })),
+        KineticOrb {
+            active: true,
+            bounces_remaining: resolved_stats.bounces,
+            damage: resolved_stats.damage,
+            element: loadout.element,
+            modifier: loadout.modifier,
+            radius_scale: profile.radius_scale,
+            speed_scale: profile.speed_scale,
+            cryo_slow_factor: profile.cryo_slow_factor,
+            cryo_duration_secs: profile.cryo_duration_secs,
+            void_dot_dps: profile.void_dot_dps,
+            void_dot_duration_secs: profile.void_dot_duration_secs,
+            ..default()
+        },
+        ProjectileTrail {
+            points: Vec::new(),
+            max_length: 20,
+            width: BASE_ORB_TRAIL_WIDTH * profile.radius_scale.clamp(0.7, 1.4),
+            color: element_trail_color(loadout.element),
+        },
+    ));
+}
+
 pub fn orient_orbs_to_velocity(
     sprite_orientation: Res<SpriteOrientationConfig>,
     mut query: Query<(&LinearVelocity, &mut Transform, &KineticOrb)>,
@@ -2185,6 +2922,379 @@ pub fn update_hit_stop(
     }
 }
 
+pub fn enemy_ai_system(
+    time: Res<Time>,
+    q_player: Query<&Transform, With<PlayerShip>>,
+    mut q_enemies: Query<(&Transform, &mut EnemyAI)>,
+) {
+    let Some(player_transform) = q_player.iter().next() else {
+        return;
+    };
+    let player_pos = player_transform.translation.truncate();
+    let dt = time.delta_secs();
+
+    for (transform, mut ai) in &mut q_enemies {
+        let enemy_pos = transform.translation.truncate();
+        let dist = enemy_pos.distance(player_pos);
+
+        // Simple LOS check: within engagement distance and in the forward 180-degree arc
+        ai.has_line_of_sight = dist < ai.engagement_distance && enemy_pos.y > player_pos.y - 120.0;
+
+        match ai.state {
+            EnemyState::Idle => {
+                if ai.has_line_of_sight {
+                    ai.state = EnemyState::Positioning;
+                    ai.state_timer = 0.0;
+                }
+            }
+            EnemyState::Positioning
+            | EnemyState::Telegraphing
+            | EnemyState::Firing
+            | EnemyState::Cooldown => {
+                ai.state_timer += dt;
+            }
+        }
+    }
+}
+
+/// Marker for the visible telegraph child entity (aiming-laser glow).
+#[derive(Component)]
+pub struct TelegraphVisual;
+
+pub fn combat_token_system(
+    mut token_pool: ResMut<CombatTokenPool>,
+    mut q_enemies: Query<&mut EnemyAI>,
+) {
+    // Recount active tokens from live entities to self-heal if enemies were despawned
+    let mut live_active = 0u32;
+    for ai in &q_enemies {
+        if ai.combat_token_active {
+            live_active += 1;
+        }
+    }
+    token_pool.active_tokens = live_active;
+
+    // Release tokens from enemies that lost eligibility
+    for mut ai in &mut q_enemies {
+        if ai.combat_token_active
+            && (ai.state == EnemyState::Idle
+                || ai.state == EnemyState::Cooldown
+                || !ai.has_line_of_sight)
+        {
+            ai.combat_token_active = false;
+            token_pool.active_tokens = token_pool.active_tokens.saturating_sub(1);
+        }
+    }
+
+    // Acquire tokens for enemies in Positioning with LOS (max simultaneous attackers)
+    for mut ai in &mut q_enemies {
+        if !ai.combat_token_active
+            && ai.state == EnemyState::Positioning
+            && ai.has_line_of_sight
+            && token_pool.active_tokens < token_pool.max_tokens
+        {
+            ai.combat_token_active = true;
+            token_pool.active_tokens += 1;
+        }
+    }
+}
+
+pub fn enemy_movement_system(
+    time: Res<Time>,
+    q_player: Query<&Transform, With<PlayerShip>>,
+    mut q_enemies: Query<(&mut Transform, &mut LinearVelocity, &EnemyAI), Without<PlayerShip>>,
+) {
+    let Some(player_transform) = q_player.iter().next() else {
+        return;
+    };
+    let player_pos = player_transform.translation.truncate();
+    let dt = time.delta_secs();
+
+    for (mut transform, mut velocity, ai) in &mut q_enemies {
+        if ai.state == EnemyState::Idle {
+            // While idle, drift to a stop
+            velocity.0 *= 0.85_f32.powf(dt * 60.0);
+            continue;
+        }
+
+        let enemy_pos = transform.translation.truncate();
+
+        // Target position: always in the *forward* space (ahead of player, higher Y)
+        // Enemies approach from ahead and hold engagement depth relative to player.
+        let target_y = match ai.role {
+            EnemyRole::Blocker => player_pos.y + 380.0,
+            EnemyRole::Flanker => player_pos.y + 290.0,
+            EnemyRole::Sniper => player_pos.y + 620.0,
+        };
+
+        let target_x = match ai.role {
+            EnemyRole::Blocker => 0.0_f32,
+            EnemyRole::Flanker => {
+                let shoulder_x = CORE_LANE_HALF_WIDTH + SHOULDER_WIDTH * 0.5;
+                if enemy_pos.x >= 0.0 {
+                    shoulder_x
+                } else {
+                    -shoulder_x
+                }
+            }
+            EnemyRole::Sniper => enemy_pos.x, // Snipers hold X, just adjust depth
+        };
+
+        let target_pos = Vec2::new(target_x, target_y);
+        let diff = target_pos - enemy_pos;
+
+        let approach_speed = match ai.role {
+            EnemyRole::Blocker => 160.0,
+            EnemyRole::Flanker => 260.0,
+            EnemyRole::Sniper => 90.0,
+        };
+
+        if diff.length() > 8.0 {
+            // Drive toward target; use direct velocity assignment for predictable approach
+            let desired_vel = diff.normalize() * approach_speed;
+            let lerp_rate = (8.0 * dt).min(1.0);
+            velocity.0 = velocity.0.lerp(desired_vel, lerp_rate);
+        } else {
+            // At target — brake
+            velocity.0 *= 1.0 - (10.0 * dt).min(1.0);
+        }
+    }
+}
+
+/// Despawn enemies that have drifted too far behind the player.
+/// Since enemies are not ChunkMember they are not despawned by the scroll system.
+pub fn cull_behind_player_enemies(
+    mut commands: Commands,
+    q_player: Query<&Transform, With<PlayerShip>>,
+    mut token_pool: ResMut<CombatTokenPool>,
+    q_enemies: Query<(Entity, &Transform, &EnemyAI), With<Enemy>>,
+) {
+    const CULL_Y_BEHIND: f32 = 800.0;
+    let Some(player_transform) = q_player.iter().next() else {
+        return;
+    };
+    let player_y = player_transform.translation.y;
+
+    for (entity, transform, ai) in &q_enemies {
+        if transform.translation.y < player_y - CULL_Y_BEHIND {
+            // Release token if this enemy held one
+            if ai.combat_token_active {
+                token_pool.active_tokens = token_pool.active_tokens.saturating_sub(1);
+            }
+            commands.entity(entity).despawn();
+        }
+    }
+}
+
+pub fn enemy_fire_system(
+    mut commands: Commands,
+    time: Res<Time>,
+    fire_config: Res<HostileFireConfig>,
+    q_player: Query<&Transform, With<PlayerShip>>,
+    mut q_enemies: Query<(Entity, &Transform, &mut EnemyAI, &mut HostileFireSource)>,
+    q_hostile_projectiles: Query<(), With<HostileProjectile>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    nebula_mats: Res<NebulaMaterials>,
+    q_telegraphs: Query<(Entity, &ChildOf), With<TelegraphVisual>>,
+) {
+    let Some(player_transform) = q_player.iter().next() else {
+        return;
+    };
+    let player_pos = player_transform.translation.truncate();
+    let dt = time.delta_secs();
+    let existing_projectile_count = q_hostile_projectiles.iter().count() as u32;
+    let mut spawned_this_frame: u32 = 0;
+
+    for (enemy_entity, transform, mut ai, mut fire_source) in &mut q_enemies {
+        match ai.state {
+            EnemyState::Positioning => {
+                if ai.combat_token_active && ai.has_line_of_sight && ai.state_timer > 0.65 {
+                    ai.state = EnemyState::Telegraphing;
+                    ai.state_timer = 0.0;
+
+                    // Spawn visible telegraph (aiming-laser glow)
+                    let telegraph_color = Color::srgb(1.0, 0.35, 0.15);
+                    let telegraph_material = materials.add(StandardMaterial {
+                        base_color: telegraph_color.with_alpha(0.55),
+                        emissive: LinearRgba::from(telegraph_color) * 18.0,
+                        unlit: true,
+                        alpha_mode: AlphaMode::Add,
+                        ..default()
+                    });
+                    let dir_to_player =
+                        (player_pos - transform.translation.truncate()).normalize_or_zero();
+                    let laser_angle = dir_to_player.y.atan2(dir_to_player.x);
+                    commands.entity(enemy_entity).with_children(|parent| {
+                        parent.spawn((
+                            TelegraphVisual,
+                            Mesh3d(nebula_mats.quad_mesh.clone()),
+                            MeshMaterial3d(telegraph_material),
+                            Transform::from_xyz(0.0, 0.0, 2.0)
+                                .with_scale(Vec3::new(200.0, 3.0, 1.0))
+                                .with_rotation(Quat::from_rotation_z(laser_angle)),
+                            GlobalTransform::default(),
+                            Visibility::Visible,
+                            InheritedVisibility::default(),
+                            ViewVisibility::default(),
+                        ));
+                    });
+                }
+            }
+            EnemyState::Telegraphing => {
+                if ai.state_timer >= fire_config.telegraph_duration {
+                    ai.state = EnemyState::Firing;
+                    ai.state_timer = 0.0;
+                    fire_source.shots_left_in_burst = match ai.role {
+                        EnemyRole::Blocker => 3,
+                        EnemyRole::Flanker => 2,
+                        EnemyRole::Sniper => 1,
+                    };
+                    fire_source.burst_timer = 0.0;
+
+                    // Remove telegraph visual
+                    for (tel_entity, child_of) in &q_telegraphs {
+                        if child_of.parent() == enemy_entity {
+                            commands.entity(tel_entity).despawn();
+                        }
+                    }
+                }
+            }
+            EnemyState::Firing => {
+                fire_source.burst_timer += dt;
+                let burst_interval = 0.18;
+                if fire_source.shots_left_in_burst > 0
+                    && fire_source.burst_timer >= burst_interval
+                    && (existing_projectile_count + spawned_this_frame)
+                        < fire_config.max_projectiles_on_screen
+                {
+                    let spawn_pos = transform.translation;
+                    let direction = (player_pos - spawn_pos.truncate()).normalize_or_zero();
+
+                    spawn_hostile_projectile(
+                        &mut commands,
+                        spawn_pos,
+                        direction,
+                        fire_config.projectile_speed,
+                        &nebula_mats,
+                        &mut materials,
+                    );
+
+                    spawned_this_frame += 1;
+                    fire_source.shots_left_in_burst -= 1;
+                    fire_source.burst_timer = 0.0;
+                }
+
+                if fire_source.shots_left_in_burst == 0 {
+                    ai.state = EnemyState::Cooldown;
+                    ai.state_timer = 0.0;
+                }
+            }
+            EnemyState::Cooldown => {
+                if ai.state_timer >= fire_config.attack_cooldown {
+                    ai.state = EnemyState::Positioning;
+                    ai.state_timer = 0.0;
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+pub fn handle_hostile_projectile_collisions(
+    mut commands: Commands,
+    mut collision_events: MessageReader<CollisionStart>,
+    q_hostile: Query<Entity, With<HostileProjectile>>,
+    mut q_player: Query<(Entity, &mut Health), With<PlayerShip>>,
+    q_surfaces: Query<&SurfaceRole>,
+) {
+    for event in collision_events.read() {
+        let e1 = event.collider1;
+        let e2 = event.collider2;
+
+        let (proj, other) = if q_hostile.contains(e1) {
+            (Some(e1), Some(e2))
+        } else if q_hostile.contains(e2) {
+            (Some(e2), Some(e1))
+        } else {
+            (None, None)
+        };
+
+        if let (Some(proj_entity), Some(other_entity)) = (proj, other) {
+            // Enemy projectiles do NOT ricochet (contract rule). Destroy on any surface hit.
+            if q_surfaces.contains(other_entity) {
+                commands.entity(proj_entity).despawn();
+                continue;
+            }
+
+            if let Ok((_player_ent, mut hp)) = q_player.get_mut(other_entity) {
+                hp.damage(10);
+                info!(
+                    "Hostile projectile hit player! HP: {}/{}",
+                    hp.current, hp.max
+                );
+                commands.entity(proj_entity).despawn();
+            }
+        }
+    }
+}
+
+/// Checks if the player has been killed by hostile fire and triggers the failure path.
+pub fn check_player_hostile_death(
+    q_player: Query<&Health, With<PlayerShip>>,
+    mut pending_crash: ResMut<PendingCrashResult>,
+    nebula_mats: Res<NebulaMaterials>,
+    mut commands: Commands,
+) {
+    if pending_crash.active {
+        return;
+    }
+
+    let Some(hp) = q_player.iter().next() else {
+        return;
+    };
+
+    if hp.is_dead() {
+        info!("Player killed by hostile fire — triggering failure path");
+        pending_crash.active = true;
+        pending_crash.timer_secs = 0.65;
+        pending_crash.impact_pos = Vec3::ZERO;
+        pending_crash.source = None; // hostile-fire death, not a surface crash
+
+        spawn_neon_vector_crash_burst(&mut commands, &nebula_mats, Vec3::ZERO);
+    }
+}
+
+fn spawn_hostile_projectile(
+    commands: &mut Commands,
+    pos: Vec3,
+    direction: Vec2,
+    speed: f32,
+    nebula_mats: &NebulaMaterials,
+    materials: &mut Assets<StandardMaterial>,
+) {
+    let projectile_color = Color::srgb(1.0, 0.25, 0.1);
+    let material = materials.add(StandardMaterial {
+        base_color: projectile_color,
+        emissive: LinearRgba::from(projectile_color) * 12.0,
+        unlit: true,
+        ..default()
+    });
+
+    commands.spawn((
+        HostileProjectile,
+        ChunkMember,
+        CollisionEventsEnabled,
+        Mesh3d(nebula_mats.orb_mesh.clone()),
+        MeshMaterial3d(material),
+        Transform::from_translation(pos.truncate().extend(depth::PROJECTILE))
+            .with_scale(Vec3::splat(4.8)),
+        RigidBody::Kinematic,
+        Collider::circle(4.2),
+        CollisionLayers::new(GameLayer::Projectile, [GameLayer::Player, GameLayer::Wall]),
+        LinearVelocity(direction * speed),
+    ));
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2285,5 +3395,19 @@ mod tests {
         assert_eq!(status.void_dot_timer, 0.0);
         assert_eq!(status.void_dot_dps, 0.0);
         assert_eq!(status.void_dot_tick_timer, 0.0);
+    }
+
+    #[test]
+    fn pressure_response_removes_velocity_into_surface() {
+        let adjusted = remove_into_surface_velocity(Vec2::new(-120.0, 40.0), Vec2::X, 35.0);
+        assert!(adjusted.x > 0.0);
+        assert_eq!(adjusted.y, 40.0);
+    }
+
+    #[test]
+    fn reflection_preserves_expected_angle_story() {
+        let reflected = reflect_velocity(Vec2::new(100.0, -50.0), Vec2::Y);
+        assert_eq!(reflected.x, 100.0);
+        assert_eq!(reflected.y, 50.0);
     }
 }
