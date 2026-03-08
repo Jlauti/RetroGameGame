@@ -48,6 +48,15 @@ Persistent orchestration memory for continuity across sessions.
   - `Opus` is escalation-only and not part of normal ticket metadata
 - Reason: Manual dispatch must make both the target specialist and the recommended harness obvious without opening additional docs.
 
+### Gate Ownership Policy Confirmed
+- Recorded: 2026-03-08
+- Context: Worker agents and principal review were both running the same cargo gates, creating duplicate validation work.
+- Decision:
+  - implementation agents own ticket cargo gates and must report command/results in their task report
+  - principal review uses reported gate results by default and does not rerun the same gates automatically
+  - independent reruns happen only for explicit human request, release/HITL checkpoints, or when the agent report looks unreliable
+- Reason: Keep validation cost down while preserving a clear override path when independent confirmation is actually needed.
+
 ### Windows Migration
 - Recorded: 2026-02-21
 - Context: Moved primary development from Linux laptop to Windows desktop for performance.

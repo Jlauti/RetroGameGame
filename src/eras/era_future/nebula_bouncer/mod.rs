@@ -122,6 +122,7 @@ impl Plugin for NebulaBouncerPlugin {
                 apply_shake,
                 update_hit_stop,
                 enemy_movement_system,
+                orient_enemies_for_attack,
                 cull_behind_player_enemies,
                 enemy_fire_system,
                 handle_hostile_projectile_collisions,

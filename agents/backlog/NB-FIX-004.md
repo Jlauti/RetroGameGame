@@ -7,7 +7,7 @@
 - Recommended Specialist: Pekka Kone (Engine/Runtime)
 - Preferred Model: Codex
 - Complexity: Complex
-- Status: TODO
+- Status: CHANGES_REQUIRED
 - Execution Lane: LOCAL
 - Critical Path: YES
 - Jules Eligible: NO
@@ -16,6 +16,7 @@
 - Session Health: HEALTHY
 - Work Category: HOTFIX
 - Start Date: 2026-03-08
+- Review Date: 2026-03-08
 
 ## Objective
 
@@ -73,3 +74,9 @@ Required outcomes:
 - Existing hostile-fire, telegraph, and damage behavior remain functional after the movement/presentation fix.
 - Deliverable written to `agents/deliverables/agent2/NB-FIX-004_runtime_notes.md`.
 - Task report written to `agents/reports/agent2/NB-FIX-004_task_report.md`.
+
+## Review Follow-Up
+
+- Reviewed on `2026-03-08`.
+- The red-box artifact and idle backward-drift issue were improved, but player-throttle coupling remained.
+- Remaining movement/orientation follow-up is tracked in `agents/backlog/NB-A2-014.md` for a fresh runtime handoff.

@@ -30,6 +30,16 @@ Do not read archived prompts, unrelated agent briefs, or broad historical docs b
 - Clippy: `cargo clippy --all-targets --all-features`
 - Format gate: `cargo fmt -- --check`
 
+## Gate Ownership Policy
+
+- For normal ticket flow, the assigned implementation agent owns the required cargo gates for that ticket and must report the exact commands run and results.
+- Principal engineer review should use the agent's reported gate results by default and should not rerun the same cargo gates automatically.
+- Rerun gates only when one of these is true:
+  - the human explicitly asks for independent validation
+  - the ticket is at a release or explicit HITL checkpoint
+  - the agent report is incomplete, inconsistent, or otherwise not trustworthy
+- Avoid double-running the same `cargo check` / `cargo build` / `cargo test` / `cargo fmt -- --check` sequence unless one of the override cases above applies.
+
 ## Branching Mandate
 
 - Core branches are `develop` and `main`.

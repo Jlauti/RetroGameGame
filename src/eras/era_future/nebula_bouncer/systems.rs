@@ -201,6 +201,75 @@ fn facing_angle(direction: Vec2, forward_offset: f32) -> Option<f32> {
     }
 }
 
+fn enemy_role_engagement_depth(role: EnemyRole) -> f32 {
+    match role {
+        EnemyRole::Blocker => 380.0,
+        EnemyRole::Flanker => 290.0,
+        EnemyRole::Sniper => 620.0,
+    }
+}
+
+fn enemy_role_anchor_x(role: EnemyRole, enemy_x: f32) -> f32 {
+    match role {
+        EnemyRole::Blocker => 0.0,
+        EnemyRole::Flanker => {
+            let shoulder_x = CORE_LANE_HALF_WIDTH + SHOULDER_WIDTH * 0.5;
+            if enemy_x >= 0.0 {
+                shoulder_x
+            } else {
+                -shoulder_x
+            }
+        }
+        EnemyRole::Sniper => enemy_x,
+    }
+}
+
+fn enemy_attack_facing_angle(
+    direction: Vec2,
+    sprite_orientation: SpriteOrientationConfig,
+) -> Option<f32> {
+    // Enemy model roots omit the player's extra Z(PI) spin, so their zero-rotation forward
+    // points down the gameplay plane (-Y) instead of up (+Y).
+    facing_angle(
+        direction,
+        sprite_orientation.enemy_forward_offset_radians() + std::f32::consts::PI,
+    )
+}
+
+fn enemy_desired_velocity(current_velocity: Vec2, enemy_pos: Vec2, ai: &EnemyAI, dt: f32) -> Vec2 {
+    let base_world_y_vel = -ENEMY_WORLD_SCROLL_SPEED;
+
+    if ai.state == EnemyState::Idle {
+        let target_vel = Vec2::new(
+            current_velocity.x * 0.80_f32.powf(dt * 60.0),
+            base_world_y_vel,
+        );
+        let lerp_rate = (6.0 * dt).min(1.0);
+        return current_velocity.lerp(target_vel, lerp_rate);
+    }
+
+    let approach_speed = match ai.role {
+        EnemyRole::Blocker => 80.0,
+        EnemyRole::Flanker => 160.0,
+        EnemyRole::Sniper => 40.0,
+    };
+    let diff = Vec2::new(
+        ai.preferred_horizontal_offset - enemy_pos.x,
+        ai.engagement_anchor_y - enemy_pos.y,
+    );
+    let approach_correction = if diff.length() > 8.0 {
+        diff.normalize() * approach_speed
+    } else {
+        Vec2::ZERO
+    };
+    let desired_vel = Vec2::new(
+        approach_correction.x,
+        base_world_y_vel + approach_correction.y,
+    );
+    let lerp_rate = (6.0 * dt).min(1.0);
+    current_velocity.lerp(desired_vel, lerp_rate)
+}
+
 fn element_trail_color(element: OrbElement) -> Color {
     match element {
         OrbElement::Plasma => Color::srgb(0.26, 0.92, 1.0),
@@ -1993,14 +2062,6 @@ pub fn spawn_next_chunk(
                     .max(1.0) as i32;
                 let scale_factor = enemy_size.x / 64.0;
                 let model_scale = scale_factor * MODEL_UNIT_TO_WORLD;
-                let glow_color = enemy_glow_color(archetype);
-                let aura_material = materials.add(StandardMaterial {
-                    base_color: glow_color.with_alpha(0.32),
-                    emissive: LinearRgba::from(glow_color) * 8.0,
-                    unlit: true,
-                    alpha_mode: AlphaMode::Add,
-                    ..default()
-                });
                 commands
                     .spawn((
                         Enemy,
@@ -2048,19 +2109,8 @@ pub fn spawn_next_chunk(
                             InheritedVisibility::default(),
                             ViewVisibility::default(),
                         ));
-                        parent.spawn((
-                            Mesh3d(nebula_mats.quad_mesh.clone()),
-                            MeshMaterial3d(aura_material.clone()),
-                            Transform::from_xyz(0.0, 0.0, 4.0).with_scale(Vec3::new(
-                                enemy_size.x * 1.8,
-                                enemy_size.y * 1.3,
-                                1.0,
-                            )),
-                            GlobalTransform::default(),
-                            Visibility::Visible,
-                            InheritedVisibility::default(),
-                            ViewVisibility::default(),
-                        ));
+                        // NOTE: aura quad child removed — it rendered as a flat colored
+                        // rectangle (the red box artifact) clashing with the 3D model.
                     });
             }
             _ => {
@@ -2943,6 +2993,8 @@ pub fn enemy_ai_system(
         match ai.state {
             EnemyState::Idle => {
                 if ai.has_line_of_sight {
+                    ai.preferred_horizontal_offset = enemy_role_anchor_x(ai.role, enemy_pos.x);
+                    ai.engagement_anchor_y = player_pos.y + enemy_role_engagement_depth(ai.role);
                     ai.state = EnemyState::Positioning;
                     ai.state_timer = 0.0;
                 }
@@ -2999,64 +3051,67 @@ pub fn combat_token_system(
     }
 }
 
+/// Terrain scrolls at SCROLL_SPEED units/s downward (-Y). Enemies that are not ChunkMember
+/// must explicitly track this world flow or they will appear to drift backward relative to
+/// the ground. This constant is kept in sync with update_level_scrolling.
+const ENEMY_WORLD_SCROLL_SPEED: f32 = 150.0;
+
 pub fn enemy_movement_system(
     time: Res<Time>,
     q_player: Query<&Transform, With<PlayerShip>>,
-    mut q_enemies: Query<(&mut Transform, &mut LinearVelocity, &EnemyAI), Without<PlayerShip>>,
+    mut q_enemies: Query<(&Transform, &mut LinearVelocity, &EnemyAI), Without<PlayerShip>>,
 ) {
-    let Some(player_transform) = q_player.iter().next() else {
+    if q_player.iter().next().is_none() {
+        return;
+    }
+    let dt = time.delta_secs();
+
+    for (transform, mut velocity, ai) in &mut q_enemies {
+        let enemy_pos = transform.translation.truncate();
+        velocity.0 = enemy_desired_velocity(velocity.0, enemy_pos, ai, dt);
+    }
+}
+
+pub fn orient_enemies_for_attack(
+    sprite_orientation: Res<SpriteOrientationConfig>,
+    mut transforms: ParamSet<(
+        Query<&Transform, With<PlayerShip>>,
+        Query<(&mut Transform, &EnemyAI, &Children), (With<Enemy>, Without<PlayerShip>)>,
+        Query<&mut Transform, (With<TelegraphVisual>, Without<Enemy>)>,
+    )>,
+) {
+    let player_query = transforms.p0();
+    let Some(player_transform) = player_query.iter().next() else {
         return;
     };
     let player_pos = player_transform.translation.truncate();
-    let dt = time.delta_secs();
 
-    for (mut transform, mut velocity, ai) in &mut q_enemies {
-        if ai.state == EnemyState::Idle {
-            // While idle, drift to a stop
-            velocity.0 *= 0.85_f32.powf(dt * 60.0);
+    let mut telegraph_updates = Vec::new();
+    for (mut enemy_transform, ai, children) in &mut transforms.p1() {
+        if !matches!(ai.state, EnemyState::Telegraphing | EnemyState::Firing) {
             continue;
         }
 
-        let enemy_pos = transform.translation.truncate();
-
-        // Target position: always in the *forward* space (ahead of player, higher Y)
-        // Enemies approach from ahead and hold engagement depth relative to player.
-        let target_y = match ai.role {
-            EnemyRole::Blocker => player_pos.y + 380.0,
-            EnemyRole::Flanker => player_pos.y + 290.0,
-            EnemyRole::Sniper => player_pos.y + 620.0,
+        let dir_to_player = player_pos - enemy_transform.translation.truncate();
+        let Some(enemy_angle) = enemy_attack_facing_angle(dir_to_player, *sprite_orientation)
+        else {
+            continue;
         };
+        enemy_transform.rotation = Quat::from_rotation_z(enemy_angle);
 
-        let target_x = match ai.role {
-            EnemyRole::Blocker => 0.0_f32,
-            EnemyRole::Flanker => {
-                let shoulder_x = CORE_LANE_HALF_WIDTH + SHOULDER_WIDTH * 0.5;
-                if enemy_pos.x >= 0.0 {
-                    shoulder_x
-                } else {
-                    -shoulder_x
-                }
-            }
-            EnemyRole::Sniper => enemy_pos.x, // Snipers hold X, just adjust depth
-        };
+        if ai.state != EnemyState::Telegraphing {
+            continue;
+        }
 
-        let target_pos = Vec2::new(target_x, target_y);
-        let diff = target_pos - enemy_pos;
+        let telegraph_angle = dir_to_player.y.atan2(dir_to_player.x);
+        for child in children.iter() {
+            telegraph_updates.push((child, telegraph_angle - enemy_angle));
+        }
+    }
 
-        let approach_speed = match ai.role {
-            EnemyRole::Blocker => 160.0,
-            EnemyRole::Flanker => 260.0,
-            EnemyRole::Sniper => 90.0,
-        };
-
-        if diff.length() > 8.0 {
-            // Drive toward target; use direct velocity assignment for predictable approach
-            let desired_vel = diff.normalize() * approach_speed;
-            let lerp_rate = (8.0 * dt).min(1.0);
-            velocity.0 = velocity.0.lerp(desired_vel, lerp_rate);
-        } else {
-            // At target — brake
-            velocity.0 *= 1.0 - (10.0 * dt).min(1.0);
+    for (child, angle) in telegraph_updates {
+        if let Ok(mut telegraph_transform) = transforms.p2().get_mut(child) {
+            telegraph_transform.rotation = Quat::from_rotation_z(angle);
         }
     }
 }
@@ -3121,9 +3176,6 @@ pub fn enemy_fire_system(
                         alpha_mode: AlphaMode::Add,
                         ..default()
                     });
-                    let dir_to_player =
-                        (player_pos - transform.translation.truncate()).normalize_or_zero();
-                    let laser_angle = dir_to_player.y.atan2(dir_to_player.x);
                     commands.entity(enemy_entity).with_children(|parent| {
                         parent.spawn((
                             TelegraphVisual,
@@ -3131,7 +3183,7 @@ pub fn enemy_fire_system(
                             MeshMaterial3d(telegraph_material),
                             Transform::from_xyz(0.0, 0.0, 2.0)
                                 .with_scale(Vec3::new(200.0, 3.0, 1.0))
-                                .with_rotation(Quat::from_rotation_z(laser_angle)),
+                                .with_rotation(Quat::IDENTITY),
                             GlobalTransform::default(),
                             Visibility::Visible,
                             InheritedVisibility::default(),
@@ -3409,5 +3461,47 @@ mod tests {
         let reflected = reflect_velocity(Vec2::new(100.0, -50.0), Vec2::Y);
         assert_eq!(reflected.x, 100.0);
         assert_eq!(reflected.y, 50.0);
+    }
+
+    #[test]
+    fn nebula_enemy_anchor_is_captured_once_in_world_space() {
+        let mut ai = EnemyAI {
+            role: EnemyRole::Flanker,
+            ..default()
+        };
+        let player_pos = Vec2::new(0.0, 100.0);
+        let enemy_pos = Vec2::new(420.0, 540.0);
+
+        ai.preferred_horizontal_offset = enemy_role_anchor_x(ai.role, enemy_pos.x);
+        ai.engagement_anchor_y = player_pos.y + enemy_role_engagement_depth(ai.role);
+
+        assert!(ai.preferred_horizontal_offset > CORE_LANE_HALF_WIDTH);
+        assert_eq!(ai.engagement_anchor_y, 390.0);
+        assert_eq!(
+            ai.engagement_anchor_y,
+            player_pos.y + enemy_role_engagement_depth(ai.role)
+        );
+    }
+
+    #[test]
+    fn nebula_enemy_velocity_uses_locked_anchor_not_live_player_y() {
+        let ai = EnemyAI {
+            role: EnemyRole::Flanker,
+            state: EnemyState::Positioning,
+            preferred_horizontal_offset: enemy_role_anchor_x(EnemyRole::Flanker, 420.0),
+            engagement_anchor_y: 390.0,
+            ..default()
+        };
+
+        let velocity = enemy_desired_velocity(Vec2::ZERO, Vec2::new(420.0, 540.0), &ai, 1.0);
+        assert!(velocity.y < 0.0);
+    }
+
+    #[test]
+    fn nebula_enemy_attack_facing_tracks_player_bearing() {
+        let angle =
+            enemy_attack_facing_angle(Vec2::new(0.0, -1.0), SpriteOrientationConfig::default())
+                .expect("expected attack facing angle");
+        assert!((angle - 0.0).abs() <= f32::EPSILON);
     }
 }

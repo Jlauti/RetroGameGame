@@ -164,6 +164,7 @@ pub struct EnemyAI {
     pub state_timer: f32,
     pub engagement_distance: f32,
     pub preferred_horizontal_offset: f32,
+    pub engagement_anchor_y: f32,
     pub has_line_of_sight: bool,
     pub combat_token_active: bool,
 }
@@ -176,6 +177,7 @@ impl Default for EnemyAI {
             state_timer: 0.0,
             engagement_distance: 600.0,
             preferred_horizontal_offset: 0.0,
+            engagement_anchor_y: 0.0,
             has_line_of_sight: false,
             combat_token_active: false,
         }
