@@ -11,7 +11,8 @@ use crate::eras::era_future::nebula_bouncer::resources::{
     next_shake_intensity, resolve_orb_spawn_stats,
 };
 use crate::eras::era_future::nebula_bouncer::topography::{
-    CORE_LANE_HALF_WIDTH, SHOULDER_WIDTH, SOFT_BOUNDARY_X, TERRAIN_WIDTH, spawn_chunk_topography,
+    ACTIVE_PLAYFIELD_X, CORE_LANE_HALF_WIDTH, SHOULDER_WIDTH, SOFT_BOUNDARY_X, TERRAIN_WIDTH,
+    spawn_chunk_topography,
 };
 use crate::shared::components::Health;
 use crate::ui::results::GameResults;
@@ -72,14 +73,38 @@ const GROUND_BANK_BRACE_LENGTH: f32 = 58.0;
 const GROUND_BANK_BRACE_ANGLE: f32 = 0.42;
 const GROUND_PLANE_Z: f32 = depth::BACKGROUND + 0.1;
 const GROUND_SEAM_Z: f32 = depth::BACKGROUND + 0.2;
+const GROUND_INFILL_Z: f32 = depth::BACKGROUND + 0.14;
 const SOFT_BOUNDARY_HALF_THICKNESS: f32 = 26.0;
-const SOFT_BOUNDARY_HEIGHT: f32 = 110.0;
 const SOFT_BOUNDARY_PUSH: f32 = 140.0;
-const BOUNDARY_WIRE_PANEL_THICKNESS: f32 = 0.55;
-const BOUNDARY_WIRE_POST_SPACING: f32 = 96.0;
-const BOUNDARY_WIRE_POST_HEIGHT: f32 = 94.0;
-const BOUNDARY_WIRE_INSET: f32 = 10.0;
-const BOUNDARY_WIRE_RAIL_THICKNESS: f32 = 1.8;
+const BOUNDARY_SHADOW_INSET: f32 = 30.0;
+const BOUNDARY_SHADOW_THICKNESS: f32 = 26.0;
+const BOUNDARY_SHADOW_HEIGHT: f32 = 136.0;
+const BOUNDARY_CORE_INSET: f32 = 18.0;
+const BOUNDARY_CORE_MASS_THICKNESS: f32 = 14.0;
+const BOUNDARY_CORE_MASS_HEIGHT: f32 = 108.0;
+const BOUNDARY_FIELD_INSET: f32 = 8.0;
+const BOUNDARY_FIELD_THICKNESS: f32 = 0.28;
+const BOUNDARY_FIELD_HEIGHT: f32 = 120.0;
+const BOUNDARY_EDGE_INSET: f32 = 5.0;
+const BOUNDARY_EDGE_THICKNESS: f32 = 2.6;
+const BOUNDARY_EDGE_HEIGHT: f32 = 124.0;
+const BOUNDARY_TOP_RAIL_THICKNESS: f32 = 3.2;
+const BOUNDARY_TOP_RAIL_HEIGHT: f32 = 112.0;
+const BOUNDARY_LOW_RAIL_THICKNESS: f32 = 2.4;
+const BOUNDARY_LOW_RAIL_HEIGHT: f32 = 30.0;
+const BOUNDARY_POST_SPACING: f32 = 148.0;
+const BOUNDARY_POST_LENGTH: f32 = 28.0;
+const BOUNDARY_POST_HEIGHT: f32 = 118.0;
+const BOUNDARY_SCAN_BAR_HEIGHTS: [f32; 2] = [46.0, 78.0];
+const BOUNDARY_SCAN_BAR_LENGTH: f32 = 42.0;
+const BOUNDARY_FIELD_SEGMENT_LENGTH: f32 = 102.0;
+const FLOOR_FLOW_SPEED: f32 = 0.88;
+const FLOOR_FLOW_Y_FREQUENCY: f32 = 0.0105;
+const FLOOR_FLOW_X_FREQUENCY: f32 = 0.0080;
+const CAGE_FLOW_SPEED: f32 = 1.14;
+const CAGE_FLOW_Y_FREQUENCY: f32 = 0.0135;
+const CAGE_FLOW_X_FREQUENCY: f32 = 0.0040;
+const ENVIRONMENT_SURGE_LIMIT: usize = 24;
 const RICOCHET_SPEED_RETAIN: f32 = 0.94;
 const RICOCHET_DAMAGE_RETAIN: f32 = 0.96;
 const RICOCHET_MIN_SPEED: f32 = 260.0;
@@ -211,6 +236,134 @@ pub struct DeferredNebulaDespawn {
     armed: bool,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum NeonReactiveChannel {
+    Floor,
+    Cage,
+    Both,
+}
+
+#[derive(Component, Clone, Copy, Debug)]
+pub(crate) struct AnimatedNeonAccent {
+    base_scale: Vec3,
+    base_z: f32,
+    base_color_rgb: Vec3,
+    base_alpha: f32,
+    max_alpha: f32,
+    emissive_rgb: Vec3,
+    emissive_intensity: f32,
+    ambient_speed: f32,
+    ambient_phase: f32,
+    y_frequency: f32,
+    x_frequency: f32,
+    ambient_emissive_gain: f32,
+    reactive_emissive_gain: f32,
+    ambient_alpha_gain: f32,
+    reactive_alpha_gain: f32,
+    scale_pulse: Vec3,
+    lift_z: f32,
+    reactive_channel: NeonReactiveChannel,
+}
+
+#[derive(Clone, Copy, Debug)]
+struct EnvironmentVisualSurge {
+    position: Vec2,
+    radius: f32,
+    strength: f32,
+    ttl_secs: f32,
+    max_ttl_secs: f32,
+    channel: NeonReactiveChannel,
+}
+
+#[derive(Resource, Default)]
+pub struct NebulaEnvironmentFxState {
+    surges: Vec<EnvironmentVisualSurge>,
+}
+
+fn neon_emissive(rgb: Vec3, intensity: f32) -> LinearRgba {
+    LinearRgba::rgb(rgb.x, rgb.y, rgb.z) * intensity.max(0.0)
+}
+
+fn neon_wave_energy(
+    time_secs: f32,
+    position: Vec2,
+    speed: f32,
+    y_frequency: f32,
+    x_frequency: f32,
+    phase: f32,
+) -> f32 {
+    let primary =
+        (position.y * y_frequency - time_secs * speed + phase + position.x.abs() * x_frequency)
+            .sin();
+    let secondary = ((position.y * y_frequency * 0.57) + time_secs * speed * 0.64 + phase * 1.37
+        - position.x.abs() * x_frequency * 0.75)
+        .cos();
+    (((primary * 0.72 + secondary * 0.28) * 0.5) + 0.5)
+        .clamp(0.0, 1.0)
+        .powf(1.65)
+}
+
+fn neon_surge_falloff(distance: f32, radius: f32, strength: f32, life_ratio: f32) -> f32 {
+    if radius <= f32::EPSILON || strength <= 0.0 || life_ratio <= 0.0 {
+        return 0.0;
+    }
+
+    let radial = (1.0 - distance / radius).clamp(0.0, 1.0).powf(2.2);
+    radial * strength * life_ratio.clamp(0.0, 1.0)
+}
+
+fn channels_overlap(lhs: NeonReactiveChannel, rhs: NeonReactiveChannel) -> bool {
+    matches!(lhs, NeonReactiveChannel::Both)
+        || matches!(rhs, NeonReactiveChannel::Both)
+        || lhs == rhs
+}
+
+fn reactive_energy_at(
+    position: Vec2,
+    channel: NeonReactiveChannel,
+    surges: &[EnvironmentVisualSurge],
+) -> f32 {
+    surges
+        .iter()
+        .filter(|surge| channels_overlap(channel, surge.channel))
+        .map(|surge| {
+            neon_surge_falloff(
+                position.distance(surge.position),
+                surge.radius,
+                surge.strength,
+                surge.ttl_secs / surge.max_ttl_secs.max(f32::EPSILON),
+            )
+        })
+        .sum::<f32>()
+        .clamp(0.0, 1.35)
+}
+
+fn push_environment_surge(
+    environment_fx: &mut NebulaEnvironmentFxState,
+    position: Vec2,
+    radius: f32,
+    strength: f32,
+    ttl_secs: f32,
+    channel: NeonReactiveChannel,
+) {
+    if radius <= 0.0 || strength <= 0.0 || ttl_secs <= 0.0 {
+        return;
+    }
+
+    environment_fx.surges.push(EnvironmentVisualSurge {
+        position,
+        radius,
+        strength,
+        ttl_secs,
+        max_ttl_secs: ttl_secs,
+        channel,
+    });
+    if environment_fx.surges.len() > ENVIRONMENT_SURGE_LIMIT {
+        let overflow = environment_fx.surges.len() - ENVIRONMENT_SURGE_LIMIT;
+        environment_fx.surges.drain(0..overflow);
+    }
+}
+
 fn facing_angle(direction: Vec2, forward_offset: f32) -> Option<f32> {
     if direction.length_squared() <= f32::EPSILON {
         None
@@ -252,6 +405,12 @@ fn enemy_attack_facing_angle(
         direction,
         sprite_orientation.enemy_forward_offset_radians() + std::f32::consts::PI,
     )
+}
+
+fn clamp_enemy_spawn_x(spawn_x: f32, collider_radius: f32) -> f32 {
+    let padding = collider_radius + (SOFT_BOUNDARY_HALF_THICKNESS * 0.5);
+    let limit = (ACTIVE_PLAYFIELD_X - padding).max(CORE_LANE_HALF_WIDTH);
+    spawn_x.clamp(-limit, limit)
 }
 
 fn enemy_desired_velocity(current_velocity: Vec2, enemy_pos: Vec2, ai: &EnemyAI, dt: f32) -> Vec2 {
@@ -601,6 +760,25 @@ fn spawn_ground_pattern_piece(
     ));
 }
 
+fn spawn_animated_ground_pattern_piece(
+    commands: &mut Commands,
+    mesh: &Handle<Mesh>,
+    material: Handle<StandardMaterial>,
+    translation: Vec3,
+    scale: Vec3,
+    accent: AnimatedNeonAccent,
+) {
+    commands.spawn((
+        ChunkMember,
+        GroundSeam,
+        GroundVisual,
+        Mesh3d(mesh.clone()),
+        MeshMaterial3d(material),
+        Transform::from_translation(translation).with_scale(scale),
+        accent,
+    ));
+}
+
 fn spawn_ground_pattern_piece_rotated(
     commands: &mut Commands,
     mesh: &Handle<Mesh>,
@@ -620,6 +798,28 @@ fn spawn_ground_pattern_piece_rotated(
     ));
 }
 
+fn spawn_animated_ground_pattern_piece_rotated(
+    commands: &mut Commands,
+    mesh: &Handle<Mesh>,
+    material: Handle<StandardMaterial>,
+    translation: Vec3,
+    scale: Vec3,
+    rotation_radians: f32,
+    accent: AnimatedNeonAccent,
+) {
+    commands.spawn((
+        ChunkMember,
+        GroundSeam,
+        GroundVisual,
+        Mesh3d(mesh.clone()),
+        MeshMaterial3d(material),
+        Transform::from_translation(translation)
+            .with_rotation(Quat::from_rotation_z(rotation_radians))
+            .with_scale(scale),
+        accent,
+    ));
+}
+
 fn spawn_boundary_wire_piece(
     commands: &mut Commands,
     mesh: &Handle<Mesh>,
@@ -636,22 +836,21 @@ fn spawn_boundary_wire_piece(
     ));
 }
 
-fn spawn_boundary_wire_piece_rotated(
+fn spawn_animated_boundary_wire_piece(
     commands: &mut Commands,
     mesh: &Handle<Mesh>,
     material: Handle<StandardMaterial>,
     translation: Vec3,
     scale: Vec3,
-    rotation: Quat,
+    accent: AnimatedNeonAccent,
 ) {
     commands.spawn((
         ChunkMember,
         WallVisual,
         Mesh3d(mesh.clone()),
         MeshMaterial3d(material),
-        Transform::from_translation(translation)
-            .with_rotation(rotation)
-            .with_scale(scale),
+        Transform::from_translation(translation).with_scale(scale),
+        accent,
     ));
 }
 
@@ -680,23 +879,166 @@ fn spawn_chunk_floor_tiles(
 
     let start_y = chunk_center_y - chunk_height * 0.5;
     let end_y = chunk_center_y + chunk_height * 0.5;
-    let bank_connector_material = materials.add(StandardMaterial {
-        base_color: Color::srgba(0.16, 0.92, 1.0, 0.44),
-        emissive: LinearRgba::rgb(0.16, 0.92, 1.0) * 1.2,
+    let bank_connector_template = StandardMaterial {
+        base_color: Color::srgba(0.12, 0.90, 1.0, 0.18),
+        emissive: neon_emissive(Vec3::new(0.20, 1.18, 1.34), 3.2),
         alpha_mode: AlphaMode::Blend,
         unlit: true,
         ..default()
-    });
-    let shoulder_ridge_material = materials.add(StandardMaterial {
-        base_color: Color::srgba(1.0, 0.28, 0.74, 0.66),
-        emissive: LinearRgba::rgb(1.0, 0.28, 0.74) * 1.9,
+    };
+    let shoulder_ridge_template = StandardMaterial {
+        base_color: Color::srgba(1.0, 0.14, 0.82, 0.16),
+        emissive: neon_emissive(Vec3::new(1.0, 0.18, 0.92), 5.8),
         alpha_mode: AlphaMode::Blend,
         unlit: true,
         ..default()
-    });
+    };
+    let floor_infill_cyan_template = StandardMaterial {
+        base_color: Color::srgba(0.14, 0.88, 1.0, 0.18),
+        emissive: neon_emissive(Vec3::new(0.20, 1.18, 1.36), 5.6),
+        alpha_mode: AlphaMode::Blend,
+        unlit: true,
+        ..default()
+    };
+    let floor_infill_magenta_template = StandardMaterial {
+        base_color: Color::srgba(1.0, 0.16, 0.86, 0.18),
+        emissive: neon_emissive(Vec3::new(1.0, 0.20, 0.90), 5.9),
+        alpha_mode: AlphaMode::Blend,
+        unlit: true,
+        ..default()
+    };
+    let floor_infill_lime_template = StandardMaterial {
+        base_color: Color::srgba(0.44, 1.0, 0.18, 0.18),
+        emissive: neon_emissive(Vec3::new(0.92, 2.10, 0.34), 5.4),
+        alpha_mode: AlphaMode::Blend,
+        unlit: true,
+        ..default()
+    };
+
+    for (
+        band_index,
+        (x_ratio, width, base_color_rgb, emissive_rgb, emissive_intensity, material),
+    ) in [
+        (
+            -0.42_f32,
+            310.0_f32,
+            Vec3::new(1.0, 0.16, 0.86),
+            Vec3::new(1.0, 0.20, 0.90),
+            5.9_f32,
+            floor_infill_magenta_template.clone(),
+        ),
+        (
+            -0.19_f32,
+            290.0_f32,
+            Vec3::new(0.14, 0.88, 1.0),
+            Vec3::new(0.20, 1.18, 1.36),
+            5.6_f32,
+            floor_infill_cyan_template.clone(),
+        ),
+        (
+            0.0_f32,
+            220.0_f32,
+            Vec3::new(0.44, 1.0, 0.18),
+            Vec3::new(0.92, 2.10, 0.34),
+            5.4_f32,
+            floor_infill_lime_template.clone(),
+        ),
+        (
+            0.19_f32,
+            290.0_f32,
+            Vec3::new(1.0, 0.16, 0.86),
+            Vec3::new(1.0, 0.20, 0.90),
+            5.9_f32,
+            floor_infill_magenta_template.clone(),
+        ),
+        (
+            0.42_f32,
+            310.0_f32,
+            Vec3::new(0.14, 0.88, 1.0),
+            Vec3::new(0.20, 1.18, 1.36),
+            5.6_f32,
+            floor_infill_cyan_template.clone(),
+        ),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let infill_scale = Vec3::new(width, chunk_height + 16.0, 1.0);
+        spawn_animated_ground_pattern_piece(
+            commands,
+            &nebula_mats.quad_mesh,
+            materials.add(material),
+            Vec3::new(TERRAIN_WIDTH * x_ratio, chunk_center_y, GROUND_INFILL_Z),
+            infill_scale,
+            AnimatedNeonAccent {
+                base_scale: infill_scale,
+                base_z: GROUND_INFILL_Z,
+                base_color_rgb,
+                base_alpha: 0.18,
+                max_alpha: 0.34,
+                emissive_rgb,
+                emissive_intensity,
+                ambient_speed: FLOOR_FLOW_SPEED * (0.78 + band_index as f32 * 0.06),
+                ambient_phase: band_index as f32 * 0.82,
+                y_frequency: FLOOR_FLOW_Y_FREQUENCY * 0.68,
+                x_frequency: FLOOR_FLOW_X_FREQUENCY * 0.28,
+                ambient_emissive_gain: 1.15,
+                reactive_emissive_gain: 0.95,
+                ambient_alpha_gain: 0.05,
+                reactive_alpha_gain: 0.06,
+                scale_pulse: Vec3::new(10.0, 18.0, 0.0),
+                lift_z: 0.02,
+                reactive_channel: NeonReactiveChannel::Floor,
+            },
+        );
+    }
 
     let band_start = (start_y / GROUND_PATTERN_BAND_HEIGHT).floor() as i32;
     let band_end = (end_y / GROUND_PATTERN_BAND_HEIGHT).ceil() as i32;
+    let boundary_shadow_material = materials.add(StandardMaterial {
+        base_color: Color::srgb(0.001, 0.002, 0.008),
+        emissive: LinearRgba::rgb(0.003, 0.006, 0.016) * 0.03,
+        metallic: 0.0,
+        perceptual_roughness: 1.0,
+        unlit: true,
+        ..default()
+    });
+    let boundary_core_material = materials.add(StandardMaterial {
+        base_color: Color::srgb(0.003, 0.004, 0.012),
+        emissive: LinearRgba::rgb(0.008, 0.016, 0.040) * 0.08,
+        metallic: 0.0,
+        perceptual_roughness: 1.0,
+        unlit: true,
+        ..default()
+    });
+    let boundary_field_template = StandardMaterial {
+        base_color: Color::srgba(0.10, 0.78, 1.0, 0.04),
+        emissive: neon_emissive(Vec3::new(0.18, 1.10, 1.24), 1.05),
+        alpha_mode: AlphaMode::Blend,
+        unlit: true,
+        ..default()
+    };
+    let boundary_edge_template = StandardMaterial {
+        base_color: Color::srgba(0.18, 0.96, 1.0, 0.62),
+        emissive: neon_emissive(Vec3::new(0.22, 1.20, 1.34), 6.4),
+        alpha_mode: AlphaMode::Blend,
+        unlit: true,
+        ..default()
+    };
+    let boundary_top_rail_template = StandardMaterial {
+        base_color: Color::srgba(0.22, 0.98, 1.0, 0.84),
+        emissive: neon_emissive(Vec3::new(0.28, 1.30, 1.44), 8.8),
+        alpha_mode: AlphaMode::Blend,
+        unlit: true,
+        ..default()
+    };
+    let boundary_scan_template = StandardMaterial {
+        base_color: Color::srgba(1.0, 0.14, 0.76, 0.50),
+        emissive: neon_emissive(Vec3::new(1.0, 0.18, 0.88), 7.4),
+        alpha_mode: AlphaMode::Blend,
+        unlit: true,
+        ..default()
+    };
     for band in band_start..=band_end {
         let band_mid_y =
             band as f32 * GROUND_PATTERN_BAND_HEIGHT + (GROUND_PATTERN_BAND_HEIGHT * 0.5);
@@ -747,20 +1089,62 @@ fn spawn_chunk_floor_tiles(
             } else {
                 band_mid_y
             };
+            let inner_scale = Vec3::new(GROUND_RIDGE_THICKNESS, inner_length, 1.0);
+            let outer_scale = Vec3::new(GROUND_RIDGE_THICKNESS, outer_length, 1.0);
 
-            spawn_ground_pattern_piece(
+            spawn_animated_ground_pattern_piece(
                 commands,
                 &nebula_mats.quad_mesh,
-                shoulder_ridge_material.clone(),
+                materials.add(shoulder_ridge_template.clone()),
                 Vec3::new(inner_x, inner_y, GROUND_SEAM_Z),
-                Vec3::new(GROUND_RIDGE_THICKNESS, inner_length, 1.0),
+                inner_scale,
+                AnimatedNeonAccent {
+                    base_scale: inner_scale,
+                    base_z: GROUND_SEAM_Z,
+                    base_color_rgb: Vec3::new(1.0, 0.14, 0.82),
+                    base_alpha: 0.16,
+                    max_alpha: 0.34,
+                    emissive_rgb: Vec3::new(1.0, 0.18, 0.92),
+                    emissive_intensity: 5.8,
+                    ambient_speed: FLOOR_FLOW_SPEED,
+                    ambient_phase: band as f32 * 0.61 + side_sign * 0.8,
+                    y_frequency: FLOOR_FLOW_Y_FREQUENCY,
+                    x_frequency: FLOOR_FLOW_X_FREQUENCY,
+                    ambient_emissive_gain: 1.35,
+                    reactive_emissive_gain: 1.30,
+                    ambient_alpha_gain: 0.12,
+                    reactive_alpha_gain: 0.16,
+                    scale_pulse: Vec3::new(1.2, 14.0, 0.0),
+                    lift_z: 2.6,
+                    reactive_channel: NeonReactiveChannel::Floor,
+                },
             );
-            spawn_ground_pattern_piece(
+            spawn_animated_ground_pattern_piece(
                 commands,
                 &nebula_mats.quad_mesh,
-                shoulder_ridge_material.clone(),
+                materials.add(shoulder_ridge_template.clone()),
                 Vec3::new(outer_x, outer_y, GROUND_SEAM_Z),
-                Vec3::new(GROUND_RIDGE_THICKNESS, outer_length, 1.0),
+                outer_scale,
+                AnimatedNeonAccent {
+                    base_scale: outer_scale,
+                    base_z: GROUND_SEAM_Z,
+                    base_color_rgb: Vec3::new(1.0, 0.14, 0.82),
+                    base_alpha: 0.16,
+                    max_alpha: 0.32,
+                    emissive_rgb: Vec3::new(1.0, 0.18, 0.92),
+                    emissive_intensity: 5.4,
+                    ambient_speed: FLOOR_FLOW_SPEED * 1.06,
+                    ambient_phase: band as f32 * 0.54 + side_sign * 1.2,
+                    y_frequency: FLOOR_FLOW_Y_FREQUENCY * 0.95,
+                    x_frequency: FLOOR_FLOW_X_FREQUENCY,
+                    ambient_emissive_gain: 1.30,
+                    reactive_emissive_gain: 1.25,
+                    ambient_alpha_gain: 0.10,
+                    reactive_alpha_gain: 0.16,
+                    scale_pulse: Vec3::new(1.0, 12.0, 0.0),
+                    lift_z: 2.4,
+                    reactive_channel: NeonReactiveChannel::Floor,
+                },
             );
 
             if pocket_active || (side_active && motif_cycle >= 3) {
@@ -775,35 +1159,77 @@ fn spawn_chunk_floor_tiles(
                 } else {
                     GROUND_BANK_BRACE_ANGLE
                 };
-                spawn_ground_pattern_piece_rotated(
+                let brace_scale = Vec3::new(
+                    GROUND_POCKET_CONNECTOR_THICKNESS,
+                    GROUND_BANK_BRACE_LENGTH,
+                    1.0,
+                );
+                spawn_animated_ground_pattern_piece_rotated(
                     commands,
                     &nebula_mats.quad_mesh,
-                    bank_connector_material.clone(),
+                    materials.add(bank_connector_template.clone()),
                     Vec3::new(brace_x, brace_y, GROUND_SEAM_Z),
-                    Vec3::new(
-                        GROUND_POCKET_CONNECTOR_THICKNESS,
-                        GROUND_BANK_BRACE_LENGTH,
-                        1.0,
-                    ),
+                    brace_scale,
                     brace_angle,
+                    AnimatedNeonAccent {
+                        base_scale: brace_scale,
+                        base_z: GROUND_SEAM_Z,
+                        base_color_rgb: Vec3::new(0.12, 0.90, 1.0),
+                        base_alpha: 0.18,
+                        max_alpha: 0.34,
+                        emissive_rgb: Vec3::new(0.20, 1.18, 1.34),
+                        emissive_intensity: 3.2,
+                        ambient_speed: FLOOR_FLOW_SPEED * 1.08,
+                        ambient_phase: band as f32 * 0.66 + side_sign * 1.4,
+                        y_frequency: FLOOR_FLOW_Y_FREQUENCY * 1.08,
+                        x_frequency: FLOOR_FLOW_X_FREQUENCY,
+                        ambient_emissive_gain: 1.28,
+                        reactive_emissive_gain: 1.32,
+                        ambient_alpha_gain: 0.10,
+                        reactive_alpha_gain: 0.14,
+                        scale_pulse: Vec3::new(0.8, 10.0, 0.0),
+                        lift_z: 2.0,
+                        reactive_channel: NeonReactiveChannel::Floor,
+                    },
                 );
 
                 if pocket_active {
-                    spawn_ground_pattern_piece_rotated(
+                    let brace_scale = Vec3::new(
+                        GROUND_POCKET_CONNECTOR_THICKNESS,
+                        GROUND_BANK_BRACE_LENGTH * 0.86,
+                        1.0,
+                    );
+                    spawn_animated_ground_pattern_piece_rotated(
                         commands,
                         &nebula_mats.quad_mesh,
-                        bank_connector_material.clone(),
+                        materials.add(bank_connector_template.clone()),
                         Vec3::new(
                             brace_x + (side_sign * 10.0),
                             brace_y - (GROUND_PATTERN_BAND_HEIGHT * 0.16),
                             GROUND_SEAM_Z,
                         ),
-                        Vec3::new(
-                            GROUND_POCKET_CONNECTOR_THICKNESS,
-                            GROUND_BANK_BRACE_LENGTH * 0.86,
-                            1.0,
-                        ),
+                        brace_scale,
                         -brace_angle,
+                        AnimatedNeonAccent {
+                            base_scale: brace_scale,
+                            base_z: GROUND_SEAM_Z,
+                            base_color_rgb: Vec3::new(0.12, 0.90, 1.0),
+                            base_alpha: 0.17,
+                            max_alpha: 0.32,
+                            emissive_rgb: Vec3::new(0.20, 1.18, 1.34),
+                            emissive_intensity: 3.1,
+                            ambient_speed: FLOOR_FLOW_SPEED * 1.04,
+                            ambient_phase: band as f32 * 0.72 + side_sign * 1.7,
+                            y_frequency: FLOOR_FLOW_Y_FREQUENCY * 1.04,
+                            x_frequency: FLOOR_FLOW_X_FREQUENCY,
+                            ambient_emissive_gain: 1.22,
+                            reactive_emissive_gain: 1.28,
+                            ambient_alpha_gain: 0.10,
+                            reactive_alpha_gain: 0.14,
+                            scale_pulse: Vec3::new(0.7, 8.0, 0.0),
+                            lift_z: 1.8,
+                            reactive_channel: NeonReactiveChannel::Floor,
+                        },
                     );
                 }
             }
@@ -816,17 +1242,38 @@ fn spawn_chunk_floor_tiles(
                 } else {
                     -GROUND_BANK_BRACE_ANGLE
                 };
-                spawn_ground_pattern_piece_rotated(
+                let chicane_scale = Vec3::new(
+                    GROUND_POCKET_CONNECTOR_THICKNESS,
+                    GROUND_BANK_BRACE_LENGTH * 0.82,
+                    1.0,
+                );
+                spawn_animated_ground_pattern_piece_rotated(
                     commands,
                     &nebula_mats.quad_mesh,
-                    bank_connector_material.clone(),
+                    materials.add(bank_connector_template.clone()),
                     Vec3::new(chicane_x, chicane_y, GROUND_SEAM_Z),
-                    Vec3::new(
-                        GROUND_POCKET_CONNECTOR_THICKNESS,
-                        GROUND_BANK_BRACE_LENGTH * 0.82,
-                        1.0,
-                    ),
+                    chicane_scale,
                     chicane_angle,
+                    AnimatedNeonAccent {
+                        base_scale: chicane_scale,
+                        base_z: GROUND_SEAM_Z,
+                        base_color_rgb: Vec3::new(0.12, 0.90, 1.0),
+                        base_alpha: 0.16,
+                        max_alpha: 0.32,
+                        emissive_rgb: Vec3::new(0.20, 1.18, 1.34),
+                        emissive_intensity: 3.0,
+                        ambient_speed: FLOOR_FLOW_SPEED * 1.12,
+                        ambient_phase: band as f32 * 0.74 + side_sign * 1.9,
+                        y_frequency: FLOOR_FLOW_Y_FREQUENCY,
+                        x_frequency: FLOOR_FLOW_X_FREQUENCY,
+                        ambient_emissive_gain: 1.24,
+                        reactive_emissive_gain: 1.28,
+                        ambient_alpha_gain: 0.10,
+                        reactive_alpha_gain: 0.14,
+                        scale_pulse: Vec3::new(0.7, 9.0, 0.0),
+                        lift_z: 1.8,
+                        reactive_channel: NeonReactiveChannel::Floor,
+                    },
                 );
             }
         }
@@ -861,55 +1308,194 @@ fn spawn_chunk_floor_tiles(
             CollisionLayers::new(GameLayer::Wall, [GameLayer::Projectile, GameLayer::Player]),
         ));
 
-        let inward_x = x + (normal.vec2().x * BOUNDARY_WIRE_INSET);
-        let boundary_glow_material = materials.add(StandardMaterial {
-            base_color: Color::srgba(0.34, 0.96, 1.0, 0.03),
-            emissive: LinearRgba::rgb(0.34, 0.96, 1.0) * 0.4,
-            alpha_mode: AlphaMode::Blend,
-            unlit: true,
-            ..default()
-        });
-        let boundary_wire_material = materials.add(StandardMaterial {
-            base_color: Color::srgba(0.34, 0.96, 1.0, 0.72),
-            emissive: LinearRgba::rgb(0.34, 0.96, 1.0) * 2.4,
-            alpha_mode: AlphaMode::Blend,
-            unlit: true,
-            ..default()
-        });
-        let boundary_cross_material = materials.add(StandardMaterial {
-            base_color: Color::srgba(0.96, 0.76, 0.22, 0.72),
-            emissive: LinearRgba::rgb(0.96, 0.76, 0.22) * 1.8,
-            alpha_mode: AlphaMode::Blend,
-            unlit: true,
-            ..default()
-        });
+        let shadow_x = x + (normal.vec2().x * BOUNDARY_SHADOW_INSET);
+        let core_x = x + (normal.vec2().x * BOUNDARY_CORE_INSET);
+        let field_x = x + (normal.vec2().x * BOUNDARY_FIELD_INSET);
+        let edge_x = x + (normal.vec2().x * BOUNDARY_EDGE_INSET);
 
         spawn_boundary_wire_piece(
             commands,
             &nebula_mats.lane_mesh,
-            boundary_glow_material.clone(),
-            Vec3::new(x, chunk_center_y, depth::WALL + 28.0),
-            Vec3::new(0.18, chunk_height, SOFT_BOUNDARY_HEIGHT * 0.56),
+            boundary_shadow_material.clone(),
+            Vec3::new(shadow_x, chunk_center_y, depth::WALL + 52.0),
+            Vec3::new(
+                BOUNDARY_SHADOW_THICKNESS,
+                chunk_height + 12.0,
+                BOUNDARY_SHADOW_HEIGHT,
+            ),
         );
 
-        for rail_height in [14.0, 32.0, 50.0, 68.0, 86.0] {
-            spawn_boundary_wire_piece(
+        spawn_boundary_wire_piece(
+            commands,
+            &nebula_mats.lane_mesh,
+            boundary_core_material.clone(),
+            Vec3::new(core_x, chunk_center_y, depth::WALL + 48.0),
+            Vec3::new(
+                BOUNDARY_CORE_MASS_THICKNESS,
+                chunk_height + 4.0,
+                BOUNDARY_CORE_MASS_HEIGHT,
+            ),
+        );
+        spawn_boundary_wire_piece(
+            commands,
+            &nebula_mats.lane_mesh,
+            materials.add(boundary_field_template.clone()),
+            Vec3::new(field_x, chunk_center_y, depth::WALL + 54.0),
+            Vec3::new(
+                BOUNDARY_FIELD_THICKNESS,
+                chunk_height,
+                BOUNDARY_FIELD_HEIGHT,
+            ),
+        );
+        spawn_animated_boundary_wire_piece(
+            commands,
+            &nebula_mats.lane_mesh,
+            materials.add(boundary_edge_template.clone()),
+            Vec3::new(edge_x, chunk_center_y, depth::WALL + 58.0),
+            Vec3::new(BOUNDARY_EDGE_THICKNESS, chunk_height, BOUNDARY_EDGE_HEIGHT),
+            AnimatedNeonAccent {
+                base_scale: Vec3::new(BOUNDARY_EDGE_THICKNESS, chunk_height, BOUNDARY_EDGE_HEIGHT),
+                base_z: depth::WALL + 58.0,
+                base_color_rgb: Vec3::new(0.18, 0.96, 1.0),
+                base_alpha: 0.62,
+                max_alpha: 0.92,
+                emissive_rgb: Vec3::new(0.22, 1.20, 1.34),
+                emissive_intensity: 6.4,
+                ambient_speed: CAGE_FLOW_SPEED,
+                ambient_phase: x.signum() * 0.9,
+                y_frequency: CAGE_FLOW_Y_FREQUENCY,
+                x_frequency: CAGE_FLOW_X_FREQUENCY,
+                ambient_emissive_gain: 1.10,
+                reactive_emissive_gain: 1.40,
+                ambient_alpha_gain: 0.12,
+                reactive_alpha_gain: 0.16,
+                scale_pulse: Vec3::new(0.35, 0.0, 6.0),
+                lift_z: 1.8,
+                reactive_channel: NeonReactiveChannel::Cage,
+            },
+        );
+
+        spawn_animated_boundary_wire_piece(
+            commands,
+            &nebula_mats.lane_mesh,
+            materials.add(boundary_top_rail_template.clone()),
+            Vec3::new(
+                core_x,
+                chunk_center_y,
+                depth::WALL + BOUNDARY_TOP_RAIL_HEIGHT,
+            ),
+            Vec3::new(
+                BOUNDARY_CORE_MASS_THICKNESS * 0.65,
+                chunk_height,
+                BOUNDARY_TOP_RAIL_THICKNESS,
+            ),
+            AnimatedNeonAccent {
+                base_scale: Vec3::new(
+                    BOUNDARY_CORE_MASS_THICKNESS * 0.65,
+                    chunk_height,
+                    BOUNDARY_TOP_RAIL_THICKNESS,
+                ),
+                base_z: depth::WALL + BOUNDARY_TOP_RAIL_HEIGHT,
+                base_color_rgb: Vec3::new(0.22, 0.98, 1.0),
+                base_alpha: 0.84,
+                max_alpha: 1.0,
+                emissive_rgb: Vec3::new(0.28, 1.30, 1.44),
+                emissive_intensity: 8.8,
+                ambient_speed: CAGE_FLOW_SPEED * 1.08,
+                ambient_phase: x.signum() * 1.5 + 0.4,
+                y_frequency: CAGE_FLOW_Y_FREQUENCY * 1.10,
+                x_frequency: CAGE_FLOW_X_FREQUENCY,
+                ambient_emissive_gain: 1.35,
+                reactive_emissive_gain: 1.50,
+                ambient_alpha_gain: 0.10,
+                reactive_alpha_gain: 0.12,
+                scale_pulse: Vec3::new(0.20, 0.0, 1.2),
+                lift_z: 3.2,
+                reactive_channel: NeonReactiveChannel::Cage,
+            },
+        );
+        spawn_animated_boundary_wire_piece(
+            commands,
+            &nebula_mats.lane_mesh,
+            materials.add(boundary_scan_template.clone()),
+            Vec3::new(
+                core_x,
+                chunk_center_y,
+                depth::WALL + BOUNDARY_LOW_RAIL_HEIGHT,
+            ),
+            Vec3::new(
+                BOUNDARY_CORE_MASS_THICKNESS * 0.42,
+                chunk_height,
+                BOUNDARY_LOW_RAIL_THICKNESS,
+            ),
+            AnimatedNeonAccent {
+                base_scale: Vec3::new(
+                    BOUNDARY_CORE_MASS_THICKNESS * 0.42,
+                    chunk_height,
+                    BOUNDARY_LOW_RAIL_THICKNESS,
+                ),
+                base_z: depth::WALL + BOUNDARY_LOW_RAIL_HEIGHT,
+                base_color_rgb: Vec3::new(1.0, 0.14, 0.76),
+                base_alpha: 0.50,
+                max_alpha: 0.86,
+                emissive_rgb: Vec3::new(1.0, 0.18, 0.88),
+                emissive_intensity: 7.4,
+                ambient_speed: CAGE_FLOW_SPEED * 0.92,
+                ambient_phase: x.signum() * 1.2 + 1.3,
+                y_frequency: CAGE_FLOW_Y_FREQUENCY,
+                x_frequency: CAGE_FLOW_X_FREQUENCY,
+                ambient_emissive_gain: 1.15,
+                reactive_emissive_gain: 1.35,
+                ambient_alpha_gain: 0.10,
+                reactive_alpha_gain: 0.14,
+                scale_pulse: Vec3::new(0.16, 0.0, 0.9),
+                lift_z: 2.4,
+                reactive_channel: NeonReactiveChannel::Cage,
+            },
+        );
+
+        let post_start = (start_y / BOUNDARY_POST_SPACING).floor() as i32;
+        let post_end = (end_y / BOUNDARY_POST_SPACING).ceil() as i32;
+        for segment in post_start..=post_end {
+            let segment_y = segment as f32 * BOUNDARY_POST_SPACING + (BOUNDARY_POST_SPACING * 0.5);
+            if segment_y < start_y || segment_y > end_y {
+                continue;
+            }
+            let segment_scale = Vec3::new(
+                BOUNDARY_FIELD_THICKNESS,
+                BOUNDARY_FIELD_SEGMENT_LENGTH,
+                BOUNDARY_FIELD_HEIGHT * 0.74,
+            );
+            spawn_animated_boundary_wire_piece(
                 commands,
                 &nebula_mats.lane_mesh,
-                boundary_wire_material.clone(),
-                Vec3::new(inward_x, chunk_center_y, depth::WALL + rail_height),
-                Vec3::new(
-                    BOUNDARY_WIRE_PANEL_THICKNESS,
-                    chunk_height,
-                    BOUNDARY_WIRE_RAIL_THICKNESS,
-                ),
+                materials.add(boundary_field_template.clone()),
+                Vec3::new(field_x, segment_y, depth::WALL + 60.0),
+                segment_scale,
+                AnimatedNeonAccent {
+                    base_scale: segment_scale,
+                    base_z: depth::WALL + 60.0,
+                    base_color_rgb: Vec3::new(0.10, 0.78, 1.0),
+                    base_alpha: 0.04,
+                    max_alpha: 0.22,
+                    emissive_rgb: Vec3::new(0.18, 1.10, 1.24),
+                    emissive_intensity: 1.05,
+                    ambient_speed: CAGE_FLOW_SPEED * 1.04,
+                    ambient_phase: segment as f32 * 0.44 + x.signum() * 0.9,
+                    y_frequency: CAGE_FLOW_Y_FREQUENCY * 1.08,
+                    x_frequency: CAGE_FLOW_X_FREQUENCY,
+                    ambient_emissive_gain: 1.55,
+                    reactive_emissive_gain: 1.70,
+                    ambient_alpha_gain: 0.12,
+                    reactive_alpha_gain: 0.18,
+                    scale_pulse: Vec3::new(0.18, 10.0, 10.0),
+                    lift_z: 2.0,
+                    reactive_channel: NeonReactiveChannel::Cage,
+                },
             );
         }
-
-        let post_start = (start_y / BOUNDARY_WIRE_POST_SPACING).floor() as i32;
-        let post_end = (end_y / BOUNDARY_WIRE_POST_SPACING).ceil() as i32;
         for post in post_start..=post_end {
-            let post_y = post as f32 * BOUNDARY_WIRE_POST_SPACING;
+            let post_y = post as f32 * BOUNDARY_POST_SPACING;
             if post_y < start_y - 24.0 || post_y > end_y + 24.0 {
                 continue;
             }
@@ -917,46 +1503,94 @@ fn spawn_chunk_floor_tiles(
             spawn_boundary_wire_piece(
                 commands,
                 &nebula_mats.lane_mesh,
-                boundary_wire_material.clone(),
-                Vec3::new(inward_x, post_y, depth::WALL + 34.0),
+                boundary_core_material.clone(),
+                Vec3::new(core_x, post_y, depth::WALL + 40.0),
                 Vec3::new(
-                    BOUNDARY_WIRE_PANEL_THICKNESS,
-                    8.0,
-                    BOUNDARY_WIRE_POST_HEIGHT,
+                    BOUNDARY_CORE_MASS_THICKNESS + 2.0,
+                    BOUNDARY_POST_LENGTH,
+                    BOUNDARY_POST_HEIGHT,
                 ),
             );
-
-            if post < post_end {
-                let next_post_y = (post + 1) as f32 * BOUNDARY_WIRE_POST_SPACING;
-                if next_post_y <= end_y + 24.0 {
-                    let mid_y = (post_y + next_post_y) * 0.5;
-                    let lean_sign = if post.rem_euclid(2) == 0 { 1.0 } else { -1.0 };
-                    spawn_boundary_wire_piece_rotated(
-                        commands,
-                        &nebula_mats.lane_mesh,
-                        boundary_wire_material.clone(),
-                        Vec3::new(inward_x, mid_y, depth::WALL + 56.0),
-                        Vec3::new(
-                            BOUNDARY_WIRE_PANEL_THICKNESS,
-                            BOUNDARY_WIRE_POST_SPACING * 0.68,
-                            BOUNDARY_WIRE_RAIL_THICKNESS,
-                        ),
-                        Quat::from_rotation_x(lean_sign * 0.36),
-                    );
-                }
-            }
-
-            if post.rem_euclid(2) == 0 {
-                spawn_boundary_wire_piece(
+            spawn_animated_boundary_wire_piece(
+                commands,
+                &nebula_mats.lane_mesh,
+                materials.add(boundary_edge_template.clone()),
+                Vec3::new(edge_x, post_y, depth::WALL + 62.0),
+                Vec3::new(
+                    BOUNDARY_EDGE_THICKNESS,
+                    BOUNDARY_POST_LENGTH * 0.92,
+                    BOUNDARY_POST_HEIGHT * 0.92,
+                ),
+                AnimatedNeonAccent {
+                    base_scale: Vec3::new(
+                        BOUNDARY_EDGE_THICKNESS,
+                        BOUNDARY_POST_LENGTH * 0.92,
+                        BOUNDARY_POST_HEIGHT * 0.92,
+                    ),
+                    base_z: depth::WALL + 62.0,
+                    base_color_rgb: Vec3::new(0.18, 0.96, 1.0),
+                    base_alpha: 0.58,
+                    max_alpha: 0.88,
+                    emissive_rgb: Vec3::new(0.22, 1.20, 1.34),
+                    emissive_intensity: 6.0,
+                    ambient_speed: CAGE_FLOW_SPEED * 1.05,
+                    ambient_phase: post as f32 * 0.38 + x.signum() * 0.7,
+                    y_frequency: CAGE_FLOW_Y_FREQUENCY * 1.12,
+                    x_frequency: CAGE_FLOW_X_FREQUENCY,
+                    ambient_emissive_gain: 1.05,
+                    reactive_emissive_gain: 1.30,
+                    ambient_alpha_gain: 0.10,
+                    reactive_alpha_gain: 0.14,
+                    scale_pulse: Vec3::new(0.18, 2.0, 8.0),
+                    lift_z: 1.8,
+                    reactive_channel: NeonReactiveChannel::Cage,
+                },
+            );
+            for bar_height in BOUNDARY_SCAN_BAR_HEIGHTS {
+                let is_magenta_bar = post.rem_euclid(2) == 0;
+                let bar_scale = Vec3::new(
+                    BOUNDARY_FIELD_THICKNESS,
+                    BOUNDARY_SCAN_BAR_LENGTH,
+                    BOUNDARY_LOW_RAIL_THICKNESS,
+                );
+                spawn_animated_boundary_wire_piece(
                     commands,
                     &nebula_mats.lane_mesh,
-                    boundary_cross_material.clone(),
-                    Vec3::new(
-                        x + (normal.vec2().x * (BOUNDARY_WIRE_INSET + 12.0)),
-                        post_y,
-                        depth::WALL + 60.0,
-                    ),
-                    Vec3::new(2.0, 48.0, BOUNDARY_WIRE_RAIL_THICKNESS),
+                    materials.add(if is_magenta_bar {
+                        boundary_scan_template.clone()
+                    } else {
+                        boundary_top_rail_template.clone()
+                    }),
+                    Vec3::new(field_x, post_y, depth::WALL + bar_height),
+                    bar_scale,
+                    AnimatedNeonAccent {
+                        base_scale: bar_scale,
+                        base_z: depth::WALL + bar_height,
+                        base_color_rgb: if is_magenta_bar {
+                            Vec3::new(1.0, 0.14, 0.76)
+                        } else {
+                            Vec3::new(0.22, 0.98, 1.0)
+                        },
+                        base_alpha: if is_magenta_bar { 0.50 } else { 0.84 },
+                        max_alpha: if is_magenta_bar { 0.90 } else { 1.0 },
+                        emissive_rgb: if is_magenta_bar {
+                            Vec3::new(1.0, 0.18, 0.88)
+                        } else {
+                            Vec3::new(0.28, 1.30, 1.44)
+                        },
+                        emissive_intensity: if is_magenta_bar { 7.4 } else { 8.8 },
+                        ambient_speed: CAGE_FLOW_SPEED * 1.18,
+                        ambient_phase: post as f32 * 0.42 + bar_height * 0.03 + x.signum(),
+                        y_frequency: CAGE_FLOW_Y_FREQUENCY * 1.22,
+                        x_frequency: CAGE_FLOW_X_FREQUENCY,
+                        ambient_emissive_gain: 1.30,
+                        reactive_emissive_gain: 1.55,
+                        ambient_alpha_gain: 0.10,
+                        reactive_alpha_gain: 0.14,
+                        scale_pulse: Vec3::new(0.10, 12.0, 0.6),
+                        lift_z: 2.8,
+                        reactive_channel: NeonReactiveChannel::Cage,
+                    },
                 );
             }
         }
@@ -1131,96 +1765,96 @@ pub fn setup_nebula_bouncer(
             alpha_mode: AlphaMode::Blend,
             ..default()
         }),
-        // Keep floor bodies readable from the gameplay camera instead of collapsing into a black slab.
+        // Keep the battlefield mass dark so neon contours own the read.
         hex_material_t0: materials.add(StandardMaterial {
-            base_color: Color::srgb(0.030, 0.040, 0.050),
-            emissive: LinearRgba::rgb(0.012, 0.030, 0.040) * 0.55,
-            metallic: 0.08,
-            perceptual_roughness: 0.88,
+            base_color: Color::srgb(0.003, 0.004, 0.010),
+            emissive: LinearRgba::rgb(0.010, 0.024, 0.062) * 0.12,
+            metallic: 0.06,
+            perceptual_roughness: 0.96,
             ..default()
         }),
         hex_material_t1: materials.add(StandardMaterial {
-            base_color: Color::srgb(0.036, 0.048, 0.060),
-            emissive: LinearRgba::rgb(0.016, 0.036, 0.048) * 0.65,
-            metallic: 0.10,
-            perceptual_roughness: 0.84,
+            base_color: Color::srgb(0.004, 0.005, 0.012),
+            emissive: LinearRgba::rgb(0.016, 0.028, 0.084) * 0.16,
+            metallic: 0.08,
+            perceptual_roughness: 0.93,
             ..default()
         }),
         hex_material_t2: materials.add(StandardMaterial {
-            base_color: Color::srgb(0.044, 0.058, 0.070),
-            emissive: LinearRgba::rgb(0.020, 0.044, 0.058) * 0.72,
-            metallic: 0.12,
-            perceptual_roughness: 0.80,
+            base_color: Color::srgb(0.005, 0.006, 0.014),
+            emissive: LinearRgba::rgb(0.022, 0.036, 0.110) * 0.20,
+            metallic: 0.10,
+            perceptual_roughness: 0.90,
             ..default()
         }),
         hex_material_t3: materials.add(StandardMaterial {
-            base_color: Color::srgb(0.054, 0.070, 0.084),
-            emissive: LinearRgba::rgb(0.028, 0.054, 0.070) * 0.82,
-            metallic: 0.14,
-            perceptual_roughness: 0.76,
+            base_color: Color::srgb(0.006, 0.007, 0.016),
+            emissive: LinearRgba::rgb(0.030, 0.048, 0.138) * 0.26,
+            metallic: 0.12,
+            perceptual_roughness: 0.88,
             ..default()
         }),
-        // Tri-neon rims
+        // Neon contour caps carry the synthwave read.
         hex_cap_material_t0: materials.add(StandardMaterial {
             base_color: Color::BLACK,
-            emissive: LinearRgba::rgb(0.08, 0.46, 0.76) * 0.85, // Valley contour
+            emissive: neon_emissive(Vec3::new(0.12, 0.78, 1.0), 2.3),
             unlit: true,
             ..default()
         }),
         hex_cap_material_t1: materials.add(StandardMaterial {
             base_color: Color::BLACK,
-            emissive: LinearRgba::rgb(0.8, 0.1, 1.0) * 1.15, // Magenta
+            emissive: neon_emissive(Vec3::new(1.0, 0.12, 0.90), 3.2),
             unlit: true,
             ..default()
         }),
         hex_cap_material_t2: materials.add(StandardMaterial {
             base_color: Color::BLACK,
-            emissive: LinearRgba::rgb(1.0, 0.5, 0.05) * 1.25, // Amber
+            emissive: neon_emissive(Vec3::new(0.86, 0.18, 0.90), 3.5),
             unlit: true,
             ..default()
         }),
         hex_cap_material_t3: materials.add(StandardMaterial {
             base_color: Color::BLACK,
-            emissive: LinearRgba::rgb(0.3, 0.9, 1.0) * 2.1, // Bright Cyan
+            emissive: neon_emissive(Vec3::new(0.22, 1.0, 1.0), 5.6),
             unlit: true,
             ..default()
         }),
         hex_accent_material_cyan: materials.add(StandardMaterial {
-            base_color: Color::srgb(0.2, 0.8, 1.0),
-            emissive: LinearRgba::rgb(0.4, 1.6, 2.0) * 10.0,
+            base_color: Color::srgb(0.22, 0.92, 1.0),
+            emissive: LinearRgba::rgb(0.60, 2.10, 2.60) * 18.0,
             unlit: true,
             ..default()
         }),
         hex_accent_material_magenta: materials.add(StandardMaterial {
-            base_color: Color::srgb(0.9, 0.2, 1.0),
-            emissive: LinearRgba::rgb(1.8, 0.4, 2.0) * 10.0,
+            base_color: Color::srgb(1.0, 0.18, 0.90),
+            emissive: LinearRgba::rgb(2.40, 0.34, 2.10) * 18.0,
             unlit: true,
             ..default()
         }),
         hex_accent_material_amber: materials.add(StandardMaterial {
-            base_color: Color::srgb(1.0, 0.6, 0.1),
-            emissive: LinearRgba::rgb(2.0, 1.2, 0.2) * 10.0,
+            base_color: Color::srgb(1.0, 0.54, 0.08),
+            emissive: LinearRgba::rgb(2.50, 1.20, 0.16) * 17.0,
             unlit: true,
             ..default()
         }),
         hex_accent_material_blue: materials.add(StandardMaterial {
-            base_color: Color::srgb(0.2, 0.4, 1.0),
-            emissive: LinearRgba::rgb(0.4, 0.8, 2.0) * 10.0,
+            base_color: Color::srgb(0.24, 0.38, 1.0),
+            emissive: LinearRgba::rgb(0.48, 0.90, 2.50) * 17.0,
             unlit: true,
             ..default()
         }),
         hex_accent_material_lime: materials.add(StandardMaterial {
-            base_color: Color::srgb(0.4, 1.0, 0.1),
-            emissive: LinearRgba::rgb(0.8, 2.0, 0.2) * 10.0,
+            base_color: Color::srgb(0.42, 1.0, 0.10),
+            emissive: LinearRgba::rgb(1.0, 2.30, 0.20) * 16.0,
             unlit: true,
             ..default()
         }),
         hex_texture,
         ground_base_material: materials.add(StandardMaterial {
-            base_color: Color::srgb(0.016, 0.022, 0.028),
-            emissive: LinearRgba::rgb(0.010, 0.022, 0.030) * 0.34,
-            metallic: 0.05,
-            perceptual_roughness: 0.96,
+            base_color: Color::srgb(0.002, 0.003, 0.008),
+            emissive: LinearRgba::rgb(0.008, 0.012, 0.030) * 0.08,
+            metallic: 0.02,
+            perceptual_roughness: 1.0,
             ..default()
         }),
     };
@@ -1246,9 +1880,10 @@ pub fn setup_nebula_bouncer(
         hex_texture: nebula_mats.hex_texture.clone(),
         ground_base_material: nebula_mats.ground_base_material.clone(),
     });
+    commands.insert_resource(NebulaEnvironmentFxState::default());
     commands.insert_resource(GlobalAmbientLight {
-        color: Color::srgb(0.020, 0.024, 0.032),
-        brightness: 0.10,
+        color: Color::srgb(0.010, 0.012, 0.020),
+        brightness: 0.035,
         ..default()
     });
 
@@ -1305,13 +1940,13 @@ pub fn setup_nebula_bouncer(
         Hdr,
         Tonemapping::TonyMcMapface,
         Bloom {
-            intensity: 0.12,
-            low_frequency_boost: 0.25,
+            intensity: 0.31,
+            low_frequency_boost: 0.42,
             low_frequency_boost_curvature: 0.75,
-            high_pass_frequency: 0.82,
+            high_pass_frequency: 0.68,
             prefilter: BloomPrefilter {
-                threshold: 0.55,
-                threshold_softness: 0.10,
+                threshold: 0.36,
+                threshold_softness: 0.16,
             },
             composite_mode: BloomCompositeMode::Additive,
             ..Bloom::NATURAL
@@ -1323,10 +1958,10 @@ pub fn setup_nebula_bouncer(
             ..default()
         }),
         DistanceFog {
-            color: Color::srgba(0.010, 0.012, 0.018, 0.14),
-            directional_light_color: Color::srgba(0.24, 0.30, 0.40, 0.06),
+            color: Color::srgba(0.008, 0.010, 0.018, 0.16),
+            directional_light_color: Color::srgba(0.14, 0.20, 0.34, 0.05),
             directional_light_exponent: 15.0,
-            falloff: FogFalloff::ExponentialSquared { density: 0.00035 },
+            falloff: FogFalloff::ExponentialSquared { density: 0.00040 },
         },
         Camera {
             order: 1,
@@ -1343,8 +1978,8 @@ pub fn setup_nebula_bouncer(
     commands.spawn((
         DirectionalLight {
             shadows_enabled: false,
-            illuminance: 2200.0,
-            color: Color::srgb(0.82, 0.94, 1.0),
+            illuminance: 920.0,
+            color: Color::srgb(0.64, 0.82, 1.0),
             ..default()
         },
         Transform::from_xyz(-380.0, -520.0, 760.0).looking_at(Vec3::new(0.0, 360.0, 0.0), Vec3::Z),
@@ -1354,8 +1989,8 @@ pub fn setup_nebula_bouncer(
     // Warm opposing rim to push silhouette contrast.
     commands.spawn((
         DirectionalLight {
-            illuminance: 1700.0,
-            color: Color::srgb(1.0, 0.58, 0.26),
+            illuminance: 560.0,
+            color: Color::srgb(1.0, 0.22, 0.70),
             shadows_enabled: false,
             ..default()
         },
@@ -1366,7 +2001,7 @@ pub fn setup_nebula_bouncer(
     // Forward cyan beam source to enhance lane/readability depth in the horizon.
     commands.spawn((
         PointLight {
-            intensity: 240_000.0,
+            intensity: 265_000.0,
             range: 2200.0,
             radius: 48.0,
             color: Color::srgb(0.24, 0.96, 1.0),
@@ -1380,10 +2015,10 @@ pub fn setup_nebula_bouncer(
     // Warm horizon glow to silhouette enemy swarm against the sky.
     commands.spawn((
         PointLight {
-            intensity: 140_000.0,
+            intensity: 118_000.0,
             range: 2400.0,
             radius: 60.0,
-            color: Color::srgb(1.0, 0.48, 0.16),
+            color: Color::srgb(1.0, 0.24, 0.70),
             shadows_enabled: false,
             ..default()
         },
@@ -1842,6 +2477,7 @@ pub fn handle_player_extrusion_collisions(
     q_surfaces: Query<&SurfaceRole>,
     mut pending_crash: ResMut<PendingCrashResult>,
     mut runtime_telemetry: ResMut<NebulaRuntimeTelemetry>,
+    mut environment_fx: ResMut<NebulaEnvironmentFxState>,
     mut commands: Commands,
     nebula_mats: Res<NebulaMaterials>,
 ) {
@@ -1875,6 +2511,14 @@ pub fn handle_player_extrusion_collisions(
         pending_crash.impact_pos = player_transform.translation;
         pending_crash.source = Some(surface_role.archetype);
         runtime_telemetry.record_crash(surface_role.archetype);
+        push_environment_surge(
+            &mut environment_fx,
+            pending_crash.impact_pos.truncate(),
+            240.0,
+            1.2,
+            0.42,
+            NeonReactiveChannel::Cage,
+        );
 
         spawn_neon_vector_crash_burst(&mut commands, &nebula_mats, pending_crash.impact_pos);
         break;
@@ -1958,6 +2602,7 @@ pub fn handle_orb_collisions(
     feedback_settings: Res<CameraFeedbackSettings>,
     mut shake: Query<&mut ScreenShake, With<NebulaGameplayCamera>>,
     mut hit_stop: ResMut<HitStop>,
+    mut environment_fx: ResMut<NebulaEnvironmentFxState>,
     mut collision_targets: ParamSet<(
         Query<(Entity, &mut Health, &mut EnemyStatusEffects), With<Enemy>>,
         Query<
@@ -2088,6 +2733,22 @@ pub fn handle_orb_collisions(
                     runtime_telemetry.destructible_surface_hits = runtime_telemetry
                         .destructible_surface_hits
                         .saturating_add(1);
+                    push_environment_surge(
+                        &mut environment_fx,
+                        breakable_transform.translation.truncate(),
+                        if breakable.reward == BreakableRewardRole::HealthBearing {
+                            220.0
+                        } else {
+                            180.0
+                        },
+                        if breakable.reward == BreakableRewardRole::HealthBearing {
+                            1.15
+                        } else {
+                            0.95
+                        },
+                        0.36,
+                        NeonReactiveChannel::Both,
+                    );
                     hp.damage(orb.damage as i32);
                     spawn_transient_vfx(
                         &mut commands,
@@ -2128,6 +2789,14 @@ pub fn handle_orb_collisions(
                             runtime_telemetry.health_breakables_destroyed = runtime_telemetry
                                 .health_breakables_destroyed
                                 .saturating_add(1);
+                            push_environment_surge(
+                                &mut environment_fx,
+                                breakable_pos.truncate(),
+                                250.0,
+                                1.25,
+                                0.42,
+                                NeonReactiveChannel::Both,
+                            );
                             if heal_amount > 0 {
                                 spawn_health_drop(
                                     &mut commands,
@@ -2136,6 +2805,15 @@ pub fn handle_orb_collisions(
                                     heal_amount,
                                 );
                             }
+                        } else {
+                            push_environment_surge(
+                                &mut environment_fx,
+                                breakable_pos.truncate(),
+                                210.0,
+                                1.0,
+                                0.32,
+                                NeonReactiveChannel::Both,
+                            );
                         }
                         spawn_breakable_shatter_vfx(&mut commands, &nebula_mats, breakable_pos);
                         commands.entity(breakable_entity).despawn();
@@ -2181,6 +2859,16 @@ pub fn handle_orb_collisions(
                             } else {
                                 Color::srgba(0.78, 0.92, 1.0, 0.86)
                             };
+                        if surface_role.archetype == SurfaceArchetype::RicochetExtrusion {
+                            push_environment_surge(
+                                &mut environment_fx,
+                                orb_transform.translation.truncate(),
+                                175.0,
+                                0.90 + (orb.ricochet_count.min(2) as f32 * 0.12),
+                                0.28,
+                                NeonReactiveChannel::Floor,
+                            );
+                        }
                         spawn_transient_vfx(
                             &mut commands,
                             &asset_server,
@@ -2229,6 +2917,19 @@ pub fn handle_orb_collisions(
                             .saturating_add(ricochet_bonus);
                         runtime_telemetry.ricochet_bonus_score = run_stats.ricochet_bonus_score;
                         continue;
+                    }
+
+                    if surface_role.archetype == SurfaceArchetype::TerrainBoundary
+                        || surface_role.player_role == PlayerSurfaceRole::SoftPressureBoundary
+                    {
+                        push_environment_surge(
+                            &mut environment_fx,
+                            orb_transform.translation.truncate(),
+                            210.0,
+                            0.95,
+                            0.30,
+                            NeonReactiveChannel::Cage,
+                        );
                     }
 
                     spawn_transient_vfx(
@@ -2457,23 +3158,21 @@ pub fn spawn_next_chunk(
                     .max(1.0) as i32;
                 let scale_factor = enemy_size.x / 64.0;
                 let model_scale = scale_factor * MODEL_UNIT_TO_WORLD;
+                let collider_radius = BASE_ENEMY_COLLIDER_RADIUS * scale_factor;
+                let spawn_x = clamp_enemy_spawn_x(spawn.position.x, collider_radius);
                 commands
                     .spawn((
                         Enemy,
                         // NOT a ChunkMember — enemies locomote independently through world space
                         // and must not be scrolled by the terrain scroll system.
-                        Transform::from_xyz(
-                            spawn.position.x,
-                            chunk_y + spawn.position.y,
-                            depth::ENEMY,
-                        )
-                        .with_scale(Vec3::ONE),
+                        Transform::from_xyz(spawn_x, chunk_y + spawn.position.y, depth::ENEMY)
+                            .with_scale(Vec3::ONE),
                         GlobalTransform::default(),
                         Visibility::Visible,
                         InheritedVisibility::default(),
                         ViewVisibility::default(),
                         RigidBody::Dynamic,
-                        Collider::circle(BASE_ENEMY_COLLIDER_RADIUS * scale_factor),
+                        Collider::circle(collider_radius),
                         CollisionLayers::new(
                             GameLayer::Enemy,
                             [GameLayer::Projectile, GameLayer::Player],
@@ -3284,6 +3983,63 @@ pub fn update_transient_vfx(
     }
 }
 
+pub(crate) fn update_nebula_environment_visuals(
+    time: Res<Time>,
+    mut environment_fx: ResMut<NebulaEnvironmentFxState>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut visuals: Query<(
+        &mut Transform,
+        &MeshMaterial3d<StandardMaterial>,
+        &AnimatedNeonAccent,
+    )>,
+) {
+    let dt = time.delta_secs();
+    if dt > 0.0 {
+        for surge in &mut environment_fx.surges {
+            surge.ttl_secs -= dt;
+        }
+        environment_fx.surges.retain(|surge| surge.ttl_secs > 0.0);
+    }
+
+    let time_secs = time.elapsed_secs();
+    for (mut transform, material_handle, accent) in &mut visuals {
+        let world_pos = transform.translation.truncate();
+        let ambient = neon_wave_energy(
+            time_secs,
+            world_pos,
+            accent.ambient_speed,
+            accent.y_frequency,
+            accent.x_frequency,
+            accent.ambient_phase,
+        );
+        let reactive =
+            reactive_energy_at(world_pos, accent.reactive_channel, &environment_fx.surges);
+        let emissive_multiplier =
+            1.0 + ambient * accent.ambient_emissive_gain + reactive * accent.reactive_emissive_gain;
+        let alpha = (accent.base_alpha
+            + ambient * accent.ambient_alpha_gain
+            + reactive * accent.reactive_alpha_gain)
+            .clamp(0.0, accent.max_alpha);
+        let transform_drive = (ambient * 0.65 + reactive).clamp(0.0, 1.35);
+
+        transform.scale = accent.base_scale + accent.scale_pulse * transform_drive;
+        transform.translation.z = accent.base_z + accent.lift_z * transform_drive;
+
+        if let Some(material) = materials.get_mut(material_handle) {
+            material.base_color = Color::srgba(
+                accent.base_color_rgb.x,
+                accent.base_color_rgb.y,
+                accent.base_color_rgb.z,
+                alpha,
+            );
+            material.emissive = neon_emissive(
+                accent.emissive_rgb,
+                accent.emissive_intensity * emissive_multiplier,
+            );
+        }
+    }
+}
+
 pub fn update_enemy_status_effects(
     time: Res<Time>,
     mut commands: Commands,
@@ -3884,6 +4640,7 @@ mod tests {
         ai.engagement_anchor_y = player_pos.y + enemy_role_engagement_depth(ai.role);
 
         assert!(ai.preferred_horizontal_offset > CORE_LANE_HALF_WIDTH);
+        assert!(ai.preferred_horizontal_offset < ACTIVE_PLAYFIELD_X);
         assert_eq!(ai.engagement_anchor_y, 390.0);
         assert_eq!(
             ai.engagement_anchor_y,
@@ -3903,6 +4660,13 @@ mod tests {
 
         let velocity = enemy_desired_velocity(Vec2::ZERO, Vec2::new(420.0, 540.0), &ai, 1.0);
         assert!(velocity.y < 0.0);
+    }
+
+    #[test]
+    fn enemy_spawn_clamp_keeps_spawns_inside_active_playfield() {
+        let clamped = clamp_enemy_spawn_x(ACTIVE_PLAYFIELD_X + 120.0, 18.0);
+        assert!(clamped < ACTIVE_PLAYFIELD_X);
+        assert!(clamped > CORE_LANE_HALF_WIDTH);
     }
 
     #[test]
@@ -4006,6 +4770,37 @@ mod tests {
         assert!(pulse0 >= 1.0);
         assert!(pulse1 >= 1.0);
         assert!(rotation1 > rotation0);
+    }
+
+    #[test]
+    fn neon_wave_energy_is_normalized() {
+        let energy = neon_wave_energy(1.2, Vec2::new(48.0, 320.0), 0.88, 0.0105, 0.008, 0.35);
+        assert!((0.0..=1.0).contains(&energy));
+    }
+
+    #[test]
+    fn neon_surge_falloff_fades_with_distance() {
+        let near = neon_surge_falloff(12.0, 180.0, 1.0, 1.0);
+        let far = neon_surge_falloff(160.0, 180.0, 1.0, 1.0);
+        assert!(near > far);
+        assert!(far >= 0.0);
+    }
+
+    #[test]
+    fn environment_surge_queue_is_capped() {
+        let mut state = NebulaEnvironmentFxState::default();
+        for i in 0..(ENVIRONMENT_SURGE_LIMIT + 4) {
+            push_environment_surge(
+                &mut state,
+                Vec2::new(i as f32, 0.0),
+                120.0,
+                1.0,
+                0.3,
+                NeonReactiveChannel::Floor,
+            );
+        }
+
+        assert_eq!(state.surges.len(), ENVIRONMENT_SURGE_LIMIT);
     }
 
     #[test]

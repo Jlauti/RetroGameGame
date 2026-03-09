@@ -91,7 +91,8 @@ impl Plugin for NebulaBouncerPlugin {
             .init_resource::<HitStop>()
             .init_resource::<NebulaRunStats>()
             .init_resource::<CombatTokenPool>()
-            .init_resource::<HostileFireConfig>();
+            .init_resource::<HostileFireConfig>()
+            .init_resource::<NebulaEnvironmentFxState>();
 
         app.register_type::<ChunkLibrary>()
             .register_type::<ProcGenState>();
@@ -159,6 +160,12 @@ impl Plugin for NebulaBouncerPlugin {
         app.add_systems(
             Update,
             systems::update_level_scrolling.run_if(in_state(PlayingState::NebulaBouncer)),
+        );
+        app.add_systems(
+            Update,
+            update_nebula_environment_visuals
+                .after(systems::update_level_scrolling)
+                .run_if(in_state(PlayingState::NebulaBouncer)),
         );
         app.add_systems(
             Update,

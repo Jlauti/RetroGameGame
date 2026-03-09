@@ -18,11 +18,12 @@ pub struct TopographyHex;
 pub const HEX_RADIUS: f32 = 48.0;
 pub const HEX_WIDTH: f32 = HEX_RADIUS * 1.732; // sqrt(3)
 pub const HEX_HEIGHT: f32 = HEX_RADIUS * 2.0;
-pub const TERRAIN_WIDTH: f32 = 1360.0;
+pub const TERRAIN_WIDTH: f32 = 1536.0;
 const CANYON_HALF_WIDTH: f32 = TERRAIN_WIDTH * 0.5;
 pub const SOFT_BOUNDARY_X: f32 = CANYON_HALF_WIDTH - 84.0;
 pub const CORE_LANE_HALF_WIDTH: f32 = SOFT_BOUNDARY_X * 0.6;
 pub const SHOULDER_WIDTH: f32 = SOFT_BOUNDARY_X - CORE_LANE_HALF_WIDTH;
+pub const ACTIVE_PLAYFIELD_X: f32 = SOFT_BOUNDARY_X - (HEX_WIDTH * 0.34);
 const EXTRUSION_CENTER_LIMIT_X: f32 = SOFT_BOUNDARY_X - (HEX_WIDTH * 0.64);
 const INNER_BANK_MIN_X: f32 = CORE_LANE_HALF_WIDTH - 52.0;
 const INNER_BANK_MAX_X: f32 = CORE_LANE_HALF_WIDTH + 132.0;
@@ -370,11 +371,9 @@ pub fn spawn_chunk_topography(
                     SurfaceArchetype::HardCrashExtrusion => {
                         nebula_mats.hex_accent_material_amber.clone()
                     }
-                    SurfaceArchetype::RicochetExtrusion => match accent_selector % 4 {
+                    SurfaceArchetype::RicochetExtrusion => match accent_selector % 2 {
                         0 => nebula_mats.hex_accent_material_cyan.clone(),
-                        1 => nebula_mats.hex_accent_material_magenta.clone(),
-                        2 => nebula_mats.hex_accent_material_blue.clone(),
-                        _ => nebula_mats.hex_accent_material_lime.clone(),
+                        _ => nebula_mats.hex_accent_material_magenta.clone(),
                     },
                     SurfaceArchetype::TerrainBoundary => {
                         nebula_mats.hex_accent_material_cyan.clone()
@@ -630,5 +629,12 @@ mod tests {
         );
         assert!(role.is_some());
         assert_eq!(role.unwrap().archetype, SurfaceArchetype::RicochetExtrusion);
+    }
+
+    #[test]
+    fn playfield_width_is_wider_than_previous_baseline() {
+        assert!(TERRAIN_WIDTH > 1360.0);
+        assert!(SOFT_BOUNDARY_X > 596.0);
+        assert!(ACTIVE_PLAYFIELD_X < SOFT_BOUNDARY_X);
     }
 }
