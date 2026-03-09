@@ -1,6 +1,6 @@
 Procgen Preflight Summary
-total_chunks: 6
-valid_chunks: 6
+total_chunks: 12
+valid_chunks: 12
 invalid_chunks: 0
 rejections.profile_mismatch: 0
 rejections.concave_trap: 0

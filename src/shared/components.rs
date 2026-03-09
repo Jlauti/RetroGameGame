@@ -11,7 +11,8 @@ pub struct Player;
 pub struct Enemy;
 
 /// Health component with current and max values.
-#[derive(Component, Debug, Clone)]
+#[derive(Component, Debug, Clone, Reflect)]
+#[reflect(Component)]
 pub struct Health {
     pub current: i32,
     pub max: i32,

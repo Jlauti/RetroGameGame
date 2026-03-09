@@ -1,9 +1,12 @@
 use crate::eras::era_future::nebula_bouncer::components::{
-    GameLayer, HexExtrusion, PlayerSurfaceRole, SurfaceArchetype, SurfaceRole,
-    TerrainContourSample, Wall, depth,
+    BreakableHazard, BreakableRewardRole, GameLayer, HexExtrusion, PlayerSurfaceRole,
+    SurfaceArchetype, SurfaceDurability, SurfaceRole, TerrainContourSample, Wall, depth,
 };
-use crate::eras::era_future::nebula_bouncer::procgen::{ChunkMember, ChunkTopography};
+use crate::eras::era_future::nebula_bouncer::procgen::{
+    BREAKABLE_HEAL_AMOUNT, ChunkMember, ChunkTopography,
+};
 use crate::eras::era_future::nebula_bouncer::resources::NebulaMaterials;
+use crate::shared::components::Health;
 use avian2d::prelude::*;
 use bevy::prelude::*;
 
@@ -27,6 +30,12 @@ const OUTER_RIDGE_MIN_X: f32 = CORE_LANE_HALF_WIDTH + 124.0;
 const LATE_GATE_MIN_X: f32 = CORE_LANE_HALF_WIDTH * 0.34;
 const LATE_GATE_MAX_X: f32 = CORE_LANE_HALF_WIDTH * 0.58;
 const MOTIF_BAND_HEIGHT: f32 = HEX_HEIGHT * 2.25;
+const BREAKABLE_HAZARD_HP: i32 = 10;
+const FLOOR_SURFACE_MIN_Z: f32 = depth::BACKGROUND + 0.28;
+const FLOOR_SURFACE_LIFT_SCALE: f32 = 0.16;
+const BREAKABLE_MARKER_Z_OFFSET: f32 = 18.0;
+const BREAKABLE_MARKER_THICKNESS: f32 = 4.0;
+const BREAKABLE_MARKER_BLOCK_SIZE: f32 = 8.0;
 
 /// Hex outline texture path (generated procedural asset).
 pub const HEX_OUTLINE_TEXTURE: &str = "sprites/future/nebula_bouncer/hex_outline.png";
@@ -78,12 +87,14 @@ fn classify_extrusion_surface(
             player_role: PlayerSurfaceRole::HardCrashBlocker,
             ricochet: false,
             archetype: SurfaceArchetype::HardCrashExtrusion,
+            ..SurfaceRole::default()
         }
     } else {
         SurfaceRole {
             player_role: PlayerSurfaceRole::SoftPressureBoundary,
             ricochet: true,
             archetype: SurfaceArchetype::RicochetExtrusion,
+            ..SurfaceRole::default()
         }
     }
 }
@@ -281,49 +292,70 @@ pub fn spawn_chunk_topography(
                 ChunkMember,
                 TerrainContourSample {
                     height: terrain_sample_height,
+                    motif: topography
+                        .surface_roles
+                        .get(idx)
+                        .copied()
+                        .unwrap_or_default()
+                        .motif,
+                    placement_zone: topography
+                        .surface_roles
+                        .get(idx)
+                        .copied()
+                        .unwrap_or_default()
+                        .placement_zone,
+                    cadence: topography
+                        .surface_roles
+                        .get(idx)
+                        .copied()
+                        .unwrap_or_default()
+                        .cadence,
                 },
                 Transform::from_xyz(x, y, base_outline_z),
                 GlobalTransform::default(),
             ));
 
-            let rim_scale = 0.96;
-            let body_scale = 0.88;
-            let flat_z_scale = 0.02;
+            let valley_tile = tier == 0;
+            let rim_scale = if valley_tile { 0.94 } else { 0.96 };
+            let body_scale = if valley_tile { 0.84 } else { 0.88 };
+            let flat_z_scale = if valley_tile { 0.016 } else { 0.02 };
+            let floor_surface_z = base_outline_z
+                .max(FLOOR_SURFACE_MIN_Z + (terrain_sample_height * FLOOR_SURFACE_LIFT_SCALE));
 
-            // Only spawn flat hexes for elevated tiers to let the procedural ground slab show in the valleys.
-            if tier > 0 {
-                // Flat Neon Rim Base
-                commands.spawn((
-                    ChunkMember,
-                    TopographyHex,
-                    Mesh3d(nebula_mats.hex_mesh.clone()),
-                    MeshMaterial3d(cap_material.clone()),
-                    Transform::from_xyz(x, y, base_outline_z).with_scale(Vec3::new(
-                        hex_width * rim_scale,
-                        hex_height * rim_scale,
-                        flat_z_scale,
-                    )),
-                ));
+            // Render every cell as part of the visible floor so the lane reads as anchored topography.
+            commands.spawn((
+                ChunkMember,
+                TopographyHex,
+                Mesh3d(nebula_mats.hex_mesh.clone()),
+                MeshMaterial3d(cap_material.clone()),
+                Transform::from_xyz(x, y, floor_surface_z).with_scale(Vec3::new(
+                    hex_width * rim_scale,
+                    hex_height * rim_scale,
+                    flat_z_scale,
+                )),
+            ));
 
-                // Flat Dark Body Top
-                commands.spawn((
-                    ChunkMember,
-                    TopographyHex,
-                    Mesh3d(nebula_mats.hex_mesh.clone()),
-                    MeshMaterial3d(material.clone()),
-                    Transform::from_xyz(x, y, base_outline_z + 0.5).with_scale(Vec3::new(
-                        hex_width * body_scale,
-                        hex_height * body_scale,
-                        flat_z_scale,
-                    )),
-                ));
-            }
+            commands.spawn((
+                ChunkMember,
+                TopographyHex,
+                Mesh3d(nebula_mats.hex_mesh.clone()),
+                MeshMaterial3d(material.clone()),
+                Transform::from_xyz(x, y, floor_surface_z + 0.5).with_scale(Vec3::new(
+                    hex_width * body_scale,
+                    hex_height * body_scale,
+                    flat_z_scale,
+                )),
+            ));
 
             // Keep tile read clean: no flat accent overlays on non-extruded tiles.
             let accent_selector = ((motif_band_index(y) + c - r).rem_euclid(4)) as usize;
+            let surface_role = topography
+                .surface_roles
+                .get(idx)
+                .copied()
+                .unwrap_or_default();
 
-            if let Some(surface_role) = structured_extrusion_role(tier, c, r, x, y, chunk_center_y)
-            {
+            if surface_role.player_role != PlayerSurfaceRole::TraversalSurface {
                 let tier_height = match tier {
                     0 => 28.0_f32,
                     1 => 44.0_f32,
@@ -355,61 +387,206 @@ pub fn spawn_chunk_topography(
                         (hex_width * 0.24).clamp(12.0, 36.0)
                     };
 
-                // Pillar body
-                commands.spawn((
-                    ChunkMember,
-                    TopographyHex,
-                    Mesh3d(nebula_mats.hex_mesh.clone()),
-                    MeshMaterial3d(material.clone()),
-                    Transform::from_xyz(x, y, prism_center_z).with_scale(Vec3::new(
-                        hex_width * rim_scale,
-                        hex_height * rim_scale,
-                        z_scale,
-                    )),
-                ));
+                if surface_role.durability == SurfaceDurability::Destructible {
+                    let heal_amount =
+                        if surface_role.breakable_reward == BreakableRewardRole::HealthBearing {
+                            BREAKABLE_HEAL_AMOUNT
+                        } else {
+                            0
+                        };
+                    let breakable_body_material =
+                        if surface_role.breakable_reward == BreakableRewardRole::HealthBearing {
+                            nebula_mats.hex_accent_material_lime.clone()
+                        } else {
+                            nebula_mats.hex_accent_material_amber.clone()
+                        };
+                    let breakable_cap_material =
+                        if surface_role.breakable_reward == BreakableRewardRole::HealthBearing {
+                            nebula_mats.hex_accent_material_amber.clone()
+                        } else {
+                            nebula_mats.hex_accent_material_magenta.clone()
+                        };
+                    commands
+                        .spawn((
+                            Wall,
+                            HexExtrusion,
+                            surface_role,
+                            BreakableHazard {
+                                family: surface_role.breakable_family,
+                                reward: surface_role.breakable_reward,
+                                heal_amount,
+                            },
+                            Health::new(BREAKABLE_HAZARD_HP),
+                            ChunkMember,
+                            Transform::from_xyz(x, y, depth::WALL),
+                            GlobalTransform::default(),
+                            RigidBody::Static,
+                            Collider::circle(collider_radius),
+                            CollisionEventsEnabled,
+                            Friction::new(0.0),
+                            Restitution::new(0.0).with_combine_rule(CoefficientCombine::Min),
+                            CollisionLayers::new(
+                                GameLayer::Wall,
+                                [GameLayer::Projectile, GameLayer::Player],
+                            ),
+                        ))
+                        .with_children(|parent| {
+                            let marker_z = cap_z + BREAKABLE_MARKER_Z_OFFSET - depth::WALL;
+                            parent.spawn((
+                                ChunkMember,
+                                TopographyHex,
+                                Mesh3d(nebula_mats.hex_mesh.clone()),
+                                MeshMaterial3d(breakable_body_material.clone()),
+                                Transform::from_xyz(0.0, 0.0, prism_center_z - depth::WALL)
+                                    .with_scale(Vec3::new(
+                                        hex_width * rim_scale,
+                                        hex_height * rim_scale,
+                                        z_scale,
+                                    )),
+                            ));
+                            parent.spawn((
+                                ChunkMember,
+                                TopographyHex,
+                                Mesh3d(nebula_mats.hex_mesh.clone()),
+                                MeshMaterial3d(breakable_cap_material.clone()),
+                                Transform::from_xyz(0.0, 0.0, cap_z - depth::WALL).with_scale(
+                                    Vec3::new(
+                                        hex_width * rim_scale,
+                                        hex_height * rim_scale,
+                                        flat_z_scale,
+                                    ),
+                                ),
+                            ));
+                            parent.spawn((
+                                ChunkMember,
+                                TopographyHex,
+                                Mesh3d(nebula_mats.hex_mesh.clone()),
+                                MeshMaterial3d(breakable_body_material.clone()),
+                                Transform::from_xyz(0.0, 0.0, cap_z + 0.5 - depth::WALL)
+                                    .with_scale(Vec3::new(
+                                        hex_width * body_scale,
+                                        hex_height * body_scale,
+                                        flat_z_scale,
+                                    )),
+                            ));
 
-                // Pillar neon cap
-                commands.spawn((
-                    ChunkMember,
-                    TopographyHex,
-                    Mesh3d(nebula_mats.hex_mesh.clone()),
-                    MeshMaterial3d(extrusion_rim_material),
-                    Transform::from_xyz(x, y, cap_z).with_scale(Vec3::new(
-                        hex_width * rim_scale,
-                        hex_height * rim_scale,
-                        flat_z_scale,
-                    )),
-                ));
+                            if surface_role.breakable_reward == BreakableRewardRole::HealthBearing {
+                                for (x_offset, y_offset) in [
+                                    (-10.0, 8.0),
+                                    (0.0, 12.0),
+                                    (10.0, 8.0),
+                                    (-6.0, 0.0),
+                                    (6.0, 0.0),
+                                    (0.0, -8.0),
+                                ] {
+                                    parent.spawn((
+                                        ChunkMember,
+                                        Mesh3d(nebula_mats.lane_mesh.clone()),
+                                        MeshMaterial3d(
+                                            nebula_mats.hex_accent_material_lime.clone(),
+                                        ),
+                                        Transform::from_xyz(x_offset, y_offset, marker_z)
+                                            .with_scale(Vec3::new(
+                                                BREAKABLE_MARKER_BLOCK_SIZE,
+                                                BREAKABLE_MARKER_BLOCK_SIZE,
+                                                BREAKABLE_MARKER_THICKNESS,
+                                            )),
+                                    ));
+                                }
+                                parent.spawn((
+                                    ChunkMember,
+                                    Mesh3d(nebula_mats.orb_mesh.clone()),
+                                    MeshMaterial3d(nebula_mats.hex_accent_material_amber.clone()),
+                                    Transform::from_xyz(0.0, 1.0, marker_z + 3.0)
+                                        .with_scale(Vec3::splat(BREAKABLE_MARKER_BLOCK_SIZE * 0.9)),
+                                ));
+                            } else {
+                                parent.spawn((
+                                    ChunkMember,
+                                    Mesh3d(nebula_mats.lane_mesh.clone()),
+                                    MeshMaterial3d(nebula_mats.hex_accent_material_amber.clone()),
+                                    Transform::from_xyz(0.0, 0.0, marker_z).with_scale(Vec3::new(
+                                        BREAKABLE_MARKER_BLOCK_SIZE * 2.6,
+                                        BREAKABLE_MARKER_BLOCK_SIZE * 0.75,
+                                        BREAKABLE_MARKER_THICKNESS,
+                                    )),
+                                ));
+                                parent.spawn((
+                                    ChunkMember,
+                                    Mesh3d(nebula_mats.lane_mesh.clone()),
+                                    MeshMaterial3d(nebula_mats.hex_accent_material_amber.clone()),
+                                    Transform::from_xyz(0.0, 0.0, marker_z).with_scale(Vec3::new(
+                                        BREAKABLE_MARKER_BLOCK_SIZE * 0.75,
+                                        BREAKABLE_MARKER_BLOCK_SIZE * 2.6,
+                                        BREAKABLE_MARKER_THICKNESS,
+                                    )),
+                                ));
+                                parent.spawn((
+                                    ChunkMember,
+                                    Mesh3d(nebula_mats.orb_mesh.clone()),
+                                    MeshMaterial3d(nebula_mats.hex_accent_material_magenta.clone()),
+                                    Transform::from_xyz(0.0, 0.0, marker_z + 2.0)
+                                        .with_scale(Vec3::splat(BREAKABLE_MARKER_BLOCK_SIZE * 0.7)),
+                                ));
+                            }
+                        });
+                } else {
+                    // Pillar body
+                    commands.spawn((
+                        ChunkMember,
+                        TopographyHex,
+                        Mesh3d(nebula_mats.hex_mesh.clone()),
+                        MeshMaterial3d(material.clone()),
+                        Transform::from_xyz(x, y, prism_center_z).with_scale(Vec3::new(
+                            hex_width * rim_scale,
+                            hex_height * rim_scale,
+                            z_scale,
+                        )),
+                    ));
 
-                // Pillar cap dark center
-                commands.spawn((
-                    ChunkMember,
-                    TopographyHex,
-                    Mesh3d(nebula_mats.hex_mesh.clone()),
-                    MeshMaterial3d(material.clone()),
-                    Transform::from_xyz(x, y, cap_z + 0.5).with_scale(Vec3::new(
-                        hex_width * body_scale,
-                        hex_height * body_scale,
-                        flat_z_scale,
-                    )),
-                ));
-                commands.spawn((
-                    Wall,
-                    HexExtrusion,
-                    surface_role,
-                    ChunkMember,
-                    Transform::from_xyz(x, y, depth::WALL),
-                    GlobalTransform::default(),
-                    RigidBody::Static,
-                    Collider::circle(collider_radius),
-                    CollisionEventsEnabled,
-                    Friction::new(0.0),
-                    Restitution::new(0.0).with_combine_rule(CoefficientCombine::Min),
-                    CollisionLayers::new(
-                        GameLayer::Wall,
-                        [GameLayer::Projectile, GameLayer::Player],
-                    ),
-                ));
+                    // Pillar neon cap
+                    commands.spawn((
+                        ChunkMember,
+                        TopographyHex,
+                        Mesh3d(nebula_mats.hex_mesh.clone()),
+                        MeshMaterial3d(extrusion_rim_material),
+                        Transform::from_xyz(x, y, cap_z).with_scale(Vec3::new(
+                            hex_width * rim_scale,
+                            hex_height * rim_scale,
+                            flat_z_scale,
+                        )),
+                    ));
+
+                    // Pillar cap dark center
+                    commands.spawn((
+                        ChunkMember,
+                        TopographyHex,
+                        Mesh3d(nebula_mats.hex_mesh.clone()),
+                        MeshMaterial3d(material.clone()),
+                        Transform::from_xyz(x, y, cap_z + 0.5).with_scale(Vec3::new(
+                            hex_width * body_scale,
+                            hex_height * body_scale,
+                            flat_z_scale,
+                        )),
+                    ));
+                    commands.spawn((
+                        Wall,
+                        HexExtrusion,
+                        surface_role,
+                        ChunkMember,
+                        Transform::from_xyz(x, y, depth::WALL),
+                        GlobalTransform::default(),
+                        RigidBody::Static,
+                        Collider::circle(collider_radius),
+                        CollisionEventsEnabled,
+                        Friction::new(0.0),
+                        Restitution::new(0.0).with_combine_rule(CoefficientCombine::Min),
+                        CollisionLayers::new(
+                            GameLayer::Wall,
+                            [GameLayer::Projectile, GameLayer::Player],
+                        ),
+                    ));
+                }
             }
         }
     }

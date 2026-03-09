@@ -65,3 +65,9 @@ Design around Nebula's current implementation needs first. Avoid expanding proce
 - Enemy logic requires a token-based concurrency limit to guarantee a maximum of 3 simultaneous attackers on screen (`NB-A1-009`).
 - Enemy aim and state machines must support explicit telegraphing phases and cooldown windows to meet the fairness and dodgeability contract (`NB-A1-009`).
 - Hostile projectiles require independent collision responses from player shots, strictly terminating on terrain/boundaries without ricocheting (`NB-A1-009`).
+- Procgen/runtime must preserve the `NB-A1-010` motif roster as explicit gameplay data: traversal-safe valleys, ridge lines, shoulder ricochet banks, side pockets, breakable hazard clusters, and rare hard-gate setpieces.
+- Spatial metadata must distinguish `core lane`, `shoulder`, and `cage-adjacent` placements so breakables and cover stay in their approved combat roles (`NB-A1-010`).
+- Environment entities need separate flags for `structural`, `destructible`, `health-bearing`, and `ricochet-enabled` so support targets cannot be confused with lane-defining terrain (`NB-A1-010`).
+- Density cadence must be inspectable in runtime terms: combat pocket, relief lane, and lane-pressure segment should be measurable for motif mix and destructible counts (`NB-A1-010`).
+- Boundary implementation must keep the side cage as transparent soft pressure while placing meaningful near-edge combat on the interior shoulder banks and cage-adjacent fixtures instead of the cage surface itself (`NB-A1-010`).
+- Runtime validation should expose motif distribution, breakable counts per segment, and health-drop source counts so the contract can be checked before art-complete assets exist (`NB-A1-010`).

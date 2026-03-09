@@ -6,6 +6,12 @@ use std::fs;
 use std::io;
 use std::path::Path;
 
+use crate::eras::era_future::nebula_bouncer::components::{
+    BreakableHazardFamily, BreakableRewardRole, DensityCadence, PlacementZone, PlayerSurfaceRole,
+    SurfaceArchetype, SurfaceDurability, SurfaceRole, TerrainMotif,
+};
+use crate::eras::era_future::nebula_bouncer::topography::fold_hash;
+
 /// Dimensions and constants for procgen
 pub const CHUNK_WIDTH: f32 = 800.0;
 pub const PROFILE_RESOLUTION: usize = 10; // Number of "slots" to check for edge matching
@@ -66,6 +72,8 @@ pub struct ChunkTopography {
     pub hex_width: f32,
     pub hex_height: f32,
     pub tiers: Vec<u8>,
+    pub surface_roles: Vec<SurfaceRole>,
+    pub favored_side_sign: i32,
 }
 
 /// A pre-authored chunk schema
@@ -777,10 +785,426 @@ pub fn validate_softlock_constraints(walls: &[WallDef]) -> ValidationResult {
     }
 }
 
+const SIDE_POCKET_BAND_HEIGHT: f32 = 216.0;
+pub const BREAKABLE_HEAL_AMOUNT: i32 = 10;
+
+#[derive(Clone, Copy, Debug)]
+struct BreakableCandidate {
+    index: usize,
+    side_sign: i32,
+    family: BreakableHazardFamily,
+    placement_zone: PlacementZone,
+}
+
+fn density_cadence_for_pacing(pacing: ChunkPacing) -> DensityCadence {
+    match pacing {
+        ChunkPacing::Open => DensityCadence::ReliefLane,
+        ChunkPacing::Transition => DensityCadence::LanePressure,
+        ChunkPacing::Dense => DensityCadence::CombatPocket,
+    }
+}
+
+fn placement_zone_for_x(abs_x: f32) -> PlacementZone {
+    use crate::eras::era_future::nebula_bouncer::topography::{
+        CORE_LANE_HALF_WIDTH, SOFT_BOUNDARY_X,
+    };
+
+    if abs_x >= SOFT_BOUNDARY_X - 96.0 {
+        PlacementZone::CageAdjacent
+    } else if abs_x > CORE_LANE_HALF_WIDTH {
+        PlacementZone::Shoulder
+    } else {
+        PlacementZone::CoreLane
+    }
+}
+
+fn motif_band_index(y: f32) -> i32 {
+    (y / SIDE_POCKET_BAND_HEIGHT).floor() as i32
+}
+
+fn surface_with(
+    motif: TerrainMotif,
+    placement_zone: PlacementZone,
+    cadence: DensityCadence,
+) -> SurfaceRole {
+    SurfaceRole {
+        motif,
+        placement_zone,
+        cadence,
+        ..SurfaceRole::default()
+    }
+}
+
+fn classify_base_surface_role(
+    tier: u8,
+    c: i32,
+    r: i32,
+    x: f32,
+    y: f32,
+    cadence: DensityCadence,
+    sequence_index: usize,
+    chunk_seed: u64,
+) -> SurfaceRole {
+    use crate::eras::era_future::nebula_bouncer::topography::{
+        CORE_LANE_HALF_WIDTH, SOFT_BOUNDARY_X,
+    };
+
+    let abs_x = x.abs();
+    let placement_zone = placement_zone_for_x(abs_x);
+    let band = motif_band_index(y);
+    let progression_band = band + sequence_index as i32 * 4;
+    let motif_cycle = band.rem_euclid(6);
+    let side_sign = if x < 0.0 { -1 } else { 1 };
+    let lattice = (c - r).rem_euclid(3);
+    let post_lattice = (c + r).rem_euclid(2);
+    let late_progression = sequence_index >= 4;
+    let pressure_side = if fold_hash(chunk_seed, 0x51DE) & 1 == 0 {
+        -1
+    } else {
+        1
+    };
+    let preferred_side = match cadence {
+        DensityCadence::LanePressure => pressure_side,
+        _ => match motif_cycle {
+            1 | 4 => -1,
+            2 | 5 => 1,
+            _ => 0,
+        },
+    };
+    let pocket_side = match motif_cycle {
+        4 => -1,
+        5 => 1,
+        _ => 0,
+    };
+    let favor_active_side = preferred_side == 0 || preferred_side == side_sign;
+    let inner_bank = abs_x >= CORE_LANE_HALF_WIDTH - 56.0 && abs_x <= CORE_LANE_HALF_WIDTH + 128.0;
+    let ridge_transition =
+        abs_x >= CORE_LANE_HALF_WIDTH * 0.42 && abs_x <= (SOFT_BOUNDARY_X - 64.0) && tier >= 2;
+    let hard_gate = late_progression
+        && progression_band.rem_euclid(8) == 3
+        && abs_x >= CORE_LANE_HALF_WIDTH * 0.20
+        && abs_x <= CORE_LANE_HALF_WIDTH * 0.72
+        && post_lattice == 0;
+    if hard_gate {
+        return SurfaceRole {
+            player_role: PlayerSurfaceRole::HardCrashBlocker,
+            ricochet: false,
+            archetype: SurfaceArchetype::HardCrashExtrusion,
+            motif: TerrainMotif::HardGateSetpiece,
+            placement_zone: PlacementZone::CoreLane,
+            cadence,
+            durability: SurfaceDurability::Structural,
+            breakable_family: BreakableHazardFamily::None,
+            breakable_reward: BreakableRewardRole::None,
+        };
+    }
+
+    if placement_zone == PlacementZone::CageAdjacent && pocket_side == side_sign {
+        if tier >= 2 && lattice == (band + 1).rem_euclid(3) {
+            return SurfaceRole {
+                player_role: PlayerSurfaceRole::SoftPressureBoundary,
+                ricochet: false,
+                archetype: SurfaceArchetype::TerrainBoundary,
+                motif: TerrainMotif::SidePocket,
+                placement_zone,
+                cadence,
+                durability: SurfaceDurability::Structural,
+                breakable_family: BreakableHazardFamily::None,
+                breakable_reward: BreakableRewardRole::None,
+            };
+        }
+
+        let mut pocket = surface_with(TerrainMotif::SidePocket, placement_zone, cadence);
+        if cadence == DensityCadence::LanePressure && preferred_side != side_sign {
+            pocket.motif = TerrainMotif::TraversalSafeValley;
+        }
+        return pocket;
+    }
+
+    if placement_zone == PlacementZone::Shoulder && inner_bank && tier >= 1 && favor_active_side {
+        let lattice_match = match cadence {
+            DensityCadence::ReliefLane => lattice == 0 && tier >= 2,
+            DensityCadence::LanePressure => lattice != 2,
+            DensityCadence::CombatPocket => true,
+        };
+        if lattice_match {
+            return SurfaceRole {
+                player_role: PlayerSurfaceRole::SoftPressureBoundary,
+                ricochet: true,
+                archetype: SurfaceArchetype::RicochetExtrusion,
+                motif: TerrainMotif::ShoulderRicochetBank,
+                placement_zone,
+                cadence,
+                durability: SurfaceDurability::Structural,
+                breakable_family: BreakableHazardFamily::None,
+                breakable_reward: BreakableRewardRole::None,
+            };
+        }
+    }
+
+    if ridge_transition {
+        let allowed = match cadence {
+            DensityCadence::ReliefLane => {
+                placement_zone == PlacementZone::Shoulder && favor_active_side && lattice == 1
+            }
+            DensityCadence::LanePressure => {
+                favor_active_side || placement_zone == PlacementZone::CoreLane
+            }
+            DensityCadence::CombatPocket => true,
+        };
+        if allowed {
+            return SurfaceRole {
+                player_role: PlayerSurfaceRole::SoftPressureBoundary,
+                ricochet: false,
+                archetype: SurfaceArchetype::TerrainBoundary,
+                motif: TerrainMotif::RidgeLine,
+                placement_zone,
+                cadence,
+                durability: SurfaceDurability::Structural,
+                breakable_family: BreakableHazardFamily::None,
+                breakable_reward: BreakableRewardRole::None,
+            };
+        }
+    }
+
+    surface_with(
+        if placement_zone == PlacementZone::CageAdjacent {
+            TerrainMotif::SidePocket
+        } else {
+            TerrainMotif::TraversalSafeValley
+        },
+        placement_zone,
+        cadence,
+    )
+}
+
+fn breakable_target_count(cadence: DensityCadence, enemy_count: usize, chunk_seed: u64) -> usize {
+    match cadence {
+        DensityCadence::CombatPocket => {
+            let requested = 2 + (fold_hash(chunk_seed, 0xB21A) % 3) as usize;
+            requested.min(enemy_count.max(1))
+        }
+        DensityCadence::ReliefLane => (fold_hash(chunk_seed, 0x0F1A) % 2) as usize,
+        DensityCadence::LanePressure => 1 + (fold_hash(chunk_seed, 0x7711) % 2) as usize,
+    }
+}
+
+fn overlay_breakable_hazards(
+    surface_roles: &mut [SurfaceRole],
+    positions: &[Vec2],
+    tiers: &[u8],
+    cadence: DensityCadence,
+    enemy_count: usize,
+    chunk_seed: u64,
+) -> i32 {
+    let mut shoulder_candidates = Vec::new();
+    let mut pocket_candidates = Vec::new();
+    let mut cage_candidates = Vec::new();
+
+    for (index, ((surface_role, position), tier)) in surface_roles
+        .iter()
+        .zip(positions.iter())
+        .zip(tiers.iter())
+        .enumerate()
+    {
+        if *tier == 0
+            || surface_role.motif == TerrainMotif::HardGateSetpiece
+            || surface_role.motif == TerrainMotif::ShoulderRicochetBank
+        {
+            continue;
+        }
+
+        let side_sign = if position.x < 0.0 { -1 } else { 1 };
+        match surface_role.placement_zone {
+            PlacementZone::Shoulder => shoulder_candidates.push(BreakableCandidate {
+                index,
+                side_sign,
+                family: BreakableHazardFamily::ShoulderFixture,
+                placement_zone: PlacementZone::Shoulder,
+            }),
+            PlacementZone::CageAdjacent if surface_role.motif == TerrainMotif::SidePocket => {
+                pocket_candidates.push(BreakableCandidate {
+                    index,
+                    side_sign,
+                    family: BreakableHazardFamily::PocketCluster,
+                    placement_zone: PlacementZone::CageAdjacent,
+                });
+            }
+            PlacementZone::CageAdjacent => cage_candidates.push(BreakableCandidate {
+                index,
+                side_sign,
+                family: BreakableHazardFamily::CageAdjacentSupport,
+                placement_zone: PlacementZone::CageAdjacent,
+            }),
+            PlacementZone::CoreLane => {}
+        }
+    }
+
+    let stable_sort = |candidates: &mut Vec<BreakableCandidate>, salt: u64| {
+        candidates.sort_by_key(|candidate| {
+            fold_hash(
+                chunk_seed,
+                salt ^ ((candidate.index as u64) << 8) ^ (candidate.side_sign as i64 as u64),
+            )
+        });
+    };
+    stable_sort(&mut shoulder_candidates, 0x1100);
+    stable_sort(&mut pocket_candidates, 0x2200);
+    stable_sort(&mut cage_candidates, 0x3300);
+
+    let favored_side_sign = if cadence == DensityCadence::LanePressure {
+        if fold_hash(chunk_seed, 0x4EAD) & 1 == 0 {
+            -1
+        } else {
+            1
+        }
+    } else {
+        0
+    };
+    let target_count = breakable_target_count(cadence, enemy_count, chunk_seed);
+    let mut selected = Vec::new();
+
+    if cadence == DensityCadence::CombatPocket {
+        if let Some(candidate) = pocket_candidates.last().copied() {
+            selected.push(candidate);
+        }
+        if target_count > 1 {
+            if let Some(candidate) = shoulder_candidates.last().copied() {
+                selected.push(candidate);
+            } else if let Some(candidate) = pocket_candidates
+                .iter()
+                .rev()
+                .find(|candidate| {
+                    !selected
+                        .iter()
+                        .any(|chosen| chosen.index == candidate.index)
+                })
+                .copied()
+            {
+                selected.push(candidate);
+            }
+        }
+        for candidate in pocket_candidates.iter().rev() {
+            if selected.len() >= target_count {
+                break;
+            }
+            if selected
+                .iter()
+                .any(|chosen| chosen.index == candidate.index)
+            {
+                continue;
+            }
+            selected.push(*candidate);
+        }
+        for candidate in shoulder_candidates.iter().rev() {
+            if selected.len() >= target_count {
+                break;
+            }
+            if selected
+                .iter()
+                .any(|chosen| chosen.index == candidate.index)
+            {
+                continue;
+            }
+            selected.push(*candidate);
+        }
+        for candidate in cage_candidates.iter().rev() {
+            if selected.len() >= target_count {
+                break;
+            }
+            if selected
+                .iter()
+                .any(|chosen| chosen.index == candidate.index)
+            {
+                continue;
+            }
+            selected.push(*candidate);
+        }
+    } else if cadence == DensityCadence::LanePressure {
+        let mut favored: Vec<BreakableCandidate> = pocket_candidates
+            .iter()
+            .chain(cage_candidates.iter())
+            .chain(shoulder_candidates.iter())
+            .copied()
+            .filter(|candidate| candidate.side_sign == favored_side_sign)
+            .collect();
+        stable_sort(&mut favored, 0x4400);
+        for candidate in favored.iter().rev().take(target_count) {
+            selected.push(*candidate);
+        }
+    } else if target_count > 0 {
+        if let Some(candidate) = shoulder_candidates.last().copied() {
+            selected.push(candidate);
+        } else if let Some(candidate) = pocket_candidates.last().copied() {
+            selected.push(candidate);
+        }
+    }
+
+    let health_bearing_index = if cadence == DensityCadence::CombatPocket {
+        selected
+            .iter()
+            .filter(|candidate| candidate.family == BreakableHazardFamily::ShoulderFixture)
+            .min_by(|left, right| {
+                positions[left.index]
+                    .x
+                    .abs()
+                    .total_cmp(&positions[right.index].x.abs())
+                    .then(left.index.cmp(&right.index))
+            })
+            .or_else(|| {
+                selected
+                    .iter()
+                    .filter(|candidate| candidate.family == BreakableHazardFamily::PocketCluster)
+                    .min_by(|left, right| {
+                        positions[left.index]
+                            .x
+                            .abs()
+                            .total_cmp(&positions[right.index].x.abs())
+                            .then(left.index.cmp(&right.index))
+                    })
+            })
+            .or_else(|| {
+                selected.iter().min_by(|left, right| {
+                    positions[left.index]
+                        .x
+                        .abs()
+                        .total_cmp(&positions[right.index].x.abs())
+                        .then(left.index.cmp(&right.index))
+                })
+            })
+            .map(|candidate| candidate.index)
+    } else {
+        None
+    };
+
+    for candidate in selected {
+        let reward = if Some(candidate.index) == health_bearing_index {
+            BreakableRewardRole::HealthBearing
+        } else {
+            BreakableRewardRole::ComboExtender
+        };
+        surface_roles[candidate.index] = SurfaceRole {
+            player_role: PlayerSurfaceRole::SoftPressureBoundary,
+            ricochet: false,
+            archetype: SurfaceArchetype::TerrainBoundary,
+            motif: TerrainMotif::BreakableHazardCluster,
+            placement_zone: candidate.placement_zone,
+            cadence,
+            durability: SurfaceDurability::Destructible,
+            breakable_family: candidate.family,
+            breakable_reward: reward,
+        };
+    }
+
+    favored_side_sign
+}
+
 pub fn generate_chunk_topography(
     chunk_height: f32,
     global_seed: u64,
     sequence_index: usize,
+    pacing: ChunkPacing,
+    enemy_count: usize,
 ) -> ChunkTopography {
     use crate::eras::era_future::nebula_bouncer::topography::{
         CORE_LANE_HALF_WIDTH, SOFT_BOUNDARY_X, TERRAIN_WIDTH,
@@ -878,7 +1302,10 @@ pub fn generate_chunk_topography(
     );
 
     let mut tiers = Vec::with_capacity((cols * rows) as usize);
+    let mut surface_roles = Vec::with_capacity((cols * rows) as usize);
+    let mut positions = Vec::with_capacity((cols * rows) as usize);
     let start_x = -TERRAIN_WIDTH * 0.5;
+    let cadence = density_cadence_for_pacing(pacing);
 
     // Generate relative to the chunk so generation is position-independent
     let start_y = -(chunk_height * 0.5);
@@ -893,8 +1320,28 @@ pub fn generate_chunk_topography(
                 crate::eras::era_future::nebula_bouncer::topography::quantize_height(height) as u8;
 
             tiers.push(tier);
+            positions.push(Vec2::new(x, y));
+            surface_roles.push(classify_base_surface_role(
+                tier,
+                c,
+                r,
+                x,
+                y,
+                cadence,
+                sequence_index,
+                chunk_seed,
+            ));
         }
     }
+
+    let favored_side_sign = overlay_breakable_hazards(
+        &mut surface_roles,
+        &positions,
+        &tiers,
+        cadence,
+        enemy_count,
+        chunk_seed,
+    );
 
     ChunkTopography {
         cols,
@@ -902,12 +1349,15 @@ pub fn generate_chunk_topography(
         hex_width,
         hex_height,
         tiers,
+        surface_roles,
+        favored_side_sign,
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::HashSet;
     use std::time::{SystemTime, UNIX_EPOCH};
 
     fn make_chunk(name: &str, pacing: ChunkPacing, weight: f32) -> ChunkSchema {
@@ -919,6 +1369,16 @@ mod tests {
             bottom_profile: [false; PROFILE_RESOLUTION],
             ..ChunkSchema::default()
         }
+    }
+
+    fn topography_cell_x(topo: &ChunkTopography, row: i32, col: i32) -> f32 {
+        let start_x = -crate::eras::era_future::nebula_bouncer::topography::TERRAIN_WIDTH * 0.5;
+        let offset_x = if row % 2 == 1 {
+            topo.hex_width * 0.5
+        } else {
+            0.0
+        };
+        start_x + col as f32 * topo.hex_width + offset_x
     }
 
     #[test]
@@ -1221,10 +1681,10 @@ mod tests {
 
     #[test]
     fn test_topography_determinism() {
-        let topo1 = super::generate_chunk_topography(800.0, 12345, 0);
-        let topo2 = super::generate_chunk_topography(800.0, 12345, 0);
-        let topo3 = super::generate_chunk_topography(800.0, 12345, 1);
-        let topo4 = super::generate_chunk_topography(800.0, 54321, 0);
+        let topo1 = super::generate_chunk_topography(800.0, 12345, 0, ChunkPacing::Dense, 4);
+        let topo2 = super::generate_chunk_topography(800.0, 12345, 0, ChunkPacing::Dense, 4);
+        let topo3 = super::generate_chunk_topography(800.0, 12345, 1, ChunkPacing::Dense, 4);
+        let topo4 = super::generate_chunk_topography(800.0, 54321, 0, ChunkPacing::Dense, 4);
 
         assert_eq!(
             topo1.tiers, topo2.tiers,
@@ -1235,11 +1695,12 @@ mod tests {
             topo1.tiers, topo4.tiers,
             "Different global seed should differ"
         );
+        assert_eq!(topo1.surface_roles, topo2.surface_roles);
     }
 
     #[test]
     fn test_topography_tier_bounds() {
-        let topo = super::generate_chunk_topography(800.0, 42, 7);
+        let topo = super::generate_chunk_topography(800.0, 42, 7, ChunkPacing::Open, 2);
         for &tier in &topo.tiers {
             assert!(tier <= 3, "Tier {} is out of bounds (0-3)", tier);
         }
@@ -1247,7 +1708,7 @@ mod tests {
 
     #[test]
     fn structured_topography_keeps_shoulders_higher_than_core_lane() {
-        let topo = super::generate_chunk_topography(800.0, 77, 3);
+        let topo = super::generate_chunk_topography(800.0, 77, 3, ChunkPacing::Transition, 3);
         let start_x = -crate::eras::era_future::nebula_bouncer::topography::TERRAIN_WIDTH * 0.5;
         let mut core_total: f32 = 0.0;
         let mut core_count: f32 = 0.0;
@@ -1289,6 +1750,171 @@ mod tests {
             shoulder_avg > core_avg,
             "expected structured shoulders higher than core; core_avg={core_avg}, shoulder_avg={shoulder_avg}"
         );
+    }
+
+    #[test]
+    fn nebula_bouncer_procgen_emits_all_required_motifs() {
+        let mut seen = HashSet::new();
+        for sequence_index in 0..7 {
+            let topo = super::generate_chunk_topography(
+                800.0,
+                0xA215,
+                sequence_index,
+                ChunkPacing::Dense,
+                4,
+            );
+            for role in topo.surface_roles {
+                seen.insert(role.motif);
+            }
+        }
+
+        assert!(seen.contains(&TerrainMotif::TraversalSafeValley));
+        assert!(seen.contains(&TerrainMotif::RidgeLine));
+        assert!(seen.contains(&TerrainMotif::ShoulderRicochetBank));
+        assert!(seen.contains(&TerrainMotif::SidePocket));
+        assert!(seen.contains(&TerrainMotif::BreakableHazardCluster));
+        assert!(seen.contains(&TerrainMotif::HardGateSetpiece));
+    }
+
+    #[test]
+    fn nebula_bouncer_combat_pocket_breakables_respect_enemy_cap() {
+        let topo = super::generate_chunk_topography(800.0, 0xC0B447, 5, ChunkPacing::Dense, 3);
+        let destructibles: Vec<_> = topo
+            .surface_roles
+            .iter()
+            .filter(|role| role.durability == SurfaceDurability::Destructible)
+            .collect();
+        let health_bearing = destructibles
+            .iter()
+            .filter(|role| role.breakable_reward == BreakableRewardRole::HealthBearing)
+            .count();
+        let core_lane_breakables = destructibles
+            .iter()
+            .filter(|role| role.placement_zone == PlacementZone::CoreLane)
+            .count();
+
+        assert!((2..=3).contains(&destructibles.len()));
+        assert!(destructibles.len() <= 3);
+        assert!(health_bearing <= 1);
+        assert_eq!(core_lane_breakables, 0);
+    }
+
+    #[test]
+    fn nebula_bouncer_combat_pocket_mix_includes_shoulder_and_pocket_support_targets() {
+        let topo = super::generate_chunk_topography(800.0, 0xC0B447, 5, ChunkPacing::Dense, 3);
+        let shoulder_breakables = topo
+            .surface_roles
+            .iter()
+            .filter(|role| {
+                role.durability == SurfaceDurability::Destructible
+                    && role.placement_zone == PlacementZone::Shoulder
+            })
+            .count();
+        let pocket_breakables = topo
+            .surface_roles
+            .iter()
+            .filter(|role| {
+                role.durability == SurfaceDurability::Destructible
+                    && role.breakable_family == BreakableHazardFamily::PocketCluster
+            })
+            .count();
+
+        assert!(shoulder_breakables >= 1);
+        assert!(pocket_breakables >= 1);
+    }
+
+    #[test]
+    fn nebula_bouncer_health_bearing_breakable_prefers_inner_shoulder_fixture() {
+        let topo = super::generate_chunk_topography(800.0, 0xC0B447, 5, ChunkPacing::Dense, 3);
+        let mut health_bearing_abs_x = None;
+        let mut shoulder_fixture_abs_x = Vec::new();
+
+        for row in 0..topo.rows {
+            for col in 0..topo.cols {
+                let idx = (row * topo.cols + col) as usize;
+                let role = topo.surface_roles[idx];
+                let abs_x = topography_cell_x(&topo, row, col).abs();
+                if role.breakable_family == BreakableHazardFamily::ShoulderFixture {
+                    shoulder_fixture_abs_x.push(abs_x);
+                }
+                if role.breakable_reward == BreakableRewardRole::HealthBearing {
+                    health_bearing_abs_x = Some(abs_x);
+                    assert_eq!(
+                        role.breakable_family,
+                        BreakableHazardFamily::ShoulderFixture
+                    );
+                }
+            }
+        }
+
+        assert!(shoulder_fixture_abs_x.len() >= 1);
+        let health_bearing_abs_x =
+            health_bearing_abs_x.expect("expected one health-bearing shoulder fixture");
+        let nearest_selected_shoulder = shoulder_fixture_abs_x
+            .into_iter()
+            .fold(f32::INFINITY, f32::min);
+        assert_eq!(health_bearing_abs_x, nearest_selected_shoulder);
+    }
+
+    #[test]
+    fn nebula_bouncer_relief_lane_breakables_stay_sparse() {
+        let topo = super::generate_chunk_topography(800.0, 0xFE11EF, 1, ChunkPacing::Open, 3);
+        let destructibles: Vec<_> = topo
+            .surface_roles
+            .iter()
+            .filter(|role| role.durability == SurfaceDurability::Destructible)
+            .collect();
+
+        assert!(destructibles.len() <= 1);
+        assert!(
+            destructibles
+                .iter()
+                .all(|role| role.breakable_reward != BreakableRewardRole::HealthBearing)
+        );
+        assert!(
+            destructibles
+                .iter()
+                .all(|role| role.placement_zone != PlacementZone::CoreLane)
+        );
+    }
+
+    #[test]
+    fn nebula_bouncer_lane_pressure_breakables_bias_to_one_side() {
+        let topo = super::generate_chunk_topography(800.0, 0x1A4E, 2, ChunkPacing::Transition, 4);
+        let start_x = -crate::eras::era_future::nebula_bouncer::topography::TERRAIN_WIDTH * 0.5;
+        let mut left = 0usize;
+        let mut right = 0usize;
+
+        for r in 0..topo.rows {
+            for c in 0..topo.cols {
+                let idx = (r * topo.cols + c) as usize;
+                let role = topo.surface_roles[idx];
+                if role.durability != SurfaceDurability::Destructible {
+                    continue;
+                }
+                let offset_x = if r % 2 == 1 {
+                    topo.hex_width * 0.5
+                } else {
+                    0.0
+                };
+                let x = start_x + c as f32 * topo.hex_width + offset_x;
+                if x < 0.0 {
+                    left += 1;
+                } else {
+                    right += 1;
+                }
+            }
+        }
+
+        assert!((1..=2).contains(&(left + right)));
+        assert_ne!(topo.favored_side_sign, 0);
+        if topo.favored_side_sign < 0 {
+            assert!(left > 0);
+            assert_eq!(right, 0);
+        } else {
+            assert!(right > 0);
+            assert_eq!(left, 0);
+        }
     }
 }
 

@@ -4,7 +4,8 @@ use std::fs;
 use std::path::PathBuf;
 
 use crate::eras::era_future::nebula_bouncer::components::{
-    OrbElement, OrbModifier, PlayerSurfaceRole, SurfaceArchetype,
+    BreakableHazardFamily, BreakableRewardRole, DensityCadence, OrbElement, OrbModifier,
+    PlacementZone, PlayerSurfaceRole, SurfaceArchetype, SurfaceRole, TerrainMotif,
 };
 use crate::eras::era_future::nebula_bouncer::procgen::{
     ChunkPacing, ProcgenPreflightSummary, ValidationCounters,
@@ -577,6 +578,15 @@ pub struct NebulaRuntimeTelemetry {
     pub absorbed_projectiles: u64,
     pub last_surface_role: Option<PlayerSurfaceRole>,
     pub last_surface_archetype: Option<SurfaceArchetype>,
+    pub last_surface_motif: Option<TerrainMotif>,
+    pub last_surface_zone: Option<PlacementZone>,
+    pub last_surface_cadence: Option<DensityCadence>,
+    pub last_breakable_family: Option<BreakableHazardFamily>,
+    pub last_breakable_reward: Option<BreakableRewardRole>,
+    pub destructible_surface_hits: u64,
+    pub breakables_destroyed: u64,
+    pub health_breakables_destroyed: u64,
+    pub player_health_recovered: u64,
     pub last_projectile_event: ProjectileEventKind,
     pub last_projectile_speed: f32,
 }
@@ -602,6 +612,15 @@ impl Default for NebulaRuntimeTelemetry {
             absorbed_projectiles: 0,
             last_surface_role: None,
             last_surface_archetype: None,
+            last_surface_motif: None,
+            last_surface_zone: None,
+            last_surface_cadence: None,
+            last_breakable_family: None,
+            last_breakable_reward: None,
+            destructible_surface_hits: 0,
+            breakables_destroyed: 0,
+            health_breakables_destroyed: 0,
+            player_health_recovered: 0,
             last_projectile_event: ProjectileEventKind::None,
             last_projectile_speed: 0.0,
         }
@@ -637,6 +656,25 @@ impl NebulaRuntimeTelemetry {
         }
     }
 
+    pub fn record_surface_semantics(&mut self, surface_role: SurfaceRole) {
+        self.last_surface_role = Some(surface_role.player_role);
+        self.last_surface_archetype = Some(surface_role.archetype);
+        self.last_surface_motif = Some(surface_role.motif);
+        self.last_surface_zone = Some(surface_role.placement_zone);
+        self.last_surface_cadence = Some(surface_role.cadence);
+        self.last_breakable_family = if surface_role.breakable_family == BreakableHazardFamily::None
+        {
+            None
+        } else {
+            Some(surface_role.breakable_family)
+        };
+        self.last_breakable_reward = if surface_role.breakable_reward == BreakableRewardRole::None {
+            None
+        } else {
+            Some(surface_role.breakable_reward)
+        };
+    }
+
     pub fn record_crash(&mut self, archetype: SurfaceArchetype) {
         self.last_surface_role = Some(PlayerSurfaceRole::HardCrashBlocker);
         self.last_surface_archetype = Some(archetype);
@@ -658,6 +696,58 @@ impl NebulaRuntimeTelemetry {
         self.terrain_follow_samples = self.terrain_follow_samples.saturating_add(1);
         self.last_skim_height = height;
         self.max_skim_height = self.max_skim_height.max(height.abs());
+    }
+}
+
+#[derive(Reflect, Serialize, Deserialize, Clone, Debug, Default)]
+#[reflect(Serialize, Deserialize)]
+pub struct ChunkRuntimeSnapshot {
+    pub sequence_index: u64,
+    pub chunk_center_y: f32,
+    pub cadence: DensityCadence,
+    pub enemy_count: u32,
+    pub traversal_safe_valleys: u32,
+    pub ridge_lines: u32,
+    pub shoulder_ricochet_banks: u32,
+    pub side_pockets: u32,
+    pub breakable_hazard_clusters: u32,
+    pub hard_gate_setpieces: u32,
+    pub structural_surfaces: u32,
+    pub destructible_surfaces: u32,
+    pub health_bearing_breakables: u32,
+    pub ricochet_surfaces: u32,
+    pub core_lane_surfaces: u32,
+    pub shoulder_surfaces: u32,
+    pub cage_adjacent_surfaces: u32,
+    pub core_lane_breakables: u32,
+    pub shoulder_breakables: u32,
+    pub cage_adjacent_breakables: u32,
+    pub favored_side_sign: i32,
+}
+
+impl ChunkRuntimeSnapshot {
+    pub fn cadence_name(&self) -> &'static str {
+        self.cadence.as_str()
+    }
+}
+
+#[derive(Resource, Reflect, Serialize, Deserialize, Clone, Debug, Default)]
+#[reflect(Resource, Serialize, Deserialize)]
+pub struct NebulaProcgenValidationState {
+    pub latest: Option<ChunkRuntimeSnapshot>,
+    pub recent: Vec<ChunkRuntimeSnapshot>,
+}
+
+impl NebulaProcgenValidationState {
+    pub const MAX_RECENT: usize = 12;
+
+    pub fn push_snapshot(&mut self, snapshot: ChunkRuntimeSnapshot) {
+        self.latest = Some(snapshot.clone());
+        self.recent.push(snapshot);
+        if self.recent.len() > Self::MAX_RECENT {
+            let drop_count = self.recent.len() - Self::MAX_RECENT;
+            self.recent.drain(0..drop_count);
+        }
     }
 }
 

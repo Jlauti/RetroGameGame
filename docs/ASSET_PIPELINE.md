@@ -29,3 +29,10 @@ The active flow is:
 - concept artifacts should clarify shape language, faction identity, and chapter mood
 - runtime assets should be `.glb` and human-created
 - integration work should focus on loading, orientation, scale, and gameplay readability
+
+## Active Nebula Environment Direction
+
+- `NB-A1-010` explicitly allows Nebula's ground/environment pass to use procedural neon geometry, materials, and environment VFX as the active battlefield language.
+- This allowance covers abstract/systemic terrain contours, ridge/bank geometry, side cage presentation, and breakable environment fixtures.
+- Ships and enemies remain human-created `.glb` assets; the procedural allowance does not replace the human-made gameplay actor pipeline.
+- Aino's concept work for this lane should clarify motif readability, emissive hierarchy, and motion language for procedural terrain roles rather than turning the current ground pass into a modeled-environment-first workflow.

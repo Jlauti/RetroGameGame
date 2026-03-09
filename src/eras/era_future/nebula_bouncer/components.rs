@@ -248,12 +248,85 @@ pub enum SurfaceArchetype {
     HardCrashExtrusion,
 }
 
+#[derive(Reflect, Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq, Hash, Default)]
+#[reflect(Serialize, Deserialize)]
+pub enum TerrainMotif {
+    #[default]
+    TraversalSafeValley,
+    RidgeLine,
+    ShoulderRicochetBank,
+    SidePocket,
+    BreakableHazardCluster,
+    HardGateSetpiece,
+}
+
+#[derive(Reflect, Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq, Hash, Default)]
+#[reflect(Serialize, Deserialize)]
+pub enum PlacementZone {
+    #[default]
+    CoreLane,
+    Shoulder,
+    CageAdjacent,
+}
+
+#[derive(Reflect, Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq, Hash, Default)]
+#[reflect(Serialize, Deserialize)]
+pub enum DensityCadence {
+    #[default]
+    ReliefLane,
+    LanePressure,
+    CombatPocket,
+}
+
+impl DensityCadence {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::ReliefLane => "relief_lane",
+            Self::LanePressure => "lane_pressure",
+            Self::CombatPocket => "combat_pocket",
+        }
+    }
+}
+
+#[derive(Reflect, Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq, Hash, Default)]
+#[reflect(Serialize, Deserialize)]
+pub enum SurfaceDurability {
+    #[default]
+    Structural,
+    Destructible,
+}
+
+#[derive(Reflect, Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq, Hash, Default)]
+#[reflect(Serialize, Deserialize)]
+pub enum BreakableHazardFamily {
+    #[default]
+    None,
+    ShoulderFixture,
+    PocketCluster,
+    CageAdjacentSupport,
+}
+
+#[derive(Reflect, Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq, Hash, Default)]
+#[reflect(Serialize, Deserialize)]
+pub enum BreakableRewardRole {
+    #[default]
+    None,
+    ComboExtender,
+    HealthBearing,
+}
+
 #[derive(Component, Reflect, Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq, Hash)]
 #[reflect(Component, Serialize, Deserialize)]
 pub struct SurfaceRole {
     pub player_role: PlayerSurfaceRole,
     pub ricochet: bool,
     pub archetype: SurfaceArchetype,
+    pub motif: TerrainMotif,
+    pub placement_zone: PlacementZone,
+    pub cadence: DensityCadence,
+    pub durability: SurfaceDurability,
+    pub breakable_family: BreakableHazardFamily,
+    pub breakable_reward: BreakableRewardRole,
 }
 
 impl Default for SurfaceRole {
@@ -262,6 +335,12 @@ impl Default for SurfaceRole {
             player_role: PlayerSurfaceRole::TraversalSurface,
             ricochet: false,
             archetype: SurfaceArchetype::TerrainBoundary,
+            motif: TerrainMotif::TraversalSafeValley,
+            placement_zone: PlacementZone::CoreLane,
+            cadence: DensityCadence::ReliefLane,
+            durability: SurfaceDurability::Structural,
+            breakable_family: BreakableHazardFamily::None,
+            breakable_reward: BreakableRewardRole::None,
         }
     }
 }
@@ -290,6 +369,45 @@ impl SurfaceNormal {
 #[reflect(Component, Serialize, Deserialize)]
 pub struct TerrainContourSample {
     pub height: f32,
+    pub motif: TerrainMotif,
+    pub placement_zone: PlacementZone,
+    pub cadence: DensityCadence,
+}
+
+#[derive(Component, Reflect, Serialize, Deserialize, Clone, Copy, Debug)]
+#[reflect(Component, Serialize, Deserialize)]
+pub struct BreakableHazard {
+    pub family: BreakableHazardFamily,
+    pub reward: BreakableRewardRole,
+    pub heal_amount: i32,
+}
+
+impl Default for BreakableHazard {
+    fn default() -> Self {
+        Self {
+            family: BreakableHazardFamily::None,
+            reward: BreakableRewardRole::None,
+            heal_amount: 0,
+        }
+    }
+}
+
+#[derive(Component, Reflect, Serialize, Deserialize, Clone, Copy, Debug)]
+#[reflect(Component, Serialize, Deserialize)]
+pub struct HealthDrop {
+    pub heal_amount: i32,
+    pub ttl_secs: f32,
+    pub collect_radius: f32,
+}
+
+impl Default for HealthDrop {
+    fn default() -> Self {
+        Self {
+            heal_amount: 0,
+            ttl_secs: 0.0,
+            collect_radius: 0.0,
+        }
+    }
 }
 
 /// Marker for entities that should participate in specific collision layers

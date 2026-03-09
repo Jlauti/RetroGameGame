@@ -78,3 +78,13 @@ Each chapter brief should define:
 - Aiming and firing prioritize readability: all shots must be telegraphed, firing occurs in distinct bursts with cooldowns, and continuous/omniscient tracking is forbidden.
 - Hostile projectiles are highly visible, dodgeable, and strictly destroyed on contact with terrain or boundaries (no enemy ricochets).
 - Combat maintains fairness through a simultaneous attacker limit (max 3 at once) and restricting engagements to the player's forward-facing 180-degree camera arc.
+
+## Approved Procedural Neon Ground And Boundary Combat Contract
+
+`NB-A1-010` locks Nebula's next battlefield pass around `Star Goose terrain` rather than sparse distance-highrun.
+
+- The arena remains structured around traversal-safe valleys, ridge lines, shoulder ricochet banks, side pockets, breakable hazard clusters, and rare hard-gate setpieces.
+- Side boundaries are a `soft cage + banks` system: the cage contains and pressures the player, while meaningful combat interaction near the edge happens on shoulder banks and cage-adjacent fixtures just inside the boundary.
+- Density is intentionally mixed across combat pockets, relief lanes, and lane-pressure segments instead of staying at constant-max clutter.
+- Enemies remain the primary combo-feed. Breakable hazards are frequent support targets that clear space, sustain pressure, and only occasionally drop health; no fuel/resource economy is introduced.
+- `Procedural neon environment` means abstract/systemic ground geometry, materials, and VFX may carry the active environment language, while ships and enemies remain human-made `.glb` assets.

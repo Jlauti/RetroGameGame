@@ -1,0 +1,167 @@
+{
+  "movement_case": {
+    "player_before": [
+      0.0,
+      -200.0,
+      38.0
+    ],
+    "player_after": [
+      135.93751525878906,
+      -200.0,
+      38.0
+    ],
+    "camera_before": [
+      0.0,
+      -596.0,
+      270.0
+    ],
+    "camera_after": [
+      43.067195892333984,
+      -596.0,
+      270.0
+    ],
+    "tracked_hex_entity": 4294966697,
+    "tracked_hex_before": [
+      -430.59197998046875,
+      205.686279296875,
+      6.687132358551025
+    ],
+    "tracked_hex_after": [
+      -430.59197998046875,
+      46.40265655517578,
+      6.687132358551025
+    ],
+    "start_screenshot": "C:\\Users\\jlaut\\git\\RetroGameGame\\agents\\deliverables\\agent2\\NB-FIX-005_ground_start.png",
+    "move_screenshot": "C:\\Users\\jlaut\\git\\RetroGameGame\\agents\\deliverables\\agent2\\NB-FIX-005_ground_move.png"
+  },
+  "coherent_floor_case": {
+    "startup_sequence": [
+      {
+        "sequence_index": 0,
+        "chunk_center_y": 400.0,
+        "cadence": "ReliefLane",
+        "breakable_hazard_clusters": 1,
+        "health_bearing_breakables": 0
+      },
+      {
+        "sequence_index": 1,
+        "chunk_center_y": 1200.0,
+        "cadence": "ReliefLane",
+        "breakable_hazard_clusters": 1,
+        "health_bearing_breakables": 0
+      },
+      {
+        "sequence_index": 2,
+        "chunk_center_y": 2000.0,
+        "cadence": "LanePressure",
+        "breakable_hazard_clusters": 1,
+        "health_bearing_breakables": 0
+      },
+      {
+        "sequence_index": 3,
+        "chunk_center_y": 2800.0,
+        "cadence": "CombatPocket",
+        "breakable_hazard_clusters": 1,
+        "health_bearing_breakables": 1
+      },
+      {
+        "sequence_index": 4,
+        "chunk_center_y": 3600.0,
+        "cadence": "LanePressure",
+        "breakable_hazard_clusters": 1,
+        "health_bearing_breakables": 0
+      },
+      {
+        "sequence_index": 5,
+        "chunk_center_y": 4400.0,
+        "cadence": "ReliefLane",
+        "breakable_hazard_clusters": 0,
+        "health_bearing_breakables": 0
+      }
+    ],
+    "latest_snapshot": {
+      "sequence_index": 5,
+      "chunk_center_y": 4400.0,
+      "cadence": "ReliefLane",
+      "enemy_count": 0,
+      "traversal_safe_valleys": 150,
+      "ridge_lines": 0,
+      "shoulder_ricochet_banks": 0,
+      "side_pockets": 78,
+      "breakable_hazard_clusters": 0,
+      "hard_gate_setpieces": 6,
+      "structural_surfaces": 234,
+      "destructible_surfaces": 0,
+      "health_bearing_breakables": 0,
+      "ricochet_surfaces": 0,
+      "core_lane_surfaces": 6,
+      "shoulder_surfaces": 0,
+      "cage_adjacent_surfaces": 5,
+      "core_lane_breakables": 0,
+      "shoulder_breakables": 0,
+      "cage_adjacent_breakables": 0,
+      "favored_side_sign": 0
+    }
+  },
+  "health_drop_case": {
+    "breakable_entity": 4294965170,
+    "breakable_original_translation": [
+      733.31201171875,
+      1771.2548828125,
+      5.0
+    ],
+    "breakable_staged_translation": [
+      180.0,
+      1738.383544921875,
+      5.0
+    ],
+    "runtime_telemetry": {
+      "terrain_follow_samples": 862,
+      "last_skim_height": 0.0,
+      "max_skim_height": 0.0,
+      "traversal_contacts": 0,
+      "soft_boundary_contacts": 0,
+      "hard_blocker_contacts": 0,
+      "hard_blocker_extrusion_crashes": 0,
+      "hard_blocker_boundary_crashes": 0,
+      "direct_enemy_hits": 0,
+      "direct_enemy_kills": 0,
+      "ricochet_attempts": 0,
+      "ricochet_surface_hits": 0,
+      "ricochet_enemy_hits": 0,
+      "ricochet_enemy_kills": 0,
+      "ricochet_bonus_score": 0,
+      "absorbed_projectiles": 0,
+      "last_surface_role": "SoftPressureBoundary",
+      "last_surface_archetype": "TerrainBoundary",
+      "last_surface_motif": "BreakableHazardCluster",
+      "last_surface_zone": "CageAdjacent",
+      "last_surface_cadence": "CombatPocket",
+      "last_breakable_family": "PocketCluster",
+      "last_breakable_reward": "HealthBearing",
+      "destructible_surface_hits": 1,
+      "breakables_destroyed": 1,
+      "health_breakables_destroyed": 1,
+      "player_health_recovered": 0,
+      "last_projectile_event": "ProjectileAbsorbed",
+      "last_projectile_speed": 87.17091369628906
+    },
+    "health_drop_entity": 4294962883,
+    "health_drop_translation": [
+      180.0,
+      1701.8936767578125,
+      72.26203918457031
+    ],
+    "health_drop_component": {
+      "heal_amount": 10,
+      "ttl_secs": 5.7805609703063965,
+      "collect_radius": 38.0
+    },
+    "drop_screenshot": "C:\\Users\\jlaut\\git\\RetroGameGame\\agents\\deliverables\\agent2\\NB-FIX-005_health_drop.png"
+  },
+  "artifact_paths": {
+    "stdout_log": "C:\\Users\\jlaut\\git\\RetroGameGame\\agents\\deliverables\\agent2\\NB-FIX-005_brp_run.out.log",
+    "stderr_log": "C:\\Users\\jlaut\\git\\RetroGameGame\\agents\\deliverables\\agent2\\NB-FIX-005_brp_run.err.log",
+    "validation_json": "C:\\Users\\jlaut\\git\\RetroGameGame\\agents\\deliverables\\agent2\\NB-FIX-005_brp_validation.json"
+  }
+}

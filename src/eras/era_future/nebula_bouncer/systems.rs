@@ -2,12 +2,13 @@ use crate::core::states::GameState;
 use crate::eras::era_future::nebula_bouncer::components::*;
 use crate::eras::era_future::nebula_bouncer::procgen::*;
 use crate::eras::era_future::nebula_bouncer::resources::{
-    ActiveLoadout, BOUNCE_MAX, CameraFeedbackSettings, ChunkAssignmentProfiles, CombatTokenPool,
-    EnemyArchetype, HitStop, HostileFireConfig, KineticOrbPool, NebulaAssetManifest,
-    NebulaMaterials, NebulaRunStats, NebulaRuntimeTelemetry, NebulaValidationCommand,
-    OrbSpawnStats, OrbSynergyMatrix, PendingCrashResult, ProcgenValidatorTelemetry,
-    ProjectileEventKind, SpriteOrientationConfig, TerrainTheme, compute_hit_stop_duration,
-    feedback_tuning, next_shake_intensity, resolve_orb_spawn_stats,
+    ActiveLoadout, BOUNCE_MAX, CameraFeedbackSettings, ChunkAssignmentProfiles,
+    ChunkRuntimeSnapshot, CombatTokenPool, EnemyArchetype, HitStop, HostileFireConfig,
+    KineticOrbPool, NebulaAssetManifest, NebulaMaterials, NebulaProcgenValidationState,
+    NebulaRunStats, NebulaRuntimeTelemetry, NebulaValidationCommand, OrbSpawnStats,
+    OrbSynergyMatrix, PendingCrashResult, ProcgenValidatorTelemetry, ProjectileEventKind,
+    SpriteOrientationConfig, TerrainTheme, compute_hit_stop_duration, feedback_tuning,
+    next_shake_intensity, resolve_orb_spawn_stats,
 };
 use crate::eras::era_future::nebula_bouncer::topography::{
     CORE_LANE_HALF_WIDTH, SHOULDER_WIDTH, SOFT_BOUNDARY_X, TERRAIN_WIDTH, spawn_chunk_topography,
@@ -53,6 +54,17 @@ const TRANSIENT_VFX_BASE_SIZE: f32 = 70.0;
 const CAMERA_HEIGHT: f32 = 270.0;
 const CAMERA_BEHIND_OFFSET: f32 = -396.0;
 const CAMERA_LOOK_AHEAD: f32 = 1100.0;
+const HEALTH_DROP_TTL_SECS: f32 = 6.0;
+const HEALTH_DROP_COLLECT_RADIUS: f32 = 38.0;
+const HEALTH_DROP_VISUAL_SIZE: f32 = 38.0;
+const HEALTH_DROP_VISUAL_LIFT: f32 = 24.0;
+const HEALTH_DROP_BEACON_HEIGHT: f32 = HEALTH_DROP_VISUAL_SIZE * 1.9;
+const HEALTH_DROP_HEART_BLOCK_SIZE: f32 = HEALTH_DROP_VISUAL_SIZE * 0.26;
+const HEALTH_DROP_HEART_THICKNESS: f32 = 5.0;
+const HEALTH_DROP_ROTATION_SPEED: f32 = 2.4;
+const HEALTH_DROP_PULSE_SPEED: f32 = 5.2;
+const HEALTH_DROP_PULSE_SCALE: f32 = 0.14;
+const HEALTH_DROP_BOB_HEIGHT: f32 = 8.0;
 const GROUND_PATTERN_BAND_HEIGHT: f32 = 216.0;
 const GROUND_RIDGE_THICKNESS: f32 = 4.0;
 const GROUND_POCKET_CONNECTOR_THICKNESS: f32 = 3.0;
@@ -172,6 +184,12 @@ pub struct NebulaDebugOverlayRoot;
 
 #[derive(Component)]
 pub struct NebulaDebugOverlayText;
+
+#[derive(Component)]
+pub struct NebulaHealthHudRoot;
+
+#[derive(Component)]
+pub struct NebulaHealthHudText;
 
 #[derive(Component)]
 pub struct GroundVisual;
@@ -401,6 +419,47 @@ fn preflight_artifact_path() -> PathBuf {
     base.join(PREFLIGHT_SUMMARY_REL_PATH)
 }
 
+fn initialize_procgen_runtime_state(procgen_state: &mut ProcGenState) {
+    procgen_state.next_spawn_y = 0.0;
+    procgen_state.last_chunk_bottom_profile = [false; PROFILE_RESOLUTION];
+    procgen_state.current_pacing = ChunkPacing::Open;
+    procgen_state.previous_pacing = ChunkPacing::Open;
+    procgen_state.chunks_in_current_pacing = 0;
+    procgen_state.chunks_spawned = 0;
+    if procgen_state.global_seed == 0 {
+        procgen_state.global_seed = 0x4E42_5F53_4545_445F;
+    }
+}
+
+fn player_health_hud_label(player_health: Option<&Health>) -> String {
+    match player_health {
+        Some(health) => format!("HP: {}/{}", health.current.max(0), health.max.max(0)),
+        None => "HP: --".to_string(),
+    }
+}
+
+fn player_health_hud_color(player_health: Option<&Health>) -> Color {
+    let Some(health) = player_health else {
+        return Color::srgb(0.72, 0.78, 0.84);
+    };
+
+    let fraction = health.fraction();
+    if fraction <= 0.25 {
+        Color::srgb(1.0, 0.34, 0.24)
+    } else if fraction <= 0.55 {
+        Color::srgb(1.0, 0.84, 0.22)
+    } else {
+        Color::srgb(0.56, 0.98, 0.72)
+    }
+}
+
+fn health_drop_visual_profile(age_secs: f32) -> (f32, f32, f32) {
+    let pulse = 1.0 + HEALTH_DROP_PULSE_SCALE * (age_secs * HEALTH_DROP_PULSE_SPEED).sin().abs();
+    let lift = HEALTH_DROP_VISUAL_LIFT + HEALTH_DROP_BOB_HEIGHT * (age_secs * 3.6).sin().abs();
+    let rotation = age_secs * HEALTH_DROP_ROTATION_SPEED;
+    (lift, pulse, rotation)
+}
+
 fn spawn_transient_vfx(
     commands: &mut Commands,
     asset_server: &AssetServer,
@@ -428,6 +487,102 @@ fn spawn_transient_vfx(
             shrink_per_sec: (size.max(4.0) * 0.9) / lifetime,
         },
     ));
+}
+
+fn summarize_chunk_runtime(
+    topography: &ChunkTopography,
+    sequence_index: usize,
+    chunk_center_y: f32,
+    enemy_count: usize,
+) -> ChunkRuntimeSnapshot {
+    let mut snapshot = ChunkRuntimeSnapshot {
+        sequence_index: sequence_index as u64,
+        chunk_center_y,
+        cadence: topography
+            .surface_roles
+            .first()
+            .copied()
+            .unwrap_or_default()
+            .cadence,
+        enemy_count: enemy_count as u32,
+        favored_side_sign: topography.favored_side_sign,
+        ..Default::default()
+    };
+    for surface_role in &topography.surface_roles {
+        match surface_role.motif {
+            TerrainMotif::TraversalSafeValley => {
+                snapshot.traversal_safe_valleys += 1;
+            }
+            TerrainMotif::RidgeLine => {
+                snapshot.ridge_lines += 1;
+            }
+            TerrainMotif::ShoulderRicochetBank => {
+                snapshot.shoulder_ricochet_banks += 1;
+            }
+            TerrainMotif::SidePocket => {
+                snapshot.side_pockets += 1;
+            }
+            TerrainMotif::BreakableHazardCluster => {
+                snapshot.breakable_hazard_clusters += 1;
+            }
+            TerrainMotif::HardGateSetpiece => {
+                snapshot.hard_gate_setpieces += 1;
+            }
+        }
+
+        if surface_role.player_role != PlayerSurfaceRole::TraversalSurface {
+            match surface_role.placement_zone {
+                PlacementZone::CoreLane => snapshot.core_lane_surfaces += 1,
+                PlacementZone::Shoulder => snapshot.shoulder_surfaces += 1,
+                PlacementZone::CageAdjacent => snapshot.cage_adjacent_surfaces += 1,
+            }
+        }
+
+        if surface_role.ricochet {
+            snapshot.ricochet_surfaces += 1;
+        }
+        match surface_role.durability {
+            SurfaceDurability::Structural => snapshot.structural_surfaces += 1,
+            SurfaceDurability::Destructible => {
+                snapshot.destructible_surfaces += 1;
+                if surface_role.breakable_reward == BreakableRewardRole::HealthBearing {
+                    snapshot.health_bearing_breakables += 1;
+                }
+                match surface_role.placement_zone {
+                    PlacementZone::CoreLane => snapshot.core_lane_breakables += 1,
+                    PlacementZone::Shoulder => snapshot.shoulder_breakables += 1,
+                    PlacementZone::CageAdjacent => snapshot.cage_adjacent_breakables += 1,
+                }
+            }
+        }
+    }
+
+    snapshot
+}
+
+fn spawn_breakable_shatter_vfx(commands: &mut Commands, nebula_mats: &NebulaMaterials, pos: Vec3) {
+    for i in 0..10 {
+        let angle = (i as f32 / 10.0) * std::f32::consts::TAU;
+        let size = 30.0 + (i as f32 * 2.0);
+        let ttl_secs = 0.12 + (i as f32 * 0.01);
+        let material = match i % 3 {
+            0 => nebula_mats.hex_accent_material_cyan.clone(),
+            1 => nebula_mats.hex_accent_material_magenta.clone(),
+            _ => nebula_mats.hex_accent_material_amber.clone(),
+        };
+        commands.spawn((
+            CrashVectorShard,
+            Mesh3d(nebula_mats.quad_mesh.clone()),
+            MeshMaterial3d(material),
+            Transform::from_xyz(pos.x, pos.y, depth::PARTICLES + 4.0)
+                .with_rotation(Quat::from_rotation_z(angle))
+                .with_scale(Vec3::new(size, 1.8, 1.0)),
+            TransientVfx {
+                ttl_secs,
+                shrink_per_sec: (size * 0.9) / ttl_secs,
+            },
+        ));
+    }
 }
 
 fn spawn_ground_pattern_piece(
@@ -510,7 +665,7 @@ fn spawn_chunk_floor_tiles(
     chunk_height: f32,
     _terrain_theme: TerrainTheme,
 ) {
-    // 1. One dark base slab per chunk (GroundVisual) for continuity
+    // Keep a subdued underlay beneath the hex field so valley tiles read as anchored terrain.
     commands.spawn((
         ChunkMember,
         GroundVisual,
@@ -679,8 +834,11 @@ fn spawn_chunk_floor_tiles(
 
     let boundary_role = SurfaceRole {
         player_role: PlayerSurfaceRole::SoftPressureBoundary,
-        ricochet: true,
+        ricochet: false,
         archetype: SurfaceArchetype::TerrainBoundary,
+        placement_zone: PlacementZone::CageAdjacent,
+        motif: TerrainMotif::SidePocket,
+        ..SurfaceRole::default()
     };
     let boundary_specs = [
         (-SOFT_BOUNDARY_X, SurfaceNormal::new(Vec2::X)),
@@ -805,6 +963,119 @@ fn spawn_chunk_floor_tiles(
     }
 }
 
+fn spawn_health_drop(
+    commands: &mut Commands,
+    nebula_mats: &NebulaMaterials,
+    pos: Vec3,
+    heal_amount: i32,
+) {
+    commands
+        .spawn((
+            HealthDrop {
+                heal_amount,
+                ttl_secs: HEALTH_DROP_TTL_SECS,
+                collect_radius: HEALTH_DROP_COLLECT_RADIUS,
+            },
+            ChunkMember,
+            Transform::from_xyz(pos.x, pos.y, depth::PARTICLES + HEALTH_DROP_VISUAL_LIFT),
+            GlobalTransform::default(),
+            Visibility::Visible,
+        ))
+        .with_children(|parent| {
+            let heart_z = HEALTH_DROP_VISUAL_SIZE * 0.72;
+            parent.spawn((
+                Mesh3d(nebula_mats.lane_mesh.clone()),
+                MeshMaterial3d(nebula_mats.hex_accent_material_amber.clone()),
+                Transform::from_xyz(0.0, 0.0, -HEALTH_DROP_VISUAL_LIFT * 0.35)
+                    .with_scale(Vec3::new(6.0, 6.0, HEALTH_DROP_BEACON_HEIGHT)),
+            ));
+            parent.spawn((
+                Mesh3d(nebula_mats.lane_mesh.clone()),
+                MeshMaterial3d(nebula_mats.hex_accent_material_lime.clone()),
+                Transform::from_xyz(0.0, 0.0, heart_z - 4.0).with_scale(Vec3::new(
+                    HEALTH_DROP_VISUAL_SIZE * 0.92,
+                    7.0,
+                    4.0,
+                )),
+            ));
+            for (x_offset, y_offset) in [
+                (
+                    -HEALTH_DROP_VISUAL_SIZE * 0.28,
+                    HEALTH_DROP_VISUAL_SIZE * 0.20,
+                ),
+                (0.0, HEALTH_DROP_VISUAL_SIZE * 0.30),
+                (
+                    HEALTH_DROP_VISUAL_SIZE * 0.28,
+                    HEALTH_DROP_VISUAL_SIZE * 0.20,
+                ),
+                (-HEALTH_DROP_VISUAL_SIZE * 0.16, 0.0),
+                (HEALTH_DROP_VISUAL_SIZE * 0.16, 0.0),
+                (0.0, -HEALTH_DROP_VISUAL_SIZE * 0.22),
+            ] {
+                parent.spawn((
+                    Mesh3d(nebula_mats.lane_mesh.clone()),
+                    MeshMaterial3d(nebula_mats.hex_accent_material_lime.clone()),
+                    Transform::from_xyz(x_offset, y_offset, heart_z).with_scale(Vec3::new(
+                        HEALTH_DROP_HEART_BLOCK_SIZE,
+                        HEALTH_DROP_HEART_BLOCK_SIZE,
+                        HEALTH_DROP_HEART_THICKNESS,
+                    )),
+                ));
+            }
+            parent.spawn((
+                Mesh3d(nebula_mats.orb_mesh.clone()),
+                MeshMaterial3d(nebula_mats.hex_accent_material_amber.clone()),
+                Transform::from_xyz(0.0, 0.0, heart_z + 4.0)
+                    .with_scale(Vec3::splat(HEALTH_DROP_VISUAL_SIZE * 0.28)),
+            ));
+        });
+}
+
+fn should_collect_health_drop(player_pos: Vec3, drop_pos: Vec3, collect_radius: f32) -> bool {
+    player_pos.truncate().distance(drop_pos.truncate()) <= collect_radius.max(0.0)
+}
+
+pub fn update_health_drops(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut runtime_telemetry: ResMut<NebulaRuntimeTelemetry>,
+    mut q_player: Query<(&Transform, &mut Health), With<PlayerShip>>,
+    mut q_health_drops: Query<(Entity, &mut HealthDrop, &mut Transform), Without<PlayerShip>>,
+) {
+    let Ok((player_transform, mut player_health)) = q_player.single_mut() else {
+        return;
+    };
+
+    for (entity, mut health_drop, mut drop_transform) in &mut q_health_drops {
+        health_drop.ttl_secs -= time.delta_secs();
+        if health_drop.ttl_secs <= 0.0 {
+            commands.entity(entity).despawn();
+            continue;
+        }
+
+        let age_secs = (HEALTH_DROP_TTL_SECS - health_drop.ttl_secs).max(0.0);
+        let (lift, pulse, rotation) = health_drop_visual_profile(age_secs);
+        drop_transform.translation.z = depth::PARTICLES + lift;
+        drop_transform.rotation = Quat::from_rotation_z(rotation);
+        drop_transform.scale = Vec3::splat(pulse);
+
+        if should_collect_health_drop(
+            player_transform.translation,
+            drop_transform.translation,
+            health_drop.collect_radius,
+        ) {
+            let heal_amount = health_drop.heal_amount.max(0);
+            if heal_amount > 0 {
+                player_health.heal(heal_amount);
+                runtime_telemetry.player_health_recovered = runtime_telemetry
+                    .player_health_recovered
+                    .saturating_add(heal_amount as u64);
+            }
+            commands.entity(entity).despawn();
+        }
+    }
+}
+
 pub fn setup_nebula_bouncer(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
@@ -813,6 +1084,7 @@ pub fn setup_nebula_bouncer(
     mut library: ResMut<ChunkLibrary>,
     mut procgen_state: ResMut<ProcGenState>,
     mut validator_telemetry: ResMut<ProcgenValidatorTelemetry>,
+    mut procgen_validation_state: ResMut<NebulaProcgenValidationState>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut orb_pool: ResMut<KineticOrbPool>,
@@ -827,6 +1099,7 @@ pub fn setup_nebula_bouncer(
     commands.insert_resource(Gravity(Vec2::ZERO));
     *run_stats = NebulaRunStats::default();
     *runtime_telemetry = NebulaRuntimeTelemetry::default();
+    *procgen_validation_state = NebulaProcgenValidationState::default();
     *validation_command = NebulaValidationCommand::default();
     *pending_crash = PendingCrashResult::default();
 
@@ -858,54 +1131,57 @@ pub fn setup_nebula_bouncer(
             alpha_mode: AlphaMode::Blend,
             ..default()
         }),
-        // NB-A2-010 pass6: Solid-color materials for 3D hex prisms.
-        // No texture — the Extrusion side faces show as lit terrain walls.
+        // Keep floor bodies readable from the gameplay camera instead of collapsing into a black slab.
         hex_material_t0: materials.add(StandardMaterial {
-            base_color: Color::srgb(0.005, 0.008, 0.010),
-            metallic: 0.5,
-            perceptual_roughness: 0.3,
+            base_color: Color::srgb(0.030, 0.040, 0.050),
+            emissive: LinearRgba::rgb(0.012, 0.030, 0.040) * 0.55,
+            metallic: 0.08,
+            perceptual_roughness: 0.88,
             ..default()
         }),
         hex_material_t1: materials.add(StandardMaterial {
-            base_color: Color::srgb(0.008, 0.012, 0.015),
-            metallic: 0.5,
-            perceptual_roughness: 0.3,
+            base_color: Color::srgb(0.036, 0.048, 0.060),
+            emissive: LinearRgba::rgb(0.016, 0.036, 0.048) * 0.65,
+            metallic: 0.10,
+            perceptual_roughness: 0.84,
             ..default()
         }),
         hex_material_t2: materials.add(StandardMaterial {
-            base_color: Color::srgb(0.010, 0.018, 0.020),
-            metallic: 0.5,
-            perceptual_roughness: 0.3,
+            base_color: Color::srgb(0.044, 0.058, 0.070),
+            emissive: LinearRgba::rgb(0.020, 0.044, 0.058) * 0.72,
+            metallic: 0.12,
+            perceptual_roughness: 0.80,
             ..default()
         }),
         hex_material_t3: materials.add(StandardMaterial {
-            base_color: Color::srgb(0.015, 0.022, 0.025),
-            metallic: 0.5,
-            perceptual_roughness: 0.3,
+            base_color: Color::srgb(0.054, 0.070, 0.084),
+            emissive: LinearRgba::rgb(0.028, 0.054, 0.070) * 0.82,
+            metallic: 0.14,
+            perceptual_roughness: 0.76,
             ..default()
         }),
         // Tri-neon rims
         hex_cap_material_t0: materials.add(StandardMaterial {
             base_color: Color::BLACK,
-            emissive: LinearRgba::rgb(0.1, 0.6, 1.0) * 1.5, // Cyan
+            emissive: LinearRgba::rgb(0.08, 0.46, 0.76) * 0.85, // Valley contour
             unlit: true,
             ..default()
         }),
         hex_cap_material_t1: materials.add(StandardMaterial {
             base_color: Color::BLACK,
-            emissive: LinearRgba::rgb(0.8, 0.1, 1.0) * 1.5, // Magenta
+            emissive: LinearRgba::rgb(0.8, 0.1, 1.0) * 1.15, // Magenta
             unlit: true,
             ..default()
         }),
         hex_cap_material_t2: materials.add(StandardMaterial {
             base_color: Color::BLACK,
-            emissive: LinearRgba::rgb(1.0, 0.5, 0.05) * 1.5, // Amber
+            emissive: LinearRgba::rgb(1.0, 0.5, 0.05) * 1.25, // Amber
             unlit: true,
             ..default()
         }),
         hex_cap_material_t3: materials.add(StandardMaterial {
             base_color: Color::BLACK,
-            emissive: LinearRgba::rgb(0.3, 0.9, 1.0) * 2.5, // Bright Cyan
+            emissive: LinearRgba::rgb(0.3, 0.9, 1.0) * 2.1, // Bright Cyan
             unlit: true,
             ..default()
         }),
@@ -941,9 +1217,10 @@ pub fn setup_nebula_bouncer(
         }),
         hex_texture,
         ground_base_material: materials.add(StandardMaterial {
-            base_color: Color::srgb(0.005, 0.005, 0.005),
-            metallic: 0.9,
-            perceptual_roughness: 0.1,
+            base_color: Color::srgb(0.016, 0.022, 0.028),
+            emissive: LinearRgba::rgb(0.010, 0.022, 0.030) * 0.34,
+            metallic: 0.05,
+            perceptual_roughness: 0.96,
             ..default()
         }),
     };
@@ -1164,6 +1441,39 @@ pub fn setup_nebula_bouncer(
             ));
         });
 
+    commands
+        .spawn((
+            NebulaHealthHudRoot,
+            NebulaBouncerContext,
+            Node {
+                position_type: PositionType::Absolute,
+                right: Val::Px(16.0),
+                top: Val::Px(16.0),
+                border: UiRect::all(Val::Px(1.0)),
+                padding: UiRect::axes(Val::Px(12.0), Val::Px(8.0)),
+                border_radius: BorderRadius::all(Val::Px(6.0)),
+                ..default()
+            },
+            BackgroundColor(Color::srgba(0.05, 0.08, 0.12, 0.84)),
+            BorderColor::all(Color::srgba(0.30, 0.78, 0.96, 0.38)),
+        ))
+        .insert(Outline::new(
+            Val::Px(1.0),
+            Val::Px(0.0),
+            Color::srgba(0.04, 0.16, 0.22, 0.92),
+        ))
+        .with_children(|parent| {
+            parent.spawn((
+                NebulaHealthHudText,
+                Text::new("HP: 100/100"),
+                TextFont {
+                    font_size: 24.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(0.56, 0.98, 0.72)),
+            ));
+        });
+
     // -----------------------------------------------------------------------
     // CHUNK LIBRARY INITIALIZATION
     // -----------------------------------------------------------------------
@@ -1325,6 +1635,8 @@ pub fn setup_nebula_bouncer(
     };
     library.chunks.push(pillar_chunk);
 
+    initialize_procgen_runtime_state(&mut procgen_state);
+
     // Prefill world so distant floor/hex field is visible from first frame.
     for _ in 0..PREFILL_CHUNK_COUNT {
         spawn_next_chunk(
@@ -1335,6 +1647,7 @@ pub fn setup_nebula_bouncer(
             &mut procgen_state,
             &library,
             &mut validator_telemetry,
+            &mut procgen_validation_state,
             &nebula_mats,
             &mut materials,
         );
@@ -1356,29 +1669,6 @@ pub fn setup_nebula_bouncer(
             );
         }
     }
-
-    procgen_state.next_spawn_y = 0.0;
-    procgen_state.last_chunk_bottom_profile = [false; PROFILE_RESOLUTION];
-    procgen_state.current_pacing = ChunkPacing::Open;
-    procgen_state.previous_pacing = ChunkPacing::Open;
-    procgen_state.chunks_in_current_pacing = 0;
-    procgen_state.chunks_spawned = 0;
-    if procgen_state.global_seed == 0 {
-        procgen_state.global_seed = 0x4E42_5F53_4545_445F;
-    }
-
-    // Spawn first chunk
-    spawn_next_chunk(
-        &mut commands,
-        &asset_server,
-        &asset_manifest,
-        &chunk_assignment_profiles,
-        &mut procgen_state,
-        &*library,
-        &mut validator_telemetry,
-        &nebula_mats,
-        &mut materials,
-    );
 
     // Initialize the kinetic orb pool
     spawn_orb_pool(
@@ -1575,6 +1865,7 @@ pub fn handle_player_extrusion_collisions(
         };
 
         runtime_telemetry.record_surface_contact(surface_role.player_role, surface_role.archetype);
+        runtime_telemetry.record_surface_semantics(*surface_role);
         if surface_role.player_role != PlayerSurfaceRole::HardCrashBlocker {
             continue;
         }
@@ -1667,8 +1958,20 @@ pub fn handle_orb_collisions(
     feedback_settings: Res<CameraFeedbackSettings>,
     mut shake: Query<&mut ScreenShake, With<NebulaGameplayCamera>>,
     mut hit_stop: ResMut<HitStop>,
-    mut enemies: Query<(Entity, &mut Health, &mut EnemyStatusEffects), With<Enemy>>,
-    surfaces: Query<(&SurfaceRole, &Transform, Option<&SurfaceNormal>), Without<KineticOrb>>,
+    mut collision_targets: ParamSet<(
+        Query<(Entity, &mut Health, &mut EnemyStatusEffects), With<Enemy>>,
+        Query<
+            (
+                Entity,
+                &mut Health,
+                &SurfaceRole,
+                &BreakableHazard,
+                &Transform,
+            ),
+            (With<BreakableHazard>, Without<Enemy>, Without<KineticOrb>),
+        >,
+        Query<(&SurfaceRole, &Transform, Option<&SurfaceNormal>), Without<KineticOrb>>,
+    )>,
     nebula_mats: Res<NebulaMaterials>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
@@ -1693,7 +1996,9 @@ pub fn handle_orb_collisions(
                     continue;
                 }
 
-                if let Ok((enemy_entity, mut hp, mut status_effects)) = enemies.get_mut(other) {
+                if let Ok((enemy_entity, mut hp, mut status_effects)) =
+                    collision_targets.p0().get_mut(other)
+                {
                     hp.damage(orb.damage as i32);
                     apply_enemy_status_effects(&mut status_effects, &orb);
                     spawn_transient_vfx(
@@ -1770,7 +2075,78 @@ pub fn handle_orb_collisions(
                     continue;
                 }
 
-                if let Ok((surface_role, surface_transform, surface_normal)) = surfaces.get(other) {
+                let mut destroyed_breakable = None;
+                if let Ok((
+                    breakable_entity,
+                    mut hp,
+                    surface_role,
+                    breakable,
+                    breakable_transform,
+                )) = collision_targets.p1().get_mut(other)
+                {
+                    runtime_telemetry.record_surface_semantics(*surface_role);
+                    runtime_telemetry.destructible_surface_hits = runtime_telemetry
+                        .destructible_surface_hits
+                        .saturating_add(1);
+                    hp.damage(orb.damage as i32);
+                    spawn_transient_vfx(
+                        &mut commands,
+                        &asset_server,
+                        &nebula_mats,
+                        &mut materials,
+                        &asset_manifest.vfx_hit_ring,
+                        orb_transform.translation,
+                        if breakable.reward == BreakableRewardRole::HealthBearing {
+                            Color::srgba(0.98, 0.62, 0.28, 0.90)
+                        } else {
+                            Color::srgba(0.58, 0.96, 1.0, 0.88)
+                        },
+                        TRANSIENT_VFX_BASE_SIZE,
+                        TRANSIENT_VFX_BASE_LIFETIME_SECS * 0.8,
+                    );
+
+                    if hp.is_dead() {
+                        runtime_telemetry.breakables_destroyed =
+                            runtime_telemetry.breakables_destroyed.saturating_add(1);
+                        destroyed_breakable = Some((
+                            breakable_entity,
+                            breakable.reward,
+                            breakable.heal_amount.max(0),
+                            breakable_transform.translation,
+                        ));
+                    }
+
+                    runtime_telemetry.last_projectile_event =
+                        ProjectileEventKind::ProjectileAbsorbed;
+                    runtime_telemetry.last_projectile_speed = orb_velocity.0.length();
+                    orb.active = false;
+                    deactivate_orb(&mut commands, &mut orb_pool, e);
+                    if let Some((breakable_entity, reward, heal_amount, breakable_pos)) =
+                        destroyed_breakable
+                    {
+                        if reward == BreakableRewardRole::HealthBearing {
+                            runtime_telemetry.health_breakables_destroyed = runtime_telemetry
+                                .health_breakables_destroyed
+                                .saturating_add(1);
+                            if heal_amount > 0 {
+                                spawn_health_drop(
+                                    &mut commands,
+                                    &nebula_mats,
+                                    breakable_pos,
+                                    heal_amount,
+                                );
+                            }
+                        }
+                        spawn_breakable_shatter_vfx(&mut commands, &nebula_mats, breakable_pos);
+                        commands.entity(breakable_entity).despawn();
+                    }
+                    continue;
+                }
+
+                if let Ok((surface_role, surface_transform, surface_normal)) =
+                    collision_targets.p2().get(other)
+                {
+                    runtime_telemetry.record_surface_semantics(*surface_role);
                     if let Some(mut s) = shake.iter_mut().next() {
                         s.intensity = next_shake_intensity(
                             s.intensity,
@@ -1888,6 +2264,7 @@ pub fn update_level_scrolling(
     mut procgen_state: ResMut<ProcGenState>,
     library: Res<ChunkLibrary>,
     mut validator_telemetry: ResMut<ProcgenValidatorTelemetry>,
+    mut procgen_validation_state: ResMut<NebulaProcgenValidationState>,
     nebula_mats: Res<NebulaMaterials>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut queries: ParamSet<(
@@ -1946,6 +2323,7 @@ pub fn update_level_scrolling(
             &mut procgen_state,
             &*library,
             &mut validator_telemetry,
+            &mut procgen_validation_state,
             &nebula_mats,
             &mut materials,
         );
@@ -1961,6 +2339,7 @@ pub fn spawn_next_chunk(
     state: &mut ProcGenState,
     library: &ChunkLibrary,
     telemetry: &mut ProcgenValidatorTelemetry,
+    procgen_validation_state: &mut NebulaProcgenValidationState,
     nebula_mats: &NebulaMaterials,
     materials: &mut Assets<StandardMaterial>,
 ) {
@@ -2023,6 +2402,11 @@ pub fn spawn_next_chunk(
     let chunk_y = state.next_spawn_y + selected.height / 2.0;
     let terrain_theme = assignment_profiles.terrain_theme_for(selected.pacing);
     let health_scale = assignment_profiles.enemy_health_scale_for(selected.pacing);
+    let enemy_count = selected
+        .spawns
+        .iter()
+        .filter(|spawn| spawn.spawn_type == SpawnType::Enemy)
+        .count();
 
     // Spawn floor as modular tiles instead of one stretched sprite.
     spawn_chunk_floor_tiles(
@@ -2037,8 +2421,13 @@ pub fn spawn_next_chunk(
     );
 
     // Spawn deterministic topography from procgen data layer.
-    let topography =
-        generate_chunk_topography(selected.height, state.global_seed, state.chunks_spawned);
+    let topography = generate_chunk_topography(
+        selected.height,
+        state.global_seed,
+        state.chunks_spawned,
+        selected.pacing,
+        enemy_count,
+    );
     spawn_chunk_topography(
         commands,
         asset_server,
@@ -2047,6 +2436,12 @@ pub fn spawn_next_chunk(
         selected.height,
         &topography,
     );
+    procgen_validation_state.push_snapshot(summarize_chunk_runtime(
+        &topography,
+        state.chunks_spawned,
+        chunk_y,
+        enemy_count,
+    ));
 
     // Legacy rectangular wall strips removed; floor hazards now come from topography extrusions.
 
@@ -2486,6 +2881,19 @@ orientation_offsets_deg: player={player_deg:.1} orb={orb_deg:.1} enemy={enemy_de
         orb_deg = sprite_orientation.orb_forward_offset_deg,
         enemy_deg = sprite_orientation.enemy_forward_offset_deg,
     );
+}
+
+pub fn update_player_health_hud(
+    q_player: Query<&Health, With<PlayerShip>>,
+    mut q_hud_text: Query<(&mut Text, &mut TextColor), With<NebulaHealthHudText>>,
+) {
+    let player_health = q_player.iter().next();
+    let Some((mut text, mut text_color)) = q_hud_text.iter_mut().next() else {
+        return;
+    };
+
+    **text = player_health_hud_label(player_health);
+    text_color.0 = player_health_hud_color(player_health);
 }
 
 pub fn orient_player_to_cursor(
@@ -3503,5 +3911,140 @@ mod tests {
             enemy_attack_facing_angle(Vec2::new(0.0, -1.0), SpriteOrientationConfig::default())
                 .expect("expected attack facing angle");
         assert!((angle - 0.0).abs() <= f32::EPSILON);
+    }
+
+    #[test]
+    fn health_drop_requires_player_collection_to_restore_health() {
+        let mut app = App::new();
+        let mut time = Time::<()>::default();
+        time.advance_by(std::time::Duration::from_secs_f32(0.016));
+        app.insert_resource(time);
+        app.insert_resource(NebulaRuntimeTelemetry::default());
+        app.add_systems(Update, update_health_drops);
+
+        let player = app
+            .world_mut()
+            .spawn((
+                PlayerShip,
+                Health {
+                    current: 40,
+                    max: 100,
+                },
+                Transform::from_xyz(0.0, 0.0, 0.0),
+            ))
+            .id();
+        let drop = app
+            .world_mut()
+            .spawn((
+                HealthDrop {
+                    heal_amount: 10,
+                    ttl_secs: 5.0,
+                    collect_radius: 20.0,
+                },
+                Transform::from_xyz(120.0, 0.0, 0.0),
+            ))
+            .id();
+
+        app.update();
+
+        let player_health = app.world().entity(player).get::<Health>().unwrap();
+        assert_eq!(player_health.current, 40);
+        assert!(app.world().get_entity(drop).is_ok());
+        assert_eq!(
+            app.world()
+                .resource::<NebulaRuntimeTelemetry>()
+                .player_health_recovered,
+            0
+        );
+
+        app.world_mut()
+            .entity_mut(player)
+            .insert(Transform::from_xyz(120.0, 0.0, 0.0));
+
+        app.update();
+
+        let player_health = app.world().entity(player).get::<Health>().unwrap();
+        assert_eq!(player_health.current, 50);
+        assert!(app.world().get_entity(drop).is_err());
+        assert_eq!(
+            app.world()
+                .resource::<NebulaRuntimeTelemetry>()
+                .player_health_recovered,
+            10
+        );
+    }
+
+    #[test]
+    fn initialize_procgen_runtime_state_resets_progress_and_preserves_seed() {
+        let mut state = ProcGenState {
+            next_spawn_y: 4200.0,
+            current_pacing: ChunkPacing::Dense,
+            previous_pacing: ChunkPacing::Transition,
+            chunks_in_current_pacing: 3,
+            chunks_spawned: 9,
+            global_seed: 77,
+            ..default()
+        };
+
+        initialize_procgen_runtime_state(&mut state);
+
+        assert_eq!(state.next_spawn_y, 0.0);
+        assert_eq!(state.current_pacing, ChunkPacing::Open);
+        assert_eq!(state.previous_pacing, ChunkPacing::Open);
+        assert_eq!(state.chunks_in_current_pacing, 0);
+        assert_eq!(state.chunks_spawned, 0);
+        assert_eq!(state.global_seed, 77);
+    }
+
+    #[test]
+    fn health_drop_visual_profile_stays_lifted_and_animates() {
+        let (lift0, pulse0, rotation0) = health_drop_visual_profile(0.0);
+        let (lift1, pulse1, rotation1) = health_drop_visual_profile(0.6);
+
+        assert!(lift0 >= HEALTH_DROP_VISUAL_LIFT);
+        assert!(lift1 >= HEALTH_DROP_VISUAL_LIFT);
+        assert!(pulse0 >= 1.0);
+        assert!(pulse1 >= 1.0);
+        assert!(rotation1 > rotation0);
+    }
+
+    #[test]
+    fn player_health_hud_label_formats_live_health() {
+        let health = Health {
+            current: 37,
+            max: 100,
+        };
+
+        assert_eq!(player_health_hud_label(Some(&health)), "HP: 37/100");
+        assert_eq!(player_health_hud_label(None), "HP: --");
+    }
+
+    #[test]
+    fn player_health_hud_color_tracks_health_band() {
+        let healthy = Health {
+            current: 90,
+            max: 100,
+        };
+        let wounded = Health {
+            current: 45,
+            max: 100,
+        };
+        let critical = Health {
+            current: 20,
+            max: 100,
+        };
+
+        assert_eq!(
+            player_health_hud_color(Some(&healthy)),
+            Color::srgb(0.56, 0.98, 0.72)
+        );
+        assert_eq!(
+            player_health_hud_color(Some(&wounded)),
+            Color::srgb(1.0, 0.84, 0.22)
+        );
+        assert_eq!(
+            player_health_hud_color(Some(&critical)),
+            Color::srgb(1.0, 0.34, 0.24)
+        );
     }
 }
